@@ -34,8 +34,9 @@ lives. Full design in `docs/01-architecture.md`.
    anything that *reasons* or *acts* outside Claude and Aito.
    **Three scoped exceptions, all operator-directed and behind the swappable
    provider in `src/company_ai/llm.py`:**
-   (a) the weekly week-prep *composer* (`src/company_ai/board.py`) — a writer
-   with no tools and no autonomy, turning Aito's outputs into Sunday-prep prose;
+   (a) the weekly week-prep *composer* (`docs/15-week-prep.md`,
+   `src/company_ai/board.py`) — a writer with no tools and no autonomy, turning
+   Aito's outputs into Sunday-prep prose;
    (b) the dashboard *assistant* (`docs/16-assistant.md`) — a right-side
    chat that does run a bounded, server-side tool-calling loop, so it is an
    agent loop and is named as such. It is fenced hard: it may call **only**
@@ -126,7 +127,7 @@ names, numbers, or non-public company data anywhere in tracked files.
 - Action surface (todos + the Now view): `docs/12-todos-and-now.md`
 - Deals pipeline + close-likelihood + the closed loop: `docs/13-deals.md`
 - Experiments (the learning pipeline, Build-Measure-Learn): `docs/14-experiments.md`
-- Week-prep composer (the Sunday-prep writer; grounded, tool-less, LLM prose over Aito facts; `board-run` CLI + `ops/board-run.sh`): `src/company_ai/board.py`
+- Week-prep composer (the Sunday-prep writer; grounded, tool-less, LLM prose over Aito facts; `board-run` CLI + `ops/board-run.sh`): `docs/15-week-prep.md`
 - Dashboard assistant (right-side chat; bounded Aito-backed tool loop): `docs/16-assistant.md`
 - Events to attend (go/no-go board + calendar): `docs/17-events.md`
 - Routines (recurring agentic tasks; prepare → Aito candidates + a Claude prompt): `docs/18-routines.md`
