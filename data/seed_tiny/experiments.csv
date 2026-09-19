@@ -1,0 +1,7 @@
+experiment_id,created,area,type,hypothesis,metric,baseline,target,result,effort,status,learning,started,decided
+yr004,2026-01-26,retention,content,A content change lifts m1_retention from 0.19 to 0.316.,m1_retention,0.19,0.316,,large,running,,2026-01-26,
+yr002,2026-03-01,retention,onboarding,A onboarding change lifts m1_retention from 0.318 to 0.399.,m1_retention,0.318,0.399,0.281,medium,invalidated,no lift over baseline; reverted,2026-03-01,2026-03-22
+yr006,2026-03-30,acquisition,pricing,A pricing change lifts signup_rate from 0.345 to 0.584.,signup_rate,0.345,0.584,,large,running,,2026-03-30,
+yr001,2026-04-02,retention,pricing,A pricing change lifts m1_retention from 0.185 to 0.323.,m1_retention,0.185,0.323,0.32,large,inconclusive,signal within noise; needs a bigger sample,2026-04-02,2026-04-22
+yr003,2026-04-05,referral,onboarding,A onboarding change lifts referral_rate from 0.061 to 0.107.,referral_rate,0.061,0.107,0.105,medium,inconclusive,signal within noise; needs a bigger sample,2026-04-05,2026-05-02
+yr005,2026-04-23,activation,feature,A feature change lifts trial_start_rate from 0.263 to 0.397.,trial_start_rate,0.263,0.397,,medium,running,,2026-04-23,

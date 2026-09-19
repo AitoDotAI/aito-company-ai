@@ -1,0 +1,17 @@
+# the function specs exposed to the model
+
+  who_to_call(window, top_n)
+  opener_context(contact_id)
+  what_changed()
+  smart_search(query, kind, top_n)
+  deal_pipeline()
+  experiment_board()
+  decision_scorecard()
+  segment_360(segment)
+  funnel(name, slice)
+  score_post(channel)
+  todos_now()
+  todos_area(area)
+  recent_changes(limit, entity)
+  web_search(query, count)
+  fetch_page(url)

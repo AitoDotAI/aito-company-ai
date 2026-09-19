@@ -1,0 +1,103 @@
+todo_id,area,title,detail,action_type,slot,linked_id,linked_type,stakeholder_id,role,owner,status,priority,due_date,window,prep_status,slipped
+sd017,experiments,Review the customer-proof cohort,,research,,,workstream,,,,ready,3,,,in_progress,
+sd004,marketing,Ship the customer-proof post,,post,09:00,,asset,,,,ready,1,2026-06-12,mon_0800,prep_needed,
+sd005,marketing,Draft the customer-proof narrative,,post,15:30,,asset,,,,ready,1,2026-06-11,tue_0800,prep_needed,
+sd010,marketing,Propagate the agent-inference demo,,post,14:30,,asset,,,,ready,1,2026-06-18,fri_1430,prep_needed,
+sd015,marketing,Propagate the positioning demo,,post,15:30,,asset,,,,draft,2,2026-06-22,fri_1430,ready,
+sd003,marketing,Propagate the product demo,,post,10:30,,asset,,,,ready,3,2026-06-19,fri_1430,ready,
+sd013,marketing,Ship the oss-tool post,,post,14:30,,asset,,,,draft,3,2026-06-15,fri_eve,ready,
+sd008,operations,Hooli Oy license renewal window,,admin,,,instance,,,,blocked,2,,,n_a,
+sd018,operations,Sirius Ab license renewal window,,admin,09:00,,instance,,,,on_track,2,2026-06-22,,n_a,
+sd019,operations,Pied BV usage anomaly review,,admin,16:00,,instance,,,,blocked,2,2026-06-22,,n_a,
+sd020,operations,Weyland Oy uptime report,,admin,10:30,,instance,,,,monitor,2,2026-06-22,,n_a,
+sd006,rnd,Rep2 stabilization,,research,,,workstream,,,,prog,1,,,ready,
+sd022,rnd,Booktest end-to-end verify,,meeting,,,workstream,,,,prog,1,,,ready,
+sd001,rnd,Booktest end-to-end verify,,meeting,,,workstream,,,,ready,3,,,in_progress,
+sd007,rnd,Booktest end-to-end verify,,meeting,,,workstream,,,,ready,3,,,ready,
+sd014,rnd,pg_infer extension,,research,,,workstream,,,,ready,3,,,in_progress,
+sd021,sales,Follow-up call with Oscorp OÜ,,email,10:30,se005,deal,sc010,,,draft,1,2026-06-16,fri_eve,prep_needed,
+sd002,sales,Send pricing context to Mooby Ab,,email,15:30,se010,deal,sc042,,,draft,2,2026-06-10,tue_0800,prep_needed,
+sd011,sales,Reference ask with Vertex OÜ,,email,14:30,se014,deal,sc048,,,draft,2,2026-06-15,tue_0800,in_progress,
+sd012,sales,Reposition email to Onyx Oy,,email,09:00,se007,deal,sc032,,,draft,2,2026-06-15,fri_1530,ready,
+sd009,sales,Reposition email to Oscorp OÜ,,email,16:00,se001,deal,sc010,,,prog,3,2026-06-15,mon_0800,ready,
+sd016,sales,Send pricing context to Pymt Oy,,email,15:30,se015,deal,sc019,,,ready,3,2026-06-15,mon_0800,ready,
+sdh001,rnd,Schema migration tooling,,research,,,,,,,done,2,,,in_progress,false
+sdh002,rnd,Booktest end-to-end verify,,meeting,,,,,,,done,3,,,in_progress,false
+sdh003,sales,Reposition email to Lacuna OÜ,,email,,,,,,,done,2,,,n_a,false
+sdh004,rnd,Predictive-DB benchmark,,research,,,,,,,done,3,,,ready,false
+sdh005,sales,Reference ask with Nakatomi GmbH,,email,,,,,,,done,3,,,n_a,false
+sdh006,rnd,Schema migration tooling,,research,,,,,,,done,1,,,in_progress,false
+sdh007,sales,Send pricing context to Pierce Oy,,email,,,,,,,done,1,,,n_a,false
+sdh008,rnd,Rep2 stabilization,,research,,,,,,,done,3,,,prep_needed,true
+sdh009,marketing,Draft the agent-inference narrative,,post,,,,,,,done,1,,,blocked,true
+sdh010,marketing,Repurpose oss-tool for LinkedIn,,post,,,,,,,done,2,,,ready,false
+sdh011,marketing,Ship the customer-proof post,,post,,,,,,,done,1,,,ready,true
+sdh012,operations,Strickland Oy usage anomaly review,,admin,,,,,,,done,3,,,in_progress,true
+sdh013,rnd,Booktest end-to-end verify,,meeting,,,,,,,done,1,,,prep_needed,true
+sdh014,marketing,Repurpose product for LinkedIn,,post,,,,,,,done,1,,,n_a,false
+sdh015,rnd,Predictive-DB benchmark,,research,,,,,,,done,2,,,blocked,true
+sdh016,rnd,Predictive-DB benchmark,,research,,,,,,,done,1,,,ready,false
+sdh017,operations,Lumon OÜ usage anomaly review,,admin,,,,,,,done,3,,,n_a,false
+sdh018,sales,Send pricing context to Sabre Oy,,email,,,,,,,done,1,,,prep_needed,true
+sdh019,rnd,Predictive-DB benchmark,,research,,,,,,,done,2,,,prep_needed,true
+sdh020,sales,Reposition email to Pendant Oy,,email,,,,,,,done,1,,,in_progress,false
+sdh021,marketing,Repurpose customer-proof for LinkedIn,,post,,,,,,,done,3,,,n_a,false
+sdh022,marketing,Propagate the product demo,,post,,,,,,,done,2,,,blocked,true
+sdh023,rnd,Rep2 stabilization,,research,,,,,,,done,3,,,in_progress,false
+sdh024,rnd,Rep2 stabilization,,research,,,,,,,done,2,,,in_progress,false
+sdh025,sales,Reposition email to Cobalt Oy,,email,,,,,,,done,2,,,prep_needed,true
+sdh026,rnd,Booktest end-to-end verify,,meeting,,,,,,,done,1,,,in_progress,false
+sdh027,marketing,Draft the positioning narrative,,post,,,,,,,done,2,,,ready,false
+sdh028,marketing,Draft the customer-proof narrative,,post,,,,,,,done,1,,,blocked,false
+sdh029,operations,Encom OÜ uptime report,,admin,,,,,,,done,3,,,in_progress,false
+sdh030,sales,Reposition email to Wayne GmbH,,email,,,,,,,done,2,,,ready,false
+sdh031,sales,Reposition email to Lacuna OÜ,,email,,,,,,,done,2,,,ready,false
+sdh032,operations,Acme Ab instance isolation check,,admin,,,,,,,done,3,,,ready,false
+sdh033,rnd,pg_infer extension,,research,,,,,,,done,1,,,blocked,false
+sdh034,rnd,Booktest end-to-end verify,,meeting,,,,,,,done,2,,,n_a,false
+sdh035,marketing,Propagate the positioning demo,,post,,,,,,,done,2,,,blocked,false
+sdh036,sales,Call Hanso Oy before the window closes,,call,,,,,,,done,2,,,prep_needed,false
+sdh037,operations,Globex Oy license renewal window,,admin,,,,,,,done,3,,,blocked,false
+sdh038,operations,Pymt Oy usage anomaly review,,admin,,,,,,,done,3,,,n_a,false
+sdh039,operations,Prestige Oy uptime report,,admin,,,,,,,done,3,,,n_a,false
+sdh040,operations,Dunder Ab usage anomaly review,,admin,,,,,,,done,1,,,prep_needed,false
+sdh041,sales,Reference ask with Monarch Oy,,email,,,,,,,done,2,,,prep_needed,true
+sdh042,marketing,Draft the customer-proof narrative,,post,,,,,,,done,1,,,blocked,false
+sdh043,rnd,Booktest end-to-end verify,,meeting,,,,,,,done,1,,,in_progress,false
+sdh044,rnd,Predictive-DB benchmark,,research,,,,,,,done,2,,,prep_needed,false
+sdh045,sales,Follow-up call with Tessier Ab,,email,,,,,,,done,3,,,in_progress,false
+sdh046,operations,Duff BV license renewal window,,admin,,,,,,,done,2,,,n_a,false
+sdh047,rnd,Rep2 stabilization,,research,,,,,,,done,2,,,prep_needed,false
+sdh048,rnd,Booktest end-to-end verify,,meeting,,,,,,,done,3,,,ready,false
+sdh049,operations,Duff BV uptime report,,admin,,,,,,,done,2,,,n_a,false
+sdh050,marketing,Ship the oss-tool post,,post,,,,,,,done,3,,,blocked,true
+sdh051,sales,Reference ask with Pymt Oy,,email,,,,,,,done,2,,,prep_needed,false
+sdh052,rnd,Booktest end-to-end verify,,meeting,,,,,,,done,3,,,prep_needed,true
+sdh053,marketing,Draft the product narrative,,post,,,,,,,done,3,,,ready,false
+sdh054,operations,Abstergo Oy usage anomaly review,,admin,,,,,,,done,1,,,ready,false
+sdh055,rnd,Predictive-DB benchmark,,research,,,,,,,done,2,,,in_progress,false
+sdh056,sales,Send pricing context to Raviga Oy,,email,,,,,,,done,2,,,prep_needed,true
+sdh057,operations,Monarch Oy uptime report,,admin,,,,,,,done,3,,,ready,false
+sdh058,marketing,Repurpose product for LinkedIn,,post,,,,,,,done,2,,,prep_needed,true
+sdh059,rnd,Schema migration tooling,,research,,,,,,,done,1,,,ready,false
+sdh060,operations,Nakatomi GmbH uptime report,,admin,,,,,,,done,3,,,in_progress,false
+sdh061,marketing,Draft the positioning narrative,,post,,,,,,,done,2,,,ready,false
+sdh062,sales,Call Pied BV before the window closes,,call,,,,,,,done,1,,,n_a,false
+sdh063,sales,Send pricing context to Widmore Oy,,email,,,,,,,done,2,,,prep_needed,false
+sdh064,rnd,Booktest end-to-end verify,,meeting,,,,,,,done,1,,,n_a,false
+sdh065,rnd,Booktest end-to-end verify,,meeting,,,,,,,done,1,,,ready,false
+sdh066,operations,Oscorp OÜ usage anomaly review,,admin,,,,,,,done,2,,,n_a,false
+sdh067,rnd,Rep2 stabilization,,research,,,,,,,done,2,,,in_progress,false
+sdh068,operations,Dunder Ab uptime report,,admin,,,,,,,done,1,,,blocked,false
+sdh069,sales,Reference ask with Umbrella Oy,,email,,,,,,,done,1,,,in_progress,false
+sdh070,operations,Dunder Ab usage anomaly review,,admin,,,,,,,done,2,,,in_progress,false
+sdh071,operations,Encom OÜ license renewal window,,admin,,,,,,,done,2,,,n_a,false
+sdh072,rnd,Schema migration tooling,,research,,,,,,,done,2,,,prep_needed,true
+sdh073,rnd,Booktest end-to-end verify,,meeting,,,,,,,done,3,,,ready,false
+sdh074,sales,Reposition email to Pendant Oy,,email,,,,,,,done,2,,,prep_needed,false
+sdh075,marketing,Repurpose product for LinkedIn,,post,,,,,,,done,1,,,in_progress,false
+sdh076,rnd,Rep2 stabilization,,research,,,,,,,done,1,,,blocked,false
+sdh077,rnd,Booktest end-to-end verify,,meeting,,,,,,,done,1,,,blocked,true
+sdh078,marketing,Draft the oss-tool narrative,,post,,,,,,,done,3,,,prep_needed,true
+sdh079,rnd,Predictive-DB benchmark,,research,,,,,,,done,3,,,in_progress,false
+sdh080,operations,Zorin Oy uptime report,,admin,,,,,,,done,3,,,blocked,true

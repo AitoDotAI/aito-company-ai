@@ -1,0 +1,16 @@
+touch_id,contact_id,ts,weekday,window,channel,outcome,next_action,next_action_due,notes
+yt009,yc008,2026-04-09T18:45:00,thu,other,email,reply,send one-pager,2026-04-13,"replied, lukewarm but open"
+yt002,yc009,2026-04-10T12:33:00,fri,1215,linkedin,no_reply,,,
+yt005,yc009,2026-04-15T08:42:00,wed,0800,call,declined,,,no budget this year
+yt011,yc004,2026-04-23T09:28:00,thu,0800,linkedin,reply,send one-pager,2026-04-24,"replied, lukewarm but open"
+yt004,yc007,2026-05-11T12:18:00,mon,1215,email,reply,send one-pager,2026-05-13,"replied, lukewarm but open"
+yt008,yc009,2026-05-26T16:43:00,tue,1600,email,no_reply,,,
+yt010,yc004,2026-06-01T10:30:00,mon,other,email,reply,,,asked for a one-pager
+yt001,yc006,2026-06-01T16:53:00,mon,1600,email,reply,send one-pager,2026-06-04,"replied, lukewarm but open"
+yt003,yc006,2026-06-02T12:32:00,tue,1215,call,conversation,send pricing summary,2026-06-03,"long call, budget talk in autumn"
+yt007,yc004,2026-06-02T17:01:00,tue,1600,call,callback_requested,call back,2026-06-03,asked to call next week
+yt006,yc004,2026-06-09T14:00:00,tue,other,email,no_reply,,,
+yt014,yc004,2026-06-11T12:24:00,thu,1215,call,no_answer,,,
+yt012,yc008,2026-06-11T16:11:00,thu,1600,call,conversation,,,"good chat, asked about pricing"
+yt015,yc009,2026-06-11T16:56:00,thu,1600,call,no_answer,,,
+yt013,yc009,2026-06-11T17:24:00,thu,1600,email,no_reply,,,

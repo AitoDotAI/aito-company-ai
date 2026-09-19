@@ -1,0 +1,3 @@
+user_id,name,email,role,active,created
+u_operator,Alex Morgan,alex@example.com,operator,true,2026-05-13
+u_sdr,Sam Rivera,sam@example.com,sdr,true,2026-08-09

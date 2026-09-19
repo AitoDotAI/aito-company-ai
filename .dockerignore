@@ -1,0 +1,27 @@
+# The image ships the app + synthetic seed only. This is belt-and-suspenders:
+# the Dockerfile already COPYs explicit paths (never `COPY . .`), so real data
+# and secrets can't enter the image even if this file is edited.
+
+# secrets / config — never in an image
+.env
+.env.*
+!.env.example
+.secrets/
+
+# any real dataset (privacy: docs/06). Only data/seed* is copyable, done
+# explicitly in the Dockerfile; ignore everything else under data/.
+data/*
+!data/seed
+!data/seed_tiny
+
+# build/runtime cruft
+.git
+.venv
+node_modules
+frontend/node_modules
+src/company_ai/web_dist
+books
+__pycache__
+*.pyc
+.pytest_cache
+.ruff_cache

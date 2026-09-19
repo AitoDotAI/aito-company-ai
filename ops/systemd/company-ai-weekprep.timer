@@ -1,0 +1,9 @@
+[Unit]
+Description=Company AI — Sunday week-prep, draft (T-24h) (Sat *-*-* 16:00:00, Europe/Helsinki)
+
+[Timer]
+OnCalendar=Sat *-*-* 16:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

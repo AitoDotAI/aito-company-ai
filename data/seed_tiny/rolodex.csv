@@ -1,0 +1,11 @@
+contact_id,name,company,role,phone_present,email_present,segment,tier,ai_lifecycle,source,country,notes_tags,created
+yc001,Niaj Cross,Aperture OÜ,Founder,true,true,accounting,C,shipped,cold,Estonia,rfp-soon,2025-12-09
+yc002,Mona Fields,Tyrell Oy,CEO,true,true,erp,C,none,cold,Finland,rfp-soon;tech-savvy,2025-08-16
+yc003,Rupert Brooks,Hanso Oy,Controller,true,true,accounting,C,announced,cold,Finland,,2025-08-21
+yc004,Quinn Snow,Sirius Oy,Controller,true,true,other,A,shipped,warm,Finland,q3-budget;slow-cycle,2025-12-03
+yc005,Hank Knight,Initrode Oy,CFO,true,false,accounting,C,shipped,referral,Finland,q3-budget;rfp-soon;slow-cycle,2025-05-28
+yc006,Yvonne Gray,Sabre BV,Partner,true,true,ecommerce,A,shipped,warm,Netherlands,newsletter,2026-02-01
+yc007,Niaj Snow,Genco Oy,CFO,true,true,consultancy,B,shipped,cold,Finland,multi-entity,2026-05-08
+yc008,Peggy Stone,Pierce Oy,Partner,true,true,erp,A,announced,cold,Finland,founder-led;newsletter,2025-10-11
+yc009,Quinn Ford,Cobalt Oy,Finance Manager,true,true,accounting,B,shipped,trigger,Finland,,2025-10-24
+yc010,Sybil Stone,Wayne GmbH,Head of Finance,true,true,erp,C,none,warm,Germany,intro-available;rfp-soon,2025-11-26

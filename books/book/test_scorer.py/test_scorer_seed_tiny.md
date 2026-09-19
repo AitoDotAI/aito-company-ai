@@ -1,0 +1,13 @@
+# Scorer on the tiny dataset (cold-start honesty)
+
+
+## linkedin: {"link_placement": "comment", "tone": "narrate"}
+
+  _predict: {"from": "posts", "predict": "won", "select": ["$p", "$value", "$why"], "where": {"link_placement": "comment", "platform": "linkedin", "tone": "narrate"}}
+  _predict: {"from": "posts", "predict": "won", "select": ["$p", "$value"], "where": {"platform": "linkedin"}}
+  _query: {"from": "posts", "limit": 5000, "where": {"platform": "linkedin"}}
+  _recommend: {"from": "posts", "goal": {"won": true}, "limit": 8, "recommend": "tone", "where": {"link_placement": "comment", "platform": "linkedin"}}
+  _recommend: {"from": "posts", "goal": {"won": true}, "limit": 8, "recommend": "link_placement", "where": {"platform": "linkedin", "tone": "narrate"}}
+  _recommend: {"from": "posts", "goal": {"won": true}, "limit": 8, "recommend": "ai_made", "where": {"link_placement": "comment", "platform": "linkedin", "tone": "narrate"}}
+  P(win)=0.3066  base=0.2500
+    why tone=narrate  lift=1.1856

@@ -1,0 +1,15 @@
+event_id,name,type,starts,location,cost_eur,status,decided,outcome,notes,created
+sv010,DevMeetup 2026,meetup,2026-05-16,Stockholm,600,no_go,2026-04-26,,low fit for the cost,2026-05-16
+sv014,Indie Hackers 2026,meetup,2026-05-25,online,0,candidate,,,,2026-03-20
+sv001,AI Summit 2026,conference,2026-06-22,Amsterdam,0,candidate,,,,2026-04-18
+sv004,PyData 2026,conference,2026-08-04,Berlin,0,go,2026-07-08,,worth a talk / booth,2026-03-16
+sv002,ProductCon 2026,talk,2026-08-18,online,0,go,2026-07-24,,worth a talk / booth,2026-03-22
+sv009,ML Connect 2026,meetup,2026-08-24,online,0,candidate,,,,2026-02-20
+sv007,Indie Hackers 2026,conference,2026-08-27,Berlin,1200,go,2026-08-09,,worth a talk / booth,2026-04-16
+sv008,ML Connect 2026,talk,2026-08-31,Amsterdam,1200,candidate,,,,2026-03-10
+sv012,ML Connect 2026,meetup,2026-09-07,Berlin,1200,go,2026-08-12,,worth a talk / booth,2026-02-12
+sv005,Founders Brunch 2026,webinar,2026-09-15,Helsinki,600,go,2026-09-06,,worth a talk / booth,2026-03-28
+sv011,SaaStr Europe 2026,meetup,2026-09-16,online,0,no_go,2026-08-31,,low fit for the cost,2026-03-12
+sv013,AI Summit 2026,conference,2026-09-17,Berlin,600,candidate,,,,2026-03-29
+sv003,ML Connect 2026,meetup,2026-09-18,Stockholm,1200,candidate,,,,2026-02-15
+sv006,Postgres Conf 2026,conference,2026-09-27,Helsinki,600,go,2026-09-05,,worth a talk / booth,2026-04-27

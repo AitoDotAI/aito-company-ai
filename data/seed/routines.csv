@@ -1,0 +1,8 @@
+routine_id,title,area,cadence,weekday,day_of_month,prep,prompt,last_done,active,notes,created
+so01,Fill La Growth Machine,sales,weekly,mon,,prospects,,,true,next outbound batch,2026-05-13
+so02,Prepare the week,operations,weekly,sun,,brief,,,true,,2026-05-13
+so03,Friday board review,operations,weekly,fri,,brief,,,true,,2026-05-13
+so04,Weekly content batch,marketing,weekly,tue,,none,,,true,draft + schedule posts,2026-05-13
+so05,Pipeline hygiene,sales,weekly,wed,,none,,,true,"update stages, clear stale",2026-05-13
+so06,Monthly bookkeeping,operations,monthly,,1,none,,,true,,2026-05-13
+so07,Monthly metrics review,rnd,monthly,,5,none,,,true,,2026-05-13

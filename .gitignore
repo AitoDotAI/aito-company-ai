@@ -1,0 +1,33 @@
+# real instance config (.env, .env.aito, .env.local, ...) — never tracked;
+# only the .env.example template is committed
+.env
+.env.*
+!.env.example
+.venv/
+__pycache__/
+*.pyc
+.uv-cache/
+.direnv/
+result
+
+# booktest working output (snapshots themselves are committed)
+.out/
+books/.out/
+*.tmp
+
+# working notes and task files: kept on disk, never tracked
+.ai/
+
+# frontend build artifacts (run: cd frontend && npm run build)
+frontend/node_modules/
+src/company_ai/web_dist/
+frontend/.vite/
+
+# dashboard runtime (./do start) — one PID/log per port
+.dashboard.*
+
+# board / week-prep drafts (real pipeline analysis) — kept on disk, never tracked
+.briefs/
+
+# server-side assistant conversations (operator data, like .briefs)
+.chats/

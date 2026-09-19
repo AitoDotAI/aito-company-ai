@@ -1,0 +1,28 @@
+# doctor: a fully loaded instance reports no drift
+
+build reachable: True
+schema_drift: False
+  users        present=True rows=2 missing_cols=[]
+  assignments  present=True rows=0 missing_cols=[]
+  tokens       present=True rows=0 missing_cols=[]
+  companies    present=True rows=50 missing_cols=[]
+  contacts     present=True rows=50 missing_cols=[]
+  touches      present=True rows=150 missing_cols=[]
+  decisions    present=True rows=60 missing_cols=[]
+  sessions     present=True rows=600 missing_cols=[]
+  materials    present=True rows=40 missing_cols=[]
+  channels     present=True rows=5 missing_cols=[]
+  posts        present=True rows=120 missing_cols=[]
+  todos        present=True rows=102 missing_cols=[]
+  deals        present=True rows=80 missing_cols=[]
+  experiments  present=True rows=90 missing_cols=[]
+  events       present=True rows=14 missing_cols=[]
+  routines     present=True rows=7 missing_cols=[]
+  documents    present=True rows=7 missing_cols=[]
+  advisors     present=True rows=5 missing_cols=[]
+  chat_messages present=True rows=0 missing_cols=[]
+  advisory_reflections present=True rows=0 missing_cols=[]
+  changelog    present=True rows=0 missing_cols=[]
+  search_contexts present=True rows=0 missing_cols=[]
+  search_impressions present=True rows=0 missing_cols=[]
+  outbox       present=True rows=0 missing_cols=[]

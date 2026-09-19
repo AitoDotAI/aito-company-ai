@@ -1,0 +1,9 @@
+material_id,type,title,topic,lane,ai_made,length_chars,created
+ym001,whitepaper,positioning benchmark,positioning,cold,ai-assisted,180,2026-03-23
+ym002,note,oss tool deep dive,oss_tool,warm,manual,120,2026-05-08
+ym003,demo,positioning benchmark,positioning,warm,ai-assisted,320,2026-05-18
+ym004,video,customer proof guide,customer_proof,cold,manual,180,2026-02-28
+ym005,blog,core product notes,core_product,warm,ai-assisted,680,2026-03-11
+ym006,note,agent inference guide,agent_inference,cold,manual,680,2026-05-24
+ym007,blog,customer proof notes,customer_proof,warm,ai,180,2026-04-24
+ym008,blog,positioning deep dive,positioning,warm,manual,240,2025-12-21

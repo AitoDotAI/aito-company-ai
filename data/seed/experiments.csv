@@ -1,0 +1,91 @@
+experiment_id,created,area,type,hypothesis,metric,baseline,target,result,effort,status,learning,started,decided
+sr060,2026-01-13,referral,pricing,A pricing change lifts referral_rate from 0.193 to 0.243.,referral_rate,0.193,0.243,0.308,small,validated,referral_rate reached 0.308; shipped,2026-01-13,2026-01-22
+sr079,2026-01-17,activation,feature,A feature change lifts trial_start_rate from 0.095 to 0.14.,trial_start_rate,0.095,0.14,0.097,medium,invalidated,no lift over baseline; reverted,2026-01-17,2026-01-31
+sr035,2026-01-19,retention,onboarding,A onboarding change lifts m1_retention from 0.228 to 0.321.,m1_retention,0.228,0.321,0.228,large,invalidated,no lift over baseline; reverted,2026-01-19,2026-01-29
+sr014,2026-01-20,activation,pricing,A pricing change lifts trial_start_rate from 0.094 to 0.12.,trial_start_rate,0.094,0.12,,medium,abandoned,killed before a verdict,2026-01-20,
+sr068,2026-01-20,retention,feature,A feature change lifts m1_retention from 0.082 to 0.119.,m1_retention,0.082,0.119,0.159,small,validated,m1_retention reached 0.159; shipped,2026-01-20,2026-02-21
+sr076,2026-01-21,revenue,pricing,A pricing change lifts trial_to_paid from 0.391 to 0.669.,trial_to_paid,0.391,0.669,0.886,small,validated,trial_to_paid reached 0.886; shipped,2026-01-21,2026-02-21
+sr077,2026-01-21,acquisition,onboarding,A onboarding change lifts signup_rate from 0.306 to 0.378.,signup_rate,0.306,0.378,0.47,medium,validated,signup_rate reached 0.47; shipped,2026-01-21,2026-01-26
+sr001,2026-01-22,revenue,feature,A feature change lifts trial_to_paid from 0.386 to 0.577.,trial_to_paid,0.386,0.577,0.335,medium,invalidated,no lift over baseline; reverted,2026-01-22,2026-02-02
+sr061,2026-01-22,revenue,outreach,A outreach change lifts trial_to_paid from 0.081 to 0.131.,trial_to_paid,0.081,0.131,,small,running,,2026-01-22,
+sr033,2026-01-25,retention,outreach,A outreach change lifts m1_retention from 0.246 to 0.372.,m1_retention,0.246,0.372,0.399,small,validated,m1_retention reached 0.399; shipped,2026-01-25,2026-02-17
+sr011,2026-01-26,acquisition,pricing,A pricing change lifts signup_rate from 0.354 to 0.586.,signup_rate,0.354,0.586,0.334,medium,invalidated,no lift over baseline; reverted,2026-01-26,2026-02-22
+sr042,2026-01-30,referral,feature,A feature change lifts referral_rate from 0.252 to 0.362.,referral_rate,0.252,0.362,0.373,medium,inconclusive,signal within noise; needs a bigger sample,2026-01-30,2026-03-04
+sr053,2026-01-31,referral,content,A content change lifts referral_rate from 0.369 to 0.622.,referral_rate,0.369,0.622,,large,running,,2026-01-31,
+sr067,2026-01-31,acquisition,feature,A feature change lifts signup_rate from 0.101 to 0.137.,signup_rate,0.101,0.137,,large,running,,2026-01-31,
+sr003,2026-02-02,acquisition,onboarding,A onboarding change lifts signup_rate from 0.392 to 0.638.,signup_rate,0.392,0.638,,small,running,,2026-02-02,
+sr034,2026-02-02,revenue,onboarding,A onboarding change lifts trial_to_paid from 0.345 to 0.481.,trial_to_paid,0.345,0.481,0.64,medium,validated,trial_to_paid reached 0.64; shipped,2026-02-02,2026-02-14
+sr027,2026-02-03,retention,feature,A feature change lifts m1_retention from 0.174 to 0.24.,m1_retention,0.174,0.24,0.174,medium,invalidated,no lift over baseline; reverted,2026-02-03,2026-02-20
+sr086,2026-02-03,revenue,landing_page,A landing_page change lifts trial_to_paid from 0.161 to 0.203.,trial_to_paid,0.161,0.203,0.145,medium,invalidated,no lift over baseline; reverted,2026-02-03,2026-02-20
+sr015,2026-02-04,revenue,feature,A feature change lifts trial_to_paid from 0.043 to 0.072.,trial_to_paid,0.043,0.072,0.094,small,validated,trial_to_paid reached 0.094; shipped,2026-02-04,2026-02-10
+sr062,2026-02-07,referral,pricing,A pricing change lifts referral_rate from 0.382 to 0.606.,referral_rate,0.382,0.606,0.617,small,validated,referral_rate reached 0.617; shipped,2026-02-07,2026-02-21
+sr005,2026-02-08,revenue,content,A content change lifts trial_to_paid from 0.346 to 0.568.,trial_to_paid,0.346,0.568,0.331,medium,invalidated,no lift over baseline; reverted,2026-02-08,2026-02-14
+sr065,2026-02-11,retention,outreach,A outreach change lifts m1_retention from 0.26 to 0.321.,m1_retention,0.26,0.321,0.302,medium,inconclusive,signal within noise; needs a bigger sample,2026-02-11,2026-02-18
+sr049,2026-02-13,activation,content,A content change lifts trial_start_rate from 0.322 to 0.5.,trial_start_rate,0.322,0.5,0.297,large,invalidated,no lift over baseline; reverted,2026-02-13,2026-02-21
+sr012,2026-02-14,revenue,content,A content change lifts trial_to_paid from 0.078 to 0.095.,trial_to_paid,0.078,0.095,0.127,small,validated,trial_to_paid reached 0.127; shipped,2026-02-14,2026-03-03
+sr055,2026-02-14,retention,pricing,A pricing change lifts m1_retention from 0.367 to 0.655.,m1_retention,0.367,0.655,0.355,medium,invalidated,no lift over baseline; reverted,2026-02-14,2026-03-16
+sr064,2026-02-15,activation,landing_page,A landing_page change lifts trial_start_rate from 0.082 to 0.101.,trial_start_rate,0.082,0.101,0.101,medium,inconclusive,signal within noise; needs a bigger sample,2026-02-15,2026-02-24
+sr009,2026-02-16,referral,outreach,A outreach change lifts referral_rate from 0.181 to 0.251.,referral_rate,0.181,0.251,0.169,medium,invalidated,no lift over baseline; reverted,2026-02-16,2026-03-05
+sr013,2026-02-19,retention,onboarding,A onboarding change lifts m1_retention from 0.39 to 0.696.,m1_retention,0.39,0.696,0.703,medium,inconclusive,signal within noise; needs a bigger sample,2026-02-19,2026-03-25
+sr048,2026-02-25,acquisition,onboarding,A onboarding change lifts signup_rate from 0.048 to 0.076.,signup_rate,0.048,0.076,0.045,small,invalidated,no lift over baseline; reverted,2026-02-25,2026-03-26
+sr057,2026-02-25,activation,pricing,A pricing change lifts trial_start_rate from 0.223 to 0.397.,trial_start_rate,0.223,0.397,0.227,small,invalidated,no lift over baseline; reverted,2026-02-25,2026-03-12
+sr066,2026-02-25,activation,content,A content change lifts trial_start_rate from 0.267 to 0.342.,trial_start_rate,0.267,0.342,0.348,medium,validated,trial_start_rate reached 0.348; shipped,2026-02-25,2026-03-13
+sr059,2026-02-27,referral,outreach,A outreach change lifts referral_rate from 0.152 to 0.256.,referral_rate,0.152,0.256,,medium,running,,2026-02-27,
+sr030,2026-02-28,referral,content,A content change lifts referral_rate from 0.262 to 0.433.,referral_rate,0.262,0.433,0.579,small,validated,referral_rate reached 0.579; shipped,2026-02-28,2026-03-12
+sr045,2026-02-28,acquisition,content,A content change lifts signup_rate from 0.146 to 0.185.,signup_rate,0.146,0.185,0.149,large,invalidated,no lift over baseline; reverted,2026-02-28,2026-03-11
+sr073,2026-02-28,retention,feature,A feature change lifts m1_retention from 0.103 to 0.165.,m1_retention,0.103,0.165,0.101,small,invalidated,no lift over baseline; reverted,2026-02-28,2026-03-09
+sr046,2026-03-02,revenue,content,A content change lifts trial_to_paid from 0.286 to 0.484.,trial_to_paid,0.286,0.484,0.313,large,invalidated,no lift over baseline; reverted,2026-03-02,2026-03-17
+sr071,2026-03-02,revenue,onboarding,A onboarding change lifts trial_to_paid from 0.229 to 0.373.,trial_to_paid,0.229,0.373,0.214,small,invalidated,no lift over baseline; reverted,2026-03-02,2026-03-22
+sr021,2026-03-05,acquisition,outreach,A outreach change lifts signup_rate from 0.226 to 0.367.,signup_rate,0.226,0.367,0.477,small,validated,signup_rate reached 0.477; shipped,2026-03-05,2026-03-22
+sr043,2026-03-05,retention,outreach,A outreach change lifts m1_retention from 0.355 to 0.57.,m1_retention,0.355,0.57,0.305,small,invalidated,no lift over baseline; reverted,2026-03-05,2026-03-28
+sr029,2026-03-07,retention,feature,A feature change lifts m1_retention from 0.139 to 0.193.,m1_retention,0.139,0.193,,small,running,,2026-03-07,
+sr085,2026-03-14,revenue,pricing,A pricing change lifts trial_to_paid from 0.287 to 0.373.,trial_to_paid,0.287,0.373,0.37,large,inconclusive,signal within noise; needs a bigger sample,2026-03-14,2026-04-15
+sr025,2026-03-16,referral,content,A content change lifts referral_rate from 0.094 to 0.126.,referral_rate,0.094,0.126,,medium,running,,2026-03-16,
+sr083,2026-03-16,revenue,pricing,A pricing change lifts trial_to_paid from 0.067 to 0.093.,trial_to_paid,0.067,0.093,,small,running,,2026-03-16,
+sr002,2026-03-24,revenue,outreach,A outreach change lifts trial_to_paid from 0.211 to 0.356.,trial_to_paid,0.211,0.356,,small,running,,2026-03-24,
+sr026,2026-03-27,retention,landing_page,A landing_page change lifts m1_retention from 0.371 to 0.521.,m1_retention,0.371,0.521,,small,running,,2026-03-27,
+sr024,2026-03-30,acquisition,content,A content change lifts signup_rate from 0.375 to 0.644.,signup_rate,0.375,0.644,0.357,large,invalidated,no lift over baseline; reverted,2026-03-30,2026-04-14
+sr063,2026-03-31,retention,onboarding,A onboarding change lifts m1_retention from 0.233 to 0.4.,m1_retention,0.233,0.4,0.209,small,invalidated,no lift over baseline; reverted,2026-03-31,2026-05-01
+sr072,2026-04-01,activation,landing_page,A landing_page change lifts trial_start_rate from 0.144 to 0.258.,trial_start_rate,0.144,0.258,0.277,medium,validated,trial_start_rate reached 0.277; shipped,2026-04-01,2026-04-14
+sr019,2026-04-03,referral,pricing,A pricing change lifts referral_rate from 0.045 to 0.079.,referral_rate,0.045,0.079,0.077,small,inconclusive,signal within noise; needs a bigger sample,2026-04-03,2026-04-19
+sr006,2026-04-04,retention,pricing,A pricing change lifts m1_retention from 0.33 to 0.542.,m1_retention,0.33,0.542,0.357,small,invalidated,no lift over baseline; reverted,2026-04-04,2026-04-18
+sr038,2026-04-05,revenue,onboarding,A onboarding change lifts trial_to_paid from 0.314 to 0.541.,trial_to_paid,0.314,0.541,0.689,large,validated,trial_to_paid reached 0.689; shipped,2026-04-05,2026-05-08
+sr088,2026-04-05,referral,feature,A feature change lifts referral_rate from 0.314 to 0.558.,referral_rate,0.314,0.558,,medium,running,,2026-04-05,
+sr032,2026-04-09,acquisition,outreach,A outreach change lifts signup_rate from 0.082 to 0.135.,signup_rate,0.082,0.135,0.136,small,validated,signup_rate reached 0.136; shipped,2026-04-09,2026-05-11
+sr052,2026-04-09,retention,pricing,A pricing change lifts m1_retention from 0.085 to 0.142.,m1_retention,0.085,0.142,0.161,small,validated,m1_retention reached 0.161; shipped,2026-04-09,2026-04-25
+sr069,2026-04-10,referral,pricing,A pricing change lifts referral_rate from 0.365 to 0.625.,referral_rate,0.365,0.625,0.348,medium,invalidated,no lift over baseline; reverted,2026-04-10,2026-04-28
+sr020,2026-04-11,activation,content,A content change lifts trial_start_rate from 0.048 to 0.062.,trial_start_rate,0.048,0.062,0.065,large,validated,trial_start_rate reached 0.065; shipped,2026-04-11,2026-04-29
+sr050,2026-04-17,retention,pricing,A pricing change lifts m1_retention from 0.094 to 0.139.,m1_retention,0.094,0.139,0.102,large,invalidated,no lift over baseline; reverted,2026-04-17,2026-05-21
+sr080,2026-04-18,activation,content,A content change lifts trial_start_rate from 0.136 to 0.186.,trial_start_rate,0.136,0.186,0.216,small,validated,trial_start_rate reached 0.216; shipped,2026-04-18,2026-05-08
+sr044,2026-04-21,activation,pricing,A pricing change lifts trial_start_rate from 0.216 to 0.374.,trial_start_rate,0.216,0.374,,small,abandoned,killed before a verdict,2026-04-21,
+sr087,2026-04-23,retention,onboarding,A onboarding change lifts m1_retention from 0.131 to 0.173.,m1_retention,0.131,0.173,,small,abandoned,killed before a verdict,2026-04-23,
+sr008,2026-04-24,acquisition,landing_page,A landing_page change lifts signup_rate from 0.18 to 0.268.,signup_rate,0.18,0.268,0.318,small,validated,signup_rate reached 0.318; shipped,2026-04-24,2026-05-18
+sr004,2026-04-25,acquisition,outreach,A outreach change lifts signup_rate from 0.304 to 0.535.,signup_rate,0.304,0.535,0.648,medium,validated,signup_rate reached 0.648; shipped,2026-04-25,2026-05-08
+sr010,2026-04-27,retention,outreach,A outreach change lifts m1_retention from 0.246 to 0.329.,m1_retention,0.246,0.329,0.261,large,invalidated,no lift over baseline; reverted,2026-04-27,2026-05-04
+sr018,2026-04-27,activation,onboarding,A onboarding change lifts trial_start_rate from 0.066 to 0.118.,trial_start_rate,0.066,0.118,0.062,medium,invalidated,no lift over baseline; reverted,2026-04-27,2026-05-17
+sr041,2026-04-29,acquisition,pricing,A pricing change lifts signup_rate from 0.199 to 0.334.,signup_rate,0.199,0.334,0.212,large,invalidated,no lift over baseline; reverted,2026-04-29,2026-05-22
+sr058,2026-04-29,acquisition,landing_page,A landing_page change lifts signup_rate from 0.171 to 0.256.,signup_rate,0.171,0.256,0.292,small,validated,signup_rate reached 0.292; shipped,2026-04-29,2026-05-04
+sr022,2026-04-30,referral,pricing,A pricing change lifts referral_rate from 0.365 to 0.501.,referral_rate,0.365,0.501,0.593,small,validated,referral_rate reached 0.593; shipped,2026-04-30,2026-05-29
+sr075,2026-05-01,acquisition,pricing,A pricing change lifts signup_rate from 0.214 to 0.354.,signup_rate,0.214,0.354,0.389,small,validated,signup_rate reached 0.389; shipped,2026-05-01,2026-05-22
+sr081,2026-05-01,retention,content,A content change lifts m1_retention from 0.23 to 0.304.,m1_retention,0.23,0.304,0.311,medium,inconclusive,signal within noise; needs a bigger sample,2026-05-01,2026-05-23
+sr090,2026-05-04,activation,content,A content change lifts trial_start_rate from 0.214 to 0.341.,trial_start_rate,0.214,0.341,0.371,small,validated,trial_start_rate reached 0.371; shipped,2026-05-04,2026-05-11
+sr036,2026-05-05,revenue,onboarding,A onboarding change lifts trial_to_paid from 0.379 to 0.573.,trial_to_paid,0.379,0.573,,medium,running,,2026-05-05,
+sr031,2026-05-07,retention,feature,A feature change lifts m1_retention from 0.056 to 0.09.,m1_retention,0.056,0.09,0.091,small,validated,m1_retention reached 0.091; shipped,2026-05-07,2026-06-10
+sr047,2026-05-07,retention,feature,A feature change lifts m1_retention from 0.324 to 0.434.,m1_retention,0.324,0.434,0.342,large,invalidated,no lift over baseline; reverted,2026-05-07,2026-05-13
+sr089,2026-05-08,retention,landing_page,A landing_page change lifts m1_retention from 0.296 to 0.386.,m1_retention,0.296,0.386,,medium,running,,2026-05-08,
+sr040,2026-05-13,activation,landing_page,A landing_page change lifts trial_start_rate from 0.313 to 0.447.,trial_start_rate,0.313,0.447,0.558,medium,validated,trial_start_rate reached 0.558; shipped,2026-05-13,2026-06-11
+sr017,2026-05-14,revenue,content,A content change lifts trial_to_paid from 0.105 to 0.18.,trial_to_paid,0.105,0.18,0.105,medium,invalidated,no lift over baseline; reverted,2026-05-14,2026-05-31
+sr037,2026-05-14,retention,pricing,A pricing change lifts m1_retention from 0.203 to 0.288.,m1_retention,0.203,0.288,0.309,small,validated,m1_retention reached 0.309; shipped,2026-05-14,2026-06-07
+sr078,2026-05-15,retention,pricing,A pricing change lifts m1_retention from 0.209 to 0.364.,m1_retention,0.209,0.364,0.445,small,validated,m1_retention reached 0.445; shipped,2026-05-15,2026-06-03
+sr007,2026-05-17,revenue,outreach,A outreach change lifts trial_to_paid from 0.123 to 0.201.,trial_to_paid,0.123,0.201,0.223,small,validated,trial_to_paid reached 0.223; shipped,2026-05-17,2026-06-03
+sr028,2026-05-21,acquisition,onboarding,A onboarding change lifts signup_rate from 0.098 to 0.139.,signup_rate,0.098,0.139,0.087,medium,invalidated,no lift over baseline; reverted,2026-05-21,2026-05-27
+sr023,2026-05-22,activation,onboarding,A onboarding change lifts trial_start_rate from 0.329 to 0.555.,trial_start_rate,0.329,0.555,0.564,small,validated,trial_start_rate reached 0.564; shipped,2026-05-22,2026-06-08
+sr054,2026-05-22,retention,pricing,A pricing change lifts m1_retention from 0.055 to 0.093.,m1_retention,0.055,0.093,0.048,large,invalidated,no lift over baseline; reverted,2026-05-22,2026-06-25
+sr074,2026-05-25,acquisition,onboarding,A onboarding change lifts signup_rate from 0.137 to 0.223.,signup_rate,0.137,0.223,0.301,small,validated,signup_rate reached 0.301; shipped,2026-05-25,2026-05-31
+sr016,2026-05-27,retention,feature,A feature change lifts m1_retention from 0.172 to 0.263.,m1_retention,0.172,0.263,0.149,medium,invalidated,no lift over baseline; reverted,2026-05-27,2026-06-12
+sr082,2026-05-28,activation,feature,A feature change lifts trial_start_rate from 0.241 to 0.295.,trial_start_rate,0.241,0.295,,medium,running,,2026-05-28,
+sr039,2026-06-01,retention,onboarding,A onboarding change lifts m1_retention from 0.212 to 0.352.,m1_retention,0.212,0.352,0.231,medium,invalidated,no lift over baseline; reverted,2026-06-01,2026-06-11
+sr070,2026-06-01,activation,landing_page,A landing_page change lifts trial_start_rate from 0.359 to 0.44.,trial_start_rate,0.359,0.44,0.336,large,invalidated,no lift over baseline; reverted,2026-06-01,2026-06-14
+sr084,2026-06-03,retention,feature,A feature change lifts m1_retention from 0.392 to 0.495.,m1_retention,0.392,0.495,0.646,small,validated,m1_retention reached 0.646; shipped,2026-06-03,2026-06-17
+sr056,2026-06-06,revenue,landing_page,A landing_page change lifts trial_to_paid from 0.122 to 0.184.,trial_to_paid,0.122,0.184,0.238,small,validated,trial_to_paid reached 0.238; shipped,2026-06-06,2026-07-02
+sr051,2026-06-07,revenue,content,A content change lifts trial_to_paid from 0.331 to 0.537.,trial_to_paid,0.331,0.537,0.63,small,validated,trial_to_paid reached 0.63; shipped,2026-06-07,2026-06-27

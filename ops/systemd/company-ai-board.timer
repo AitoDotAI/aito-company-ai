@@ -1,0 +1,9 @@
+[Unit]
+Description=Company AI — Friday board review (Fri *-*-* 16:00:00, Europe/Helsinki)
+
+[Timer]
+OnCalendar=Fri *-*-* 16:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

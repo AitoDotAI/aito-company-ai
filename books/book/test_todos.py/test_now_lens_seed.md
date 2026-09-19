@@ -1,0 +1,10 @@
+# Now lens with slip-risk (Aito prediction over closed-todo history)
+
+  P1 marketing    2026-06-12 mon_0800 OVERDUE  Ship the customer-proof post  slip=0.5756 (prep_status=prep_needed)
+  P1 marketing    2026-06-11 tue_0800 OVERDUE  Draft the customer-proof narrative  slip=0.5756 (prep_status=prep_needed)
+  P2 sales        2026-06-10 tue_0800 OVERDUE  Send pricing context to Mooby Ab [Mooby Ab]  slip=0.5075 (prep_status=prep_needed)
+  P1 sales        2026-06-16 fri_eve  Follow-up call with Oscorp OÜ [Oscorp OÜ]  slip=0.4744 (prep_status=prep_needed)
+  P1 marketing    2026-06-18 fri_1430  Propagate the agent-inference demo  slip=0.5756 (prep_status=prep_needed)
+  P1 rnd          —  Rep2 stabilization  slip=0.0803 (prep_status=ready)
+  P1 rnd          —  Booktest end-to-end verify  slip=0.0803 (prep_status=ready)
+  P2 sales        2026-06-15 tue_0800  Reference ask with Vertex OÜ [Vertex OÜ]  slip=0.0842 (prep_status=in_progress)
