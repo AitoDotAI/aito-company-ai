@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Scheduler entry point for the weekly board / week-prep composer.
+# Scheduler entry point for the weekly week-prep composer.
 #
 # Kept tiny and self-locating so any scheduler (systemd timer, cron, or a
 # cloud trigger on this host) can call it with just a prompt + mode and needs
 # no project knowledge. It enters the same Nix environment `./do` uses, so the
 # uv/python toolchain and the PYTHONPATH fix come for free.
 #
-#   ops/board-run.sh board-review.md prepare
+#   ops/board-run.sh week-prep.md prepare
 #   ops/board-run.sh week-prep.md plan
 #
 # Targets the real instance by default (.env.aito); override COMPANY_AI_ENV to

@@ -41,7 +41,7 @@ COPY --from=web /app/src/company_ai/web_dist ./src/company_ai/web_dist
 COPY data/seed ./data/seed
 COPY data/seed_tiny ./data/seed_tiny
 COPY docs ./docs
-# the advisory roster default + the board/week-prep composer prompts
+# the week-prep composer prompts
 COPY prompts ./prompts
 
 EXPOSE 8770

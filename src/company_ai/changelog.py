@@ -1,11 +1,11 @@
 """The change log: an append-only audit of what changed (docs/22).
 
-Every meaningful mutation — a todo created/done/archived, a deal won/lost, an
-advisor edited — appends one row to Aito's `changelog` table (a single cheap
+Every meaningful mutation — a todo created/done/archived, a deal won/lost —
+appends one row to Aito's `changelog` table (a single cheap
 insert, no rewrite). The write functions in log.py call `record()`; `recent()`
 reads it back, newest first, for the dashboard's Activity view, the MCP tool,
-and the assistant. Later these roll up into daily/weekly notes fed to the
-advisory board (see the task note).
+and the assistant. Later these roll up into daily/weekly notes (see the task
+note).
 
 Timestamps are real (UTC); tests pass a fixed `at` for deterministic snapshots.
 """

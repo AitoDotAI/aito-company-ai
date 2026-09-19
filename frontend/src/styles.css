@@ -158,17 +158,6 @@ main { flex:1; min-width:0; padding:32px 40px 70px; max-width:1140px; }
 .wc-ev.attended { opacity:0.7; }
 .wc-evdot { font-size:8px; }
 
-/* Advisory: the board of persona reflections */
-.adv-head { display:flex; align-items:center; justify-content:space-between; gap:14px;
-  flex-wrap:wrap; margin-bottom:14px; }
-.adv-note { font-size:13px; color:var(--ink-dim); }
-.adv-cards { display:flex; flex-direction:column; gap:12px; }
-.adv-card { border:1px solid var(--line); border-radius:12px; padding:13px 16px; background:var(--card); }
-.adv-card.chair { border-color:var(--line-bright); background:var(--tint); }
-.adv-card-head { display:flex; align-items:baseline; gap:10px; margin-bottom:6px; flex-wrap:wrap; }
-.adv-name { font-weight:700; font-size:14px; }
-.adv-persona { font-size:11.5px; color:var(--sunset); font-style:italic; }
-.adv-reflection { font-size:13.5px; line-height:1.5; color:var(--ink); }
 /* Activity — the change-log feed */
 .act-list { display:flex; flex-direction:column; gap:4px; margin-top:6px; }
 .act-row { display:flex; align-items:center; gap:10px; padding:8px 12px; border-radius:9px;
@@ -180,13 +169,6 @@ main { flex:1; min-width:0; padding:32px 40px 70px; max-width:1140px; }
 .act-entity { flex:none; font-size:11.5px; color:var(--nav-dim); min-width:56px; }
 .act-summary { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .act-time { flex:none; font-size:11.5px; color:var(--nav-dim); }
-.adv-actions { display:flex; align-items:center; gap:10px; }
-.reads-grid { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
-.read-chip { display:inline-flex; align-items:center; gap:5px; font-size:12px;
-  padding:4px 9px; border-radius:20px; border:1px solid var(--line); cursor:pointer;
-  color:var(--ink-dim); user-select:none; }
-.read-chip.on { border-color:var(--sunset); color:var(--sunset); background:rgba(125,91,240,0.06); }
-.read-chip input { margin:0; }
 .jhead { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--ink-dim); }
 .jhead.editable { cursor:pointer; }
 .jlabel { font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--ink-dim); }
@@ -670,45 +652,6 @@ select:focus { outline:none; border-color:var(--purple); }
 .sheet td.num { text-align:right; color:var(--ink); }
 .sheet tr:hover td { background:var(--tint); }
 
-/* outbox — the approval queue (docs/30). One card per staged message; the three
-   actions are the only tap targets, and they go full-width on a phone. */
-.ob-filters { gap:8px; flex-wrap:wrap; }
-.obox { display:flex; flex-direction:column; gap:12px; margin-top:14px; }
-.obcard { border:1px solid var(--line); border-radius:12px; padding:13px 15px; background:var(--card); }
-.obcard.ob-staged { border-left:3px solid var(--sunset); }
-.obcard.ob-approved { border-left:3px solid var(--ok); }
-.obcard.ob-struck { opacity:0.55; }
-.obhead { display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:12px; }
-.obwho { font-weight:700; color:var(--ink); font-size:13px; }
-.obthread { font-family:'JetBrains Mono',monospace; font-size:10.5px; padding:2px 7px;
-  border-radius:6px; }
-.obthread.in { background:rgba(15,163,155,0.12); color:var(--ok); }
-.obthread.new { background:rgba(176,117,18,0.13); color:var(--warn); }
-.obclass { font-size:10px; font-family:'JetBrains Mono',monospace; text-transform:uppercase;
-  letter-spacing:0.04em; color:var(--turquoise); background:rgba(15,163,155,0.10);
-  padding:2px 6px; border-radius:5px; }
-.obsubject { font-size:14.5px; font-weight:600; color:var(--ink); margin:7px 0 3px; }
-.obwhy { font-size:12.5px; color:var(--sunset); margin-bottom:6px; }
-.obmeta { font-size:11.5px; color:var(--ink-faint); margin-bottom:8px; overflow-wrap:anywhere; }
-.obbody { white-space:pre-wrap; font-family:inherit; font-size:13px; line-height:1.5;
-  color:var(--ink-dim); background:var(--tint); border:1px solid var(--line);
-  border-radius:9px; padding:11px 13px; overflow-wrap:anywhere; }
-.obbody.clipped { max-height:132px; overflow:hidden;
-  -webkit-mask-image:linear-gradient(#000 68%, transparent);
-  mask-image:linear-gradient(#000 68%, transparent); }
-.obmore { display:block; margin:6px 0 0; padding:0; border:none; background:none; cursor:pointer;
-  font-size:12px; color:var(--purple); }
-.obactions { display:flex; align-items:center; gap:8px; margin-top:11px; }
-.obactions button { cursor:pointer; border-radius:9px; font-size:13.5px; font-weight:600;
-  padding:10px 18px; border:1px solid var(--line-bright); background:var(--card); color:var(--ink-dim); }
-.obactions button:disabled { opacity:0.5; cursor:default; }
-.obactions .ob-approve { flex:1; background:var(--ok); border-color:var(--ok); color:#fff; }
-.obactions .ob-strike:hover { border-color:var(--danger); color:var(--danger); }
-.obthread-note { font-size:11.5px; color:var(--ink-faint); margin:-4px 0 12px; overflow-wrap:anywhere; }
-.st.staged { background:rgba(125,91,240,0.12); color:var(--sunset); }
-.st.approved { background:rgba(15,163,155,0.12); color:var(--ok); }
-.st.struck { background:var(--bar-track); color:var(--ink-dim); }
-
 /* panels + states */
 .panel { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:20px;
   box-shadow:0 1px 2px rgba(27,30,48,0.04); }
@@ -744,13 +687,6 @@ select:focus { outline:none; border-color:var(--purple); }
   .arow, .jbody, .error, .att, .amm, .jhead { overflow-wrap:anywhere; }
   /* wide sheets scroll inside their own box, never the page */
   .sheetwrap { max-width:100%; overflow-x:auto; }
-  /* outbox: one thumb per message. The three actions become equal, full-width,
-     44px-tall targets on their own row — approving in a 20-minute window on a
-     phone is the feature, so the buttons get the screen, not the metadata. */
-  .obactions { flex-wrap:wrap; gap:8px; }
-  .obactions button { flex:1 1 30%; min-height:44px; padding:11px 8px; }
-  .obactions .ob-approve { flex:1 1 100%; }
-  .obcard, .obbody, .obmeta { overflow-wrap:anywhere; }
 }
 
 /* New-note view: inference + context panel (docs/25) */

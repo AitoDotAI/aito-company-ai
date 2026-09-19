@@ -1,7 +1,7 @@
 # 21 · Backups & restore
 
 The agent writes to the real instance (`add_todo`, `log_touch`, deal updates,
-advisor edits, …), and so does the dashboard. A bad write — or a bad batch —
+…), and so does the dashboard. A bad write — or a bad batch —
 needs a cheap undo. This is it.
 
 ## The mechanism: Aito environments

@@ -1,6 +1,6 @@
 # an unknown composer raises
 
-unknown composer 'quarterly-review.md'; have ['board-review.md', 'week-prep.md']
+unknown composer 'quarterly-review.md'; have ['week-prep.md']
 
 # an unknown read raises
 

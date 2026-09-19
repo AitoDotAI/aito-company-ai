@@ -168,8 +168,8 @@ TOOLS: list[Tool] = [
          lambda ctx, a: todos.pipeline(ctx.aito, a["area"], as_of=ctx.as_of).derived),
     Tool("recent_changes",
          "The change log — items created and updated across the system (a todo done, "
-         "a deal won/lost, an advisor edited), newest first. Optionally filter by "
-         "entity kind (todo/deal/routine/advisor/…).",
+         "a deal won/lost), newest first. Optionally filter by "
+         "entity kind (todo/deal/routine/…).",
          _obj({"limit": {"type": "integer"}, "entity": {"type": "string"}}),
          lambda ctx, a: changelog.recent(ctx.aito, limit=a.get("limit", 50),
                                          entity=a.get("entity") or None)),

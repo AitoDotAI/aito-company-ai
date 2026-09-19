@@ -1,7 +1,7 @@
 """The change log (docs/22): every meaningful mutation records one entry —
 items created and updated (a todo done, a deal won). The round-trip is the
-point: acting must show up in the log, which then feeds the assistant, the
-advisory board, and (later) note roll-ups.
+point: acting must show up in the log, which then feeds the assistant
+and (later) note roll-ups.
 
 Timestamps are real, so the snapshot sorts by entity/action/summary and omits
 the exact time.

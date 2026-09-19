@@ -24,12 +24,10 @@ def test_doctor_clean_after_load(t: bt.TestCaseRun) -> None:
     client = _client()
     loaders.create_schema(client)
     loaders.load_all(client, SEED_DIR)
-    loaders.load_advisors(client)   # config table (not in load_all); seed it for a deterministic count
     # app-state tables (not loaded) — reset to empty so the report is deterministic.
     # (search_items is a v2 view now, not a table — search.py owns it, not the doctor.)
     client.delete_table("search_items")   # drop any leftover view from a search test
-    for tbl in ("chat_messages", "advisory_reflections", "changelog", "assignments",
-                "tokens", "outbox"):
+    for tbl in ("chat_messages", "changelog", "assignments", "tokens"):
         client.delete_table(tbl)
         client.create_table(tbl, schema.TABLES[tbl])
     # the search trio is linked (impressions -> contexts): drop child-first,

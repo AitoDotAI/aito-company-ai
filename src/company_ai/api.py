@@ -271,20 +271,16 @@ def create_app(config: Config | None = None) -> FastAPI:
 
     # Role enforcement (docs/27 Phase 2): an SDR gets read + safe writes; the
     # operator-only operations are destructive (delete/remove) and admin (users,
-    # advisors, routine definitions, the composer runs, index rebuild). One
-    # central, auditable policy — a missed per-endpoint guard can't open a hole.
+    # routine definitions, index rebuild). One central, auditable policy — a
+    # missed per-endpoint guard can't open a hole.
     _OPERATOR_ONLY = [
-        ("DELETE", re.compile(r"^/api/(documents|advisors|tokens)/")),
-        ("POST", re.compile(r"^/api/(users|advisors|routines|tokens)$")),
-        ("PATCH", re.compile(r"^/api/(users|advisors|routines)/")),
+        ("DELETE", re.compile(r"^/api/(documents|tokens)/")),
+        ("POST", re.compile(r"^/api/(users|routines|tokens)$")),
+        ("PATCH", re.compile(r"^/api/(users|routines)/")),
         # listing tokens is admin; the raw Data sheets expose whole tables (incl.
         # user PII) so they're operator-only too.
         ("GET", re.compile(r"^/api/(tokens|tables?)$")),
-        ("POST", re.compile(r"^/api/(board/run|advisory/run|advisory/reflect|search/reindex)$")),
-        # authorising (or editing) an outbound message is the operator's, by
-        # definition — the outbox exists so that a human, not an agent, says send.
-        ("POST", re.compile(r"^/api/outbox/")),
-        ("PATCH", re.compile(r"^/api/outbox/")),
+        ("POST", re.compile(r"^/api/(search/reindex)$")),
     ]
 
     @app.middleware("http")
@@ -460,58 +456,6 @@ def create_app(config: Config | None = None) -> FastAPI:
     def experiments_route():
         return _guarded(lambda: experiments.board(client()).derived)
 
-    # ---- Board / week-prep composer (server-side LLM, scheduled triggers) ----
-    @app.post("/api/board/run")
-    def board_run_route(prompt: str = "board-review.md", mode: str = "board"):
-        from . import board
-        return _guarded(lambda: board.run(prompt, mode, client=client()))
-
-    # ---- Advisory panel (the standing board; per-advisor persona reflections) ----
-    @app.get("/api/advisory")
-    def advisory_route():
-        from . import board
-        return _guarded(lambda: {**board.latest_panel(client()), **board.run_status()})
-
-    @app.post("/api/advisory/run")
-    def advisory_run_route():
-        # start a background run and return at once — the run outlives the
-        # request (and the browser), so you can leave and come back to a
-        # finished board. The dashboard polls GET /api/advisory for progress.
-        from . import board
-        return _guarded(lambda: board.start_panel_run())
-
-    @app.post("/api/advisory/reflect")
-    async def advisory_reflect_route(request: Request):
-        # granular: reflect a single advisor synchronously (used by the CLI /
-        # power users; the dashboard uses the background run above)
-        body = await request.json()
-        from . import board
-        return _guarded(lambda: board.reflect(body["key"], prior=body.get("prior") or [],
-                                              client=client()))
-
-    # ---- Advisory roster (config: the editable board, MCP + this UI) ----
-    @app.get("/api/advisors")
-    def advisors_route():
-        from . import board
-        def payload():
-            meta, advisors = board.load_roster(client())
-            return {"advisors": advisors, "reads": sorted(board.READS), "meta": meta}
-        return _guarded(payload)
-
-    @app.post("/api/advisors")
-    async def advisors_create(request: Request):
-        body = await request.json()
-        return _guarded(lambda: logbook.add_advisor(client(), **body))
-
-    @app.patch("/api/advisors/{advisor_id}")
-    async def advisors_update(advisor_id: str, request: Request):
-        changes = await request.json()
-        return _guarded(lambda: logbook.update_advisor(client(), advisor_id, changes))
-
-    @app.delete("/api/advisors/{advisor_id}")
-    def advisors_delete(advisor_id: str):
-        return _guarded(lambda: logbook.remove_advisor(client(), advisor_id))
-
     # ---- Assistant conversations (stored in Aito; durable across devices) ----
     @app.get("/api/chats")
     def chats_list():
@@ -648,30 +592,6 @@ def create_app(config: Config | None = None) -> FastAPI:
         # it even if it isn't due. Uses the LLM, so it can take a few seconds.
         from . import routines
         return _guarded(lambda: routines.run_routine(client(), routine_id))
-
-    # ---- Outbox (staged outbound awaiting the operator's approval, docs/30) ----
-    # This is the *human* half of the outbox: agents stage over MCP, the operator
-    # decides here. Both write routes are operator-only (see _OPERATOR_ONLY) —
-    # authorising an outbound message is not a safe write.
-    @app.get("/api/outbox")
-    def outbox_list(status: str | None = None):
-        from . import outbox
-        return _guarded(lambda: outbox.queue(client(), status=status).derived)
-
-    @app.patch("/api/outbox/{outbox_id}")
-    async def outbox_update(outbox_id: str, request: Request):
-        changes = await request.json()
-        return _guarded(lambda: logbook.update_outbox(client(), outbox_id, changes))
-
-    @app.post("/api/outbox/{outbox_id}/decide")
-    async def outbox_decide(outbox_id: str, request: Request):
-        body = await request.json()
-        # the decider is the signed-in identity, never a client-supplied name:
-        # the whole point of the queue is that a person authorised the send.
-        who = current_user(request) or {}
-        by = who.get("email") or who.get("name") or "operator"
-        return _guarded(lambda: logbook.approve_outbox(
-            client(), outbox_id, body["decision"], approved_by=by, source="ui"))
 
     # ---- Marketing write surface: materials, channels, posts (go/no-go) ----
     @app.post("/api/materials")

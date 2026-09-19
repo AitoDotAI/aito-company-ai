@@ -27,7 +27,7 @@ what both Claude surfaces speak). The handler is FastMCP's path-agnostic
    (`python -c "import secrets; print(secrets.token_urlsafe(40))"`); rotate by
    changing it and redeploying.
 2. **Read + safe writes.** The destructive tools (`REMOTE_DENY` in
-   `remotemcp.py` — `remove_advisor`, `remove_document`) are stripped from the
+   `remotemcp.py` — `remove_document`, plus the infra tools) are stripped from the
    remote surface. The cloud agent can brief, search, log, add, and run routines,
    but never delete. The full set stays on the local stdio server, which isn't
    network-exposed.

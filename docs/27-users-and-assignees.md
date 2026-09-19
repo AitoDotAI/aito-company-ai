@@ -77,7 +77,7 @@ out of scope (and wrong for a two-person team).
   read + safe writes; the `operator` keeps everything. Enforced by one central
   server-side middleware (`api._OPERATOR_ONLY` + `role_guard`) so a missed
   per-endpoint guard can't open a hole: **operator-only** is the destructive set
-  (delete a document, remove an advisor) and the admin set (add/
+  (delete a document) and the admin set (add/
   edit users, create/edit routine definitions, the composer runs, rebuild the
   search index) → 403 for an SDR. Everything else (log, add/edit contacts/deals/
   todos/documents, assign, tick/run routines, search) is a safe write the SDR

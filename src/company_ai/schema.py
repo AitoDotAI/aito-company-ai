@@ -349,25 +349,6 @@ ROUTINES = {
 # The journal (dated rolling-memory diary) was retired into the documents store
 # (docs/25, `noted_on` = the diary axis); see .ai/tasks/15 Phase 2d.
 
-# advisors — the standing advisory board's roster (docs/15). This is *config*,
-# not prediction: plain rows describing each advisor's lens (name, persona,
-# mandate, the reads it leans on). Seeded from prompts/board.toml but editable
-# at runtime (MCP + the dashboard), so the board is retuned without a redeploy;
-# board.panel reads this table, falling back to board.toml when it's empty.
-ADVISORS = {
-    "type": "table",
-    "columns": {
-        "advisor_id": {"type": "String"},        # stable key, e.g. "gtm"
-        "name": {"type": "Text", "analyzer": "english"},
-        "persona": {"type": "Text", "analyzer": "english", "nullable": True},  # a named voice, or none
-        "mandate": {"type": "Text", "analyzer": "english"},
-        "reads": {"type": "String"},              # comma-separated read names (board.READS)
-        "rank": {"type": "Int"},                  # order; the chair sorts last
-        "active": {"type": "Boolean"},
-        "created": {"type": "String"},
-    },
-}
-
 # chat_messages — the assistant's conversations, one row per message (docs/16).
 # App state, not prediction: stored in Aito so history is durable across
 # devices/restarts without a container filesystem. Append/replace per
@@ -388,31 +369,16 @@ CHAT_MESSAGES = {
     },
 }
 
-# advisory_reflections — the cached advisory panel, one row per advisor (docs/15).
-# App state; kept in Aito so "generate, leave, come back" survives restarts.
-ADVISORY_REFLECTIONS = {
-    "type": "table",
-    "columns": {
-        "advisor_id": {"type": "String"},
-        "name": {"type": "Text", "analyzer": "english"},
-        "persona": {"type": "Text", "analyzer": "english", "nullable": True},
-        "reflection": {"type": "Text", "analyzer": "english"},
-        "as_of": {"type": "String"},
-        "model": {"type": "String"},
-    },
-}
-
 # changelog — an append-only audit of what changed: items created and updated
-# (a todo done, a deal won/lost, an advisor edited). One row per event. App
+# (a todo done, a deal won/lost). One row per event. App
 # state, so excluded from the CSV load/export machinery. Feeds "what changed"
-# and, later, auto-generated journal entries for the advisory board + assistant.
-# See docs/22.
+# and, later, auto-generated notes for the assistant. See docs/22.
 CHANGELOG = {
     "type": "table",
     "columns": {
         "change_id": {"type": "String"},
         "at": {"type": "String"},                             # ISO datetime, UTC
-        "entity": {"type": "String"},                         # todo|deal|touch|routine|advisor|journal|…
+        "entity": {"type": "String"},                         # todo|deal|touch|routine|…
         "entity_id": {"type": "String"},
         "action": {"type": "String"},                         # created|updated|done|archived|won|lost|logged|…
         "summary": {"type": "Text", "analyzer": "english"},   # one human line
@@ -505,42 +471,6 @@ TOKENS = {
     },
 }
 
-# outbox — staged outbound, waiting for a human to authorise it (docs/30). An
-# agent drafts a row (status=staged); the operator approves or strikes it in the
-# ai.i approval view; a later step drafts/sends it and writes the result back.
-# NOTHING in this repo sends: the table is the approval queue and the audit
-# trail, one row per intended message. `class` governs how far autonomy may ever
-# graduate; `thread_id`/`reply_to_message_id` exist so a reply is drafted onto
-# the existing thread instead of starting a new one (the defect this fixes).
-# App state — real addresses and bodies live here, so it stays outside the CSV
-# seed/export machinery (like chats/changelog/tokens): no recipient of a real
-# message ever enters the repo (docs/06-privacy.md).
-OUTBOX = {
-    "type": "table",
-    "columns": {
-        "outbox_id": {"type": "String"},
-        "created": {"type": "String"},                        # ISO datetime, UTC
-        "updated": {"type": "String"},                        # ISO datetime, UTC
-        "channel": {"type": "String"},                        # OUTBOX_CHANNELS (email only, for now)
-        "to": {"type": "String"},
-        "cc": {"type": "String", "nullable": True},
-        "contact_name": {"type": "String"},                   # for the approval UI
-        "company": {"type": "String"},                        # for the approval UI
-        "subject": {"type": "Text", "analyzer": "english"},
-        "body": {"type": "Text", "analyzer": "english"},      # plain text, final — no send-time templating
-        "thread_id": {"type": "String", "nullable": True},    # Gmail threadId
-        "reply_to_message_id": {"type": "String", "nullable": True},  # latest message in that thread
-        "send_after": {"type": "String"},                     # ISO datetime, the intended window
-        "class": {"type": "String"},                          # OUTBOX_CLASSES
-        "status": {"type": "String"},                         # OUTBOX_STATUS
-        "agent": {"type": "String"},                          # who staged it (cro, …)
-        "rationale": {"type": "Text", "analyzer": "english"},  # one line: why this, why now
-        "message_id": {"type": "String", "nullable": True},   # written back after send
-        "sent_at": {"type": "String", "nullable": True},      # written back after send
-        "result": {"type": "String", "nullable": True},       # OUTBOX_RESULTS, from the daily sweep
-    },
-}
-
 # search_items is a v2 union VIEW (not a table) that merges contacts/deals/
 # journal/documents behind one searchable `content` column — search.py declares
 # and refreshes it (docs/24). No materialised rows to maintain, so it's not in
@@ -622,11 +552,9 @@ TABLES = {
     "sessions": SESSIONS, "materials": MATERIALS, "channels": CHANNELS,
     "posts": POSTS, "todos": TODOS, "deals": DEALS, "experiments": EXPERIMENTS,
     "events": EVENTS, "routines": ROUTINES, "documents": DOCUMENTS,
-    "advisors": ADVISORS,
-    "chat_messages": CHAT_MESSAGES, "advisory_reflections": ADVISORY_REFLECTIONS,
+    "chat_messages": CHAT_MESSAGES,
     "changelog": CHANGELOG,
     "search_contexts": SEARCH_CONTEXTS, "search_impressions": SEARCH_IMPRESSIONS,
-    "outbox": OUTBOX,
 }
 
 SEGMENTS = {"accounting", "erp", "ecommerce", "analytics", "consultancy", "other"}
@@ -673,18 +601,6 @@ USER_ROLES = {"operator", "sdr"}
 DOC_KINDS = {"docs", "internal"}
 DOCUMENT_AREAS = {"sales", "marketing", "operations", "rnd"}
 
-# outbox enums (staged outbound, docs/30). `class` is not decoration: it is what
-# a later autonomy ladder would graduate one bucket at a time (logistics first,
-# and only after four clean weeks), so every staged row must name its class.
-OUTBOX_CHANNELS = {"email"}
-OUTBOX_CLASSES = {"first_touch", "re_entry", "logistics", "campaign", "referral_ask"}
-# staged → approved → drafted → sent, or held / struck. Phase 1 implements the
-# first hop only (staged → approved | struck); drafted/sent/held are written by
-# the later steps, and are accepted values so a row can carry them.
-OUTBOX_STATUS = {"staged", "approved", "drafted", "sent", "held", "struck"}
-# the two moves the human approval view can make on a staged row
-OUTBOX_DECISIONS = {"approved", "struck"}
-OUTBOX_RESULTS = {"replied", "bounced", "no_reply"}   # filled by the daily sweep
 
 # events-to-attend enums (the go/no-go lifecycle)
 EVENT_TYPES = {"conference", "meetup", "webinar", "talk", "demo", "sponsor", "other"}

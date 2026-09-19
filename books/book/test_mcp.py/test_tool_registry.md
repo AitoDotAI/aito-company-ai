@@ -131,48 +131,6 @@ Run a routine now: execute its prepared prompt through the assistant's
     runs it even if it isn't due; `force=False` skips a not-due routine (returns
     ran=None). It narrates and records — it does not act (no outbound; parked).
 
-## stage_outbox
-
-params: ['agent', 'body', 'cc', 'company', 'contact_name', 'msg_class', 'no_thread', 'rationale', 'reply_to_message_id', 'send_after', 'subject', 'thread_id', 'to']
-required: ['agent', 'body', 'company', 'contact_name', 'msg_class', 'rationale', 'send_after', 'subject', 'to']
-Stage one outbound email for the operator to authorise (docs/30). This
-    WRITES A ROW; it sends nothing. The operator approves or strikes it in the
-    ai.i Outbox view — you cannot approve your own draft.
-
-    `msg_class` is the outbox `class`: first_touch / re_entry / logistics /
-    campaign / referral_ask. `rationale` is the single line the approval view
-    shows: why this, why now. `send_after` is the intended window (ISO date or
-    datetime). `body` is the final plain text that goes out verbatim.
-
-    THREAD FIRST. If any Gmail thread exists with this contact, resolve it
-    (search, then get_thread — search results truncate) and pass `thread_id`
-    plus `reply_to_message_id`, the latest message id in that thread. Only when
-    there genuinely is no prior thread may you stage with `no_thread=True`,
-    which is an explicit claim that you looked. A thread_id without a
-    reply_to_message_id raises.
-
-## outbox_queue
-
-params: ['status']
-required: []
-The outbox: staged outbound and its lifecycle (docs/30), soonest send
-    window first. `status` filters — staged / approved / drafted / sent / held /
-    struck; pass null for everything, which also returns the count per status.
-    Staged-versus-sent is the health metric: a staged pile that never becomes
-    sent means the approval loop has stalled.
-
-## approve_outbox
-
-params: ['approved_by', 'decision', 'outbox_id']
-required: ['approved_by', 'decision', 'outbox_id']
-Record the operator's decision on a staged message: decision='approved'
-    or 'struck'. `approved_by` names who decided (it is written to the change
-    log, since the outbox columns are fixed).
-
-    This is the HUMAN path — the ai.i Outbox view is where approval belongs.
-    An agent may not approve a row it staged in this same session: that call
-    raises. Striking is always allowed. Only a `staged` row moves.
-
 ## add_event
 
 params: ['cost_eur', 'location', 'name', 'notes', 'starts', 'type']
@@ -314,37 +272,13 @@ Archive (abandon) a todo: a terminal state separate from done. Use it to
     lenses but, unlike complete_todo, advances nothing (no deal move, no
     outcome). Returns the updated todo.
 
-## add_advisor
-
-params: ['advisor_id', 'mandate', 'name', 'persona', 'rank', 'reads']
-required: ['advisor_id', 'mandate', 'name', 'reads']
-Add an advisor to the advisory board (docs/15). `reads` are the Aito
-    facts it leans on (deal_pipeline, funnel, experiment_board, todos_area, …).
-    `persona` gives it a named voice (e.g. 'Paul Graham …'); omit for the
-    neutral role voice. The board reflects weekly and on demand; an advisor
-    only advises — it never acts. Returns the new advisor row.
-
-## update_advisor
-
-params: ['advisor_id', 'changes']
-required: ['advisor_id', 'changes']
-Retune an advisor. Editable: name, persona, mandate, reads, rank (order),
-    active. e.g. {"persona": "Marc Andreessen — …"} or {"reads": ["funnel"]}.
-    Returns the updated row.
-
-## remove_advisor
-
-params: ['advisor_id']
-required: ['advisor_id']
-Remove an advisor from the board. Returns {removed, remaining}.
-
 ## recent_changes
 
 params: ['entity', 'limit']
 required: []
 The change log: items created/updated across the system (a todo done, a
-    deal won/lost, an advisor edited), newest first. Optionally filter to one
-    entity kind (todo/deal/routine/advisor/…). Read-only — the raw material for
+    deal won/lost), newest first. Optionally filter to one
+    entity kind (todo/deal/routine/…). Read-only — the raw material for
     daily/weekly note roll-ups.
 
 ## create_backup

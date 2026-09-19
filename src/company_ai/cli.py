@@ -105,13 +105,10 @@ def main() -> None:
     d.add_argument("--port", type=int, default=None,
                    help="default: COMPANY_AI_PORT from the env file, else 8770")
 
-    br = sub.add_parser("board-run", help="run the board review / week-prep composer (uses the LLM)")
-    br.add_argument("prompt", choices=["board-review.md", "week-prep.md"])
-    br.add_argument("--mode", required=True, choices=["prepare", "board", "plan"])
+    br = sub.add_parser("board-run", help="run the week-prep composer (uses the LLM)")
+    br.add_argument("prompt", choices=["week-prep.md"])
+    br.add_argument("--mode", required=True, choices=["prepare", "plan"])
     br.add_argument("--as-of", help="ISO date, defaults to today")
-
-    av = sub.add_parser("advisory", help="run the advisory panel (per-advisor persona reflections)")
-    av.add_argument("--as-of", help="ISO date, defaults to today")
 
     rr = sub.add_parser("routines-run",
                         help="auto-run every DUE routine through the assistant loop (uses the LLM)")
@@ -159,7 +156,7 @@ def main() -> None:
                   "load-materials", "load-channels", "load-posts", "load-todos",
                   "load-deals", "load-decisions", "load-experiments", "load-events",
                   "load-documents", "documents-import", "migrate-journal", "trilium-import",
-                  "load-all", "clear", "export", "export-all", "board-run", "advisory",
+                  "load-all", "clear", "export", "export-all", "board-run",
                   "routines-run", "log", "complete", "archive", "backup", "restore"}
     if args.command in WRITE_CMDS:
         _echo_target(config)
@@ -342,14 +339,6 @@ def main() -> None:
         for r in res["ran"]:
             print(f"  - {r['title'] or r['routine_id']}: "
                   f"{r['tool_calls']} tool call(s), {r['rounds']} round(s) -> document")
-    elif args.command == "advisory":
-        from . import board
-        as_of = date.fromisoformat(args.as_of) if args.as_of else date.today()
-        result = board.panel(client=client, as_of=as_of)
-        print(f"# advisory panel ({result['as_of']}) via {result['model']}\n")
-        for a in result["advisors"]:
-            voice = f" — as {a['persona'].split(' — ')[0]}" if a.get("persona") else ""
-            print(f"## {a['name']}{voice}\n{a['reflection']}\n")
     elif args.command == "backup":
         import time
         from . import backups

@@ -74,7 +74,7 @@ class AitoClient:
 
     def ensure_table(self, name: str, definition: dict) -> None:
         """Create the table if it's absent (idempotent, cached per process). App-
-        state tables (chats, advisory reflections) must materialise on an
+        state tables (chats) must materialise on an
         instance that predates them, without a separate migration step."""
         if name in AitoClient._ensured:
             return
@@ -170,8 +170,8 @@ class AitoClient:
 
     def delete_entries(self, table: str, where: dict) -> Any:
         """Delete the entries matching a Search-like `where` (not a whole-table
-        drop). Used for per-row updates of the app-state tables (chats, advisory
-        reflections) so they don't need a full-table rewrite. In v2 this is a
+        drop). Used for per-row updates of the app-state tables (chats) so they
+        don't need a full-table rewrite. In v2 this is a
         `_modify` delete op: the predicate rides in the `delete` field."""
         return self._request("POST", "/api/v2/data/_modify",
                              {"from": table, "delete": where})
@@ -186,7 +186,7 @@ class AitoClient:
         primitive means a future caller cannot reintroduce the bug by forgetting
         it — the only correct `_modify` update is a flushed one. Callers that need
         to *prove* the write landed should still read back and assert (rule 3);
-        see `log._outbox_write`."""
+        see `log.claim_todo`."""
         result = self._request("POST", "/api/v2/data/_modify",
                                {"update": table, "where": where, "set": set_fields})
         self.optimize(table)   # flush: the update is invisible to reads until the next write

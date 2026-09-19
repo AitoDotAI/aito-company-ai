@@ -34,9 +34,8 @@ lives. Full design in `docs/01-architecture.md`.
    anything that *reasons* or *acts* outside Claude and Aito.
    **Three scoped exceptions, all operator-directed and behind the swappable
    provider in `src/company_ai/llm.py`:**
-   (a) the weekly board / week-prep *composer* (`docs/15-board.md`),
-   including the per-advisor Advisory panel — a writer with no tools and no
-   autonomy, turning Aito's outputs into prose in each advisor's voice;
+   (a) the weekly week-prep *composer* (`src/company_ai/board.py`) — a writer
+   with no tools and no autonomy, turning Aito's outputs into Sunday-prep prose;
    (b) the dashboard *assistant* (`docs/16-assistant.md`) — a right-side
    chat that does run a bounded, server-side tool-calling loop, so it is an
    agent loop and is named as such. It is fenced hard: it may call **only**
@@ -127,7 +126,7 @@ names, numbers, or non-public company data anywhere in tracked files.
 - Action surface (todos + the Now view): `docs/12-todos-and-now.md`
 - Deals pipeline + close-likelihood + the closed loop: `docs/13-deals.md`
 - Experiments (the learning pipeline, Build-Measure-Learn): `docs/14-experiments.md`
-- Advisory board + weekly rhythm (Fri review / Sun prep, scheduled) + the Advisory dashboard view (per-advisor persona reflections): `docs/15-board.md`
+- Week-prep composer (the Sunday-prep writer; grounded, tool-less, LLM prose over Aito facts; `board-run` CLI + `ops/board-run.sh`): `src/company_ai/board.py`
 - Dashboard assistant (right-side chat; bounded Aito-backed tool loop): `docs/16-assistant.md`
 - Events to attend (go/no-go board + calendar): `docs/17-events.md`
 - Routines (recurring agentic tasks; prepare → Aito candidates + a Claude prompt): `docs/18-routines.md`
@@ -140,5 +139,4 @@ names, numbers, or non-public company data anywhere in tracked files.
 - Users & assignees (solo → small team; `users` collection {operator,sdr}, `assignee` on contacts/todos/deals, identity from Entra Easy Auth header → My work; auth is not app code; role enforcement in the `role_guard` middleware): `docs/27-users-and-assignees.md`
 - API tokens (named, revocable bearer tokens for the remote MCP; SHA-256 hash-at-rest, plaintext shown once, operator-only Admin UI, `tokens.verify` accepts env master or an active named token): `docs/28-tokens.md`
 - Remote MCP OAuth (self-hosted OAuth 2.1 AS for claude.ai's connector; SDK serves `/authorize`+`/token`+`/register`+`.well-known`, we implement the in-memory provider `mcpoauth.py`; `/authorize` behind Easy Auth is the real gate; one `/mcp` gate accepts OAuth **and** bearer tokens; `COMPANY_AI_PUBLIC_URL` turns it on): `docs/29-remote-mcp-oauth.md`
-- Outbox (staged outbound, authorised by a human; `outbox` table + `stage_outbox`/`outbox_queue`/`approve_outbox` + the phone approval view. Phase 1 only — **nothing sends**, and no agent approves its own draft): `docs/30-outbox.md`
 - Extending it (add a table / view / routine — the checklist): `docs/19-extending.md`; contributor setup in `CONTRIBUTING.md`

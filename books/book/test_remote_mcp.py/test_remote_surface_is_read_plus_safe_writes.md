@@ -1,6 +1,6 @@
 # the remote tool surface (read + safe writes)
 
-52 tools exposed over HTTP:
+50 tools exposed over HTTP:
   add_channel
   add_contact
   add_deal
@@ -34,7 +34,6 @@
   log_touch
   my_work
   opener_context
-  outbox_queue
   predict
   prepare_routine
   recent_changes
@@ -44,7 +43,6 @@
   score_post
   search
   segment_360
-  stage_outbox
   tick_routine
   todos_area
   todos_now
@@ -56,10 +54,6 @@
 
 # destructive tools are NOT on the remote surface (stay on local stdio)
 
-  add_advisor: exposed=False
-  approve_outbox: exposed=False
   create_backup: exposed=False
   reindex_search: exposed=False
-  remove_advisor: exposed=False
   remove_document: exposed=False
-  update_advisor: exposed=False

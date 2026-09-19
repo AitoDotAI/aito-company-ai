@@ -201,58 +201,6 @@ def run_routine(routine_id: str, force: bool = True) -> dict:
 
 
 @mcp.tool()
-def stage_outbox(to: str, contact_name: str, company: str, subject: str, body: str,
-                 send_after: str, msg_class: str, rationale: str, agent: str,
-                 cc: str | None = None, thread_id: str | None = None,
-                 reply_to_message_id: str | None = None,
-                 no_thread: bool = False) -> dict:
-    """Stage one outbound email for the operator to authorise (docs/30). This
-    WRITES A ROW; it sends nothing. The operator approves or strikes it in the
-    ai.i Outbox view — you cannot approve your own draft.
-
-    `msg_class` is the outbox `class`: first_touch / re_entry / logistics /
-    campaign / referral_ask. `rationale` is the single line the approval view
-    shows: why this, why now. `send_after` is the intended window (ISO date or
-    datetime). `body` is the final plain text that goes out verbatim.
-
-    THREAD FIRST. If any Gmail thread exists with this contact, resolve it
-    (search, then get_thread — search results truncate) and pass `thread_id`
-    plus `reply_to_message_id`, the latest message id in that thread. Only when
-    there genuinely is no prior thread may you stage with `no_thread=True`,
-    which is an explicit claim that you looked. A thread_id without a
-    reply_to_message_id raises."""
-    return logbook.stage_outbox(
-        _client(), to=to, contact_name=contact_name, company=company, subject=subject,
-        body=body, send_after=send_after, outbox_class=msg_class, rationale=rationale,
-        agent=agent, cc=cc, thread_id=thread_id,
-        reply_to_message_id=reply_to_message_id, no_thread=no_thread)
-
-
-@mcp.tool()
-def outbox_queue(status: str | None = "staged") -> dict:
-    """The outbox: staged outbound and its lifecycle (docs/30), soonest send
-    window first. `status` filters — staged / approved / drafted / sent / held /
-    struck; pass null for everything, which also returns the count per status.
-    Staged-versus-sent is the health metric: a staged pile that never becomes
-    sent means the approval loop has stalled."""
-    from . import outbox
-    return outbox.queue(_client(), status=status).derived
-
-
-@mcp.tool()
-def approve_outbox(outbox_id: str, decision: str, approved_by: str) -> dict:
-    """Record the operator's decision on a staged message: decision='approved'
-    or 'struck'. `approved_by` names who decided (it is written to the change
-    log, since the outbox columns are fixed).
-
-    This is the HUMAN path — the ai.i Outbox view is where approval belongs.
-    An agent may not approve a row it staged in this same session: that call
-    raises. Striking is always allowed. Only a `staged` row moves."""
-    return logbook.approve_outbox(_client(), outbox_id, decision,
-                                  approved_by=approved_by, source="mcp")
-
-
-@mcp.tool()
 def add_event(name: str, type: str, starts: str, location: str | None = None,
               cost_eur: int | None = None, notes: str | None = None) -> dict:
     """Record an event to attend as a candidate (live Aito). type: conference/
@@ -432,36 +380,10 @@ def archive_todo(todo_id: str) -> dict:
 
 
 @mcp.tool()
-def add_advisor(advisor_id: str, name: str, mandate: str, reads: list[str],
-                persona: str | None = None, rank: int | None = None) -> dict:
-    """Add an advisor to the advisory board (docs/15). `reads` are the Aito
-    facts it leans on (deal_pipeline, funnel, experiment_board, todos_area, …).
-    `persona` gives it a named voice (e.g. 'Paul Graham …'); omit for the
-    neutral role voice. The board reflects weekly and on demand; an advisor
-    only advises — it never acts. Returns the new advisor row."""
-    return logbook.add_advisor(_client(), advisor_id, name, mandate, reads,
-                               persona=persona, rank=rank)
-
-
-@mcp.tool()
-def update_advisor(advisor_id: str, changes: dict) -> dict:
-    """Retune an advisor. Editable: name, persona, mandate, reads, rank (order),
-    active. e.g. {"persona": "Marc Andreessen — …"} or {"reads": ["funnel"]}.
-    Returns the updated row."""
-    return logbook.update_advisor(_client(), advisor_id, changes)
-
-
-@mcp.tool()
-def remove_advisor(advisor_id: str) -> dict:
-    """Remove an advisor from the board. Returns {removed, remaining}."""
-    return logbook.remove_advisor(_client(), advisor_id)
-
-
-@mcp.tool()
 def recent_changes(limit: int = 50, entity: str | None = None) -> dict:
     """The change log: items created/updated across the system (a todo done, a
-    deal won/lost, an advisor edited), newest first. Optionally filter to one
-    entity kind (todo/deal/routine/advisor/…). Read-only — the raw material for
+    deal won/lost), newest first. Optionally filter to one
+    entity kind (todo/deal/routine/…). Read-only — the raw material for
     daily/weekly note roll-ups."""
     from . import changelog
     return changelog.recent(_client(), limit=limit, entity=entity)

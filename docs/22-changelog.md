@@ -2,8 +2,8 @@
 
 An append-only audit of **what changed** — items created and updated across the
 system: a todo created, done, or archived; a deal created, won, or lost; a
-routine ticked; an advisor edited; a journal entry written; an experiment
-validated; an event decided; a post's result. Both the operator (via the
+routine ticked; an experiment validated; an event decided; a post's result.
+Both the operator (via the
 dashboard) and the agent (via MCP) write through the same functions, so every
 meaningful mutation lands here.
 
@@ -11,7 +11,7 @@ meaningful mutation lands here.
 
 `change_id · at (UTC) · entity · entity_id · action · summary · detail`
 
-- **entity**: `todo | deal | touch | routine | advisor | journal | experiment | event | post`
+- **entity**: `todo | deal | touch | routine | experiment | event | post`
 - **action**: `created | updated | done | archived | won | lost | logged | validated | invalidated | go | no_go | attended | removed | posted`
 - **summary**: one human line ("deal won: Acme Oy → closed_won (100%)")
 - **detail**: optional JSON of what changed (e.g. the edited fields)
@@ -32,8 +32,8 @@ they commit, so recording a change is part of the same operation that made it
 - **Agent (MCP)**: `recent_changes(limit, entity?)`.
 - **Assistant**: the `recent_changes` tool, so "what changed this week?" is
   answerable and grounded.
-- **Advisory board**: `recent_changes` is a `board.READS` entry, so an advisor
-  can lean on it (add it to that advisor's `reads`).
+- **Week-prep composer**: `recent_changes` is a `board.READS` entry, so the
+  Sunday-prep writer can lean on it.
 
 `changelog.recent(client, limit, entity?)` returns `{changes, count}`, newest
 first, optionally filtered to one entity kind.
@@ -43,6 +43,6 @@ first, optionally filtered to one entity kind.
 The point of the log is to roll up into **daily / weekly notes** (dated
 documents, docs/25) —
 "this week: 3 deals advanced, 1 won, 12 calls, 2 experiments validated" — fed to
-the advisory board and the assistant as narrative context. That summarizer (a
-tool-less LLM composer over a day/week's changes, like the board composer) is
-proposed in `.ai/tasks/`, not built yet.
+the assistant as narrative context. That summarizer (a tool-less LLM composer
+over a day/week's changes, like the week-prep composer) is proposed in
+`.ai/tasks/`, not built yet.

@@ -44,18 +44,11 @@ OAUTH_PATHS = [
 # Tools kept OFF the remote surface (they stay on the local stdio server). This
 # mirrors the API's operator-only set (docs/27 role_guard): the remote agent —
 # which any valid token drives and which prompt injection can steer — must not
-# delete, run infra/admin, or reshape the board's roster (advisor persona/mandate
-# is free text fed to the composer, i.e. a stored-prompt-injection vector).
+# delete or run infra/admin.
 REMOTE_DENY = {
-    "remove_advisor", "remove_document",        # destructive deletes
-    "add_advisor", "update_advisor",            # roster admin (composer injection)
+    "remove_document",                          # destructive deletes
     "create_backup",                            # infra — backup rotation deletes restore points
     "reindex_search",                           # infra — drops/rebuilds the index
-    # authorising an outbound message is the operator's, in ai.i (docs/30). The
-    # remote surface is exactly the one a prompt injection can steer, so the
-    # approval half of the outbox is not reachable from it — staging and reading
-    # the queue still are.
-    "approve_outbox",
 }
 
 

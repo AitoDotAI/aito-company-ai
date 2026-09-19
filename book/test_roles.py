@@ -20,16 +20,11 @@ OPERATOR = {"X-MS-CLIENT-PRINCIPAL-NAME": "alex@example.com"}
 # (label, method, path) — the operator-only surface (destructive + admin).
 OPERATOR_ONLY = [
     ("delete a document", "DELETE", "/api/documents/x"),
-    ("remove an advisor", "DELETE", "/api/advisors/x"),
     ("add a user", "POST", "/api/users"),
     ("edit a user", "PATCH", "/api/users/u1"),
     ("create a routine", "POST", "/api/routines"),
     ("edit a routine", "PATCH", "/api/routines/r1"),
-    ("run the composer", "POST", "/api/board/run"),
     ("rebuild the search index", "POST", "/api/search/reindex"),
-    # authorising outbound is the operator's by definition (docs/30)
-    ("approve an outbox message", "POST", "/api/outbox/x/decide"),
-    ("edit an outbox message", "PATCH", "/api/outbox/x"),
 ]
 # safe writes an SDR may perform (403 would be wrong — anything else is fine).
 SAFE_WRITES = [

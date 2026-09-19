@@ -45,7 +45,7 @@ export function useAsync(fn, deps) {
   useEffect(() => {
     let live = true;
     // stale-while-revalidate: keep the previous data visible during a refetch
-    // (e.g. the Advisory poll) so re-fetching doesn't blank the view.
+    // so re-fetching doesn't blank the view.
     setState((s) => ({ ...s, loading: true }));
     fn().then(
       (data) => live && setState({ data, loading: false }),

@@ -138,7 +138,7 @@ export function QuickAdd({ defaultArea, onAdded }) {
         setInfer({ area: a, action_type: act, stakeholders: r.stakeholders || [] });
         if (!areaTouched.current && a) setArea(a.value);
         if (r.stakeholders?.length) setStakeholderId((cur) => cur || r.stakeholders[0].id);
-      } catch { /* advisory only */ }
+      } catch { /* best-effort only */ }
     }, 500);
     return () => clearTimeout(h);
   }, [title]);
@@ -842,160 +842,6 @@ function Experiments() {
   );
 }
 
-// ---- Outbox (staged outbound, docs/30) ----
-// The human half of the outbox: an agent stages a message, this is where the operator
-// authorises it. Built thumb-first — one screen-width card per message, the
-// three actions as full-width targets on a phone — because approving on the
-// phone in a 20-minute window is the entire point of the feature.
-const OUTBOX_CLASSES = ["first_touch", "re_entry", "logistics", "campaign", "referral_ask"];
-const OUTBOX_FILTERS = [["staged", "Staged"], ["approved", "Approved"],
-                        ["struck", "Struck"], ["", "All"]];
-
-// the send window, in the words a person uses about their own week
-function sendWhen(iso) {
-  if (!iso) return "no window";
-  const d = new Date(iso);
-  if (isNaN(d)) return iso;
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const day = new Date(d); day.setHours(0, 0, 0, 0);
-  const days = Math.round((day - today) / 86400000);
-  const clock = iso.length > 10 ? d.toTimeString().slice(0, 5) : "";
-  const when = days === 0 ? "today" : days === 1 ? "tomorrow"
-    : days < 0 ? `${-days}d overdue`
-    : d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
-  return clock ? `${when} ${clock}` : when;
-}
-
-export function Outbox() {
-  const [status, setStatus] = useState("staged");
-  const [reload, setReload] = useState(0);
-  const [busy, setBusy] = useState(null);      // the outbox_id being decided
-  const [err, setErr] = useState(null);
-  const [editing, setEditing] = useState(null);
-  const r = useAsync(() => api.outbox(status), [status, reload]);
-  const refresh = () => setReload((n) => n + 1);
-  if (r.loading) return <Loading label="Reading the outbox…" />;
-  if (r.err) return <ErrorBox msg={r.err} />;
-  const rows = r.data.rows;
-  const counts = r.data.counts || {};
-  async function decide(row, decision) {
-    setBusy(row.outbox_id); setErr(null);
-    try { await api.decideOutbox(row.outbox_id, decision); refresh(); }
-    catch (e) { setErr(e.message); }
-    finally { setBusy(null); }
-  }
-  return (
-    <>
-      <div className="controls ob-filters">
-        {OUTBOX_FILTERS.map(([id, label]) => (
-          <Chip key={id || "all"} on={status === id} onClick={() => setStatus(id)}>
-            {label}{counts[id] != null && status === id ? ` (${counts[id]})` : ""}
-          </Chip>
-        ))}
-      </div>
-      {err && <div className="error">{err}</div>}
-      {rows.length === 0
-        ? <div className="empty">nothing {status || "in the outbox"} — the agents have staged no mail</div>
-        : <div className="obox">
-            {rows.map((m) => (
-              <OutboxCard key={m.outbox_id} m={m} busy={busy === m.outbox_id}
-                          onDecide={(d) => decide(m, d)} onEdit={() => setEditing(m)} />
-            ))}
-          </div>}
-      {editing && <OutboxEditor m={editing} onClose={() => setEditing(null)}
-                                onSaved={() => { setEditing(null); refresh(); }} />}
-    </>
-  );
-}
-
-function OutboxCard({ m, busy, onDecide, onEdit }) {
-  const [open, setOpen] = useState(false);
-  const long = (m.body || "").length > 420;
-  return (
-    <article className={"obcard ob-" + m.status}>
-      <div className="obhead">
-        <span className="obwho">{m.contact_name} · {m.company}</span>
-        <span className="spacer" />
-        <span className={"obthread" + (m.thread_id ? " in" : " new")}
-              title={m.thread_id ? `thread ${m.thread_id}` : "no prior thread — this starts one"}>
-          {m.thread_id ? "↩ in thread" : "new thread"}
-        </span>
-        <span className="obclass">{m.class}</span>
-      </div>
-      <div className="obsubject">{m.subject}</div>
-      <div className="obwhy">{m.rationale}</div>
-      <div className="obmeta">
-        <span className="slot">{sendWhen(m.send_after)}</span>
-        <span> · to {m.to}</span>
-        {m.cc && <span> · cc {m.cc}</span>}
-        <span> · staged by {m.agent}</span>
-      </div>
-      <pre className={"obbody" + (long && !open ? " clipped" : "")}>{m.body}</pre>
-      {long && (
-        <button className="obmore" onClick={() => setOpen(!open)}>
-          {open ? "show less" : "show full text"}
-        </button>
-      )}
-      {m.status === "staged"
-        ? <div className="obactions">
-            <button className="ob-approve" disabled={busy}
-                    onClick={() => onDecide("approved")}>Approve</button>
-            <button className="ob-edit" disabled={busy} onClick={onEdit}>Edit</button>
-            <button className="ob-strike" disabled={busy}
-                    onClick={() => onDecide("struck")}>Strike</button>
-          </div>
-        : <div className="obactions"><span className={"st " + m.status}>{m.status}</span></div>}
-    </article>
-  );
-}
-
-function OutboxEditor({ m, onClose, onSaved }) {
-  const [f, setF] = useState({
-    to: m.to || "", cc: m.cc || "", subject: m.subject || "", body: m.body || "",
-    send_after: m.send_after || "", rationale: m.rationale || "", class: m.class || "",
-  });
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState(null);
-  const set = (k) => (e) => setF((p) => ({ ...p, [k]: e.target.value }));
-  async function save() {
-    setBusy(true); setErr(null);
-    try { await api.updateOutbox(m.outbox_id, f); onSaved(); }
-    catch (e) { setErr(e.message); setBusy(false); }
-  }
-  return (
-    <Modal onClose={onClose}>
-      <h3>Edit message</h3>
-      <div className="fld-row">
-        <label className="fld">to<input value={f.to} onChange={set("to")} /></label>
-        <label className="fld">cc<input value={f.cc} onChange={set("cc")} /></label>
-      </div>
-      <label className="fld">subject<input value={f.subject} onChange={set("subject")} /></label>
-      <label className="fld">body<textarea value={f.body} onChange={set("body")} rows={10} /></label>
-      <div className="fld-row">
-        <label className="fld">send after<input value={f.send_after} onChange={set("send_after")}
-                                                placeholder="2026-08-18T08:00" /></label>
-        <label className="fld">class<select value={f.class} onChange={set("class")}>
-          {OUTBOX_CLASSES.map((c) => <option key={c}>{c}</option>)}</select></label>
-      </div>
-      <label className="fld">rationale<input value={f.rationale} onChange={set("rationale")} /></label>
-      {/* the thread is resolved when the message is staged, not fixed up here:
-          re-threading by hand is exactly the manual step this feature removes. */}
-      <div className="obthread-note">
-        {m.thread_id
-          ? `replies on thread ${m.thread_id} (message ${m.reply_to_message_id})`
-          : "no thread — the agent staged this as a new conversation"}
-      </div>
-      {err && <div className="error">Save error: {err}</div>}
-      <div className="modal-actions">
-        <span className="spacer" />
-        <button className="ghost" onClick={onClose} disabled={busy}>Cancel</button>
-        <button className="primary" onClick={save}
-                disabled={busy || !f.subject.trim() || !f.body.trim()}>Save</button>
-      </div>
-    </Modal>
-  );
-}
-
 // ---- My work + team (users & assignees, docs/27) ----
 // A dropdown to (re)assign a work item to a user. Ownership lives in a join
 // table (docs/27), so this just POSTs the assignment; the CRM row is untouched.
@@ -1646,7 +1492,7 @@ export function NoteCreate() {
           company: !companyTouched.current && r.companies?.length ? r.companies[0].name : p.company,
           stakeholder_id: p.stakeholder_id || (r.contacts?.[0]?.id ?? ""),
         }));
-      } catch { /* advisory only */ }
+      } catch { /* best-effort only */ }
     }, 500);
     return () => clearTimeout(h);
   }, [f.title]);
@@ -1655,7 +1501,7 @@ export function NoteCreate() {
   useEffect(() => {
     if (!f.title.trim()) { setCtx(null); return; }
     const h = setTimeout(async () => {
-      try { setCtx(await api.documentContext(f.title, f.company || null)); } catch { /* advisory */ }
+      try { setCtx(await api.documentContext(f.title, f.company || null)); } catch { /* best-effort */ }
     }, 650);
     return () => clearTimeout(h);
   }, [f.title, f.company]);
@@ -2190,175 +2036,6 @@ export function SearchView() {
   );
 }
 
-// ---- Advisory (the standing board: per-advisor persona reflections) ----
-// Each advisor is a lens (GTM, marketing, product, learning, chair) that reads
-// Aito facts and reflects in its own voice. The roster is CONFIG stored in Aito
-// (editable here or from Claude via MCP), seeded from prompts/board.toml. The
-// composition is server-side and tool-less (rule 1a); every number is Aito's.
-export function Advisory() {
-  const [reload, setReload] = useState(0);
-  const [err, setErr] = useState(null);
-  const [editing, setEditing] = useState(null);    // advisor | "new" | null
-  const [reflectingOne, setReflectingOne] = useState(() => new Set());  // keys mid single-refresh
-  const roster = useAsync(() => api.advisors(), [reload]);
-  const panel = useAsync(() => api.advisory(), [reload]);
-  const refresh = () => setReload((n) => n + 1);
-  const advisors = roster.data?.advisors || [];
-  const generating = !!panel.data?.generating;
-  const pending = panel.data?.pending || [];
-  // The run happens on the server (a background job): kicking it off returns at
-  // once, so you can leave and come back — the board keeps reflecting and the
-  // result is cached. While it runs we poll for progress; cards fill in as they
-  // land. (A synchronous full run would overrun the platform request timeout.)
-  async function reflect() {
-    setErr(null);
-    try { await api.runAdvisory(); refresh(); }
-    catch (e) { setErr(e.message); }
-  }
-  // Refresh a single advisor (POST /advisory/reflect is synchronous — one
-  // advisor, a handful of LLM calls). Lets you re-run just the member whose
-  // reflection you want fresh, without re-running the whole board.
-  async function reflectOne(key) {
-    setErr(null);
-    setReflectingOne((s) => new Set(s).add(key));
-    try { await api.reflectAdvisor(key); refresh(); }
-    catch (e) { setErr(e.message); }
-    finally { setReflectingOne((s) => { const n = new Set(s); n.delete(key); return n; }); }
-  }
-  useEffect(() => {
-    if (!generating) return;
-    const id = setInterval(refresh, 4000);   // poll while the board is reflecting
-    return () => clearInterval(id);
-  }, [generating]);
-  const byKey = {};
-  (panel.data?.advisors || []).forEach((a) => { byKey[a.key] = a; });
-  return (
-    <div className="advisory">
-      <div className="adv-head">
-        <div className="adv-note">
-          {panel.data?.as_of
-            ? <>Reflections as of <b>{panel.data.as_of}</b>. Also runs automatically every Friday. </>
-            : <>The board reflects weekly (Friday) or on demand. </>}
-          Edit the roster here or from Claude (MCP) — it's stored in Aito.
-        </div>
-        <div className="adv-actions">
-          <button className="new-todo" onClick={() => setEditing("new")}>+ Advisor</button>
-          <button className="prep-btn" onClick={reflect} disabled={generating}>
-            {generating ? "Reflecting…" : "Reflect now ✦"}
-          </button>
-        </div>
-      </div>
-      {err && <ErrorBox msg={err} />}
-      {panel.data?.run_error && !generating && <ErrorBox msg={"The last run failed: " + panel.data.run_error} />}
-      {generating && <div className="adv-note">The board is reflecting on the server — you can leave and come back; it keeps going.</div>}
-      {/* spinner only on the first load; polls keep the cards in place (no blink) */}
-      {roster.loading && !roster.data ? <Loading label="Loading the board…" />
-        : roster.err && !roster.data ? <ErrorBox msg={roster.err} />
-        : <div className="adv-cards">
-            {advisors.map((a) => {
-              const reflection = byKey[a.key];
-              const inProgress = (generating && (!pending.length || pending.includes(a.key)))
-                                 || reflectingOne.has(a.key);
-              return (
-                <div className={"adv-card" + (a.key === "chair" ? " chair" : "")} key={a.key}>
-                  <div className="adv-card-head">
-                    <span className="adv-name">{a.name}</span>
-                    {a.persona && <span className="adv-persona">as {a.persona.split(" — ")[0]}</span>}
-                    <span className="spacer" />
-                    <button className="edit-pen" title="refresh this advisor's reflection"
-                            onClick={() => reflectOne(a.key)} disabled={inProgress || generating}>↻</button>
-                    <button className="edit-pen" title="edit advisor" onClick={() => setEditing(a)}>✎</button>
-                  </div>
-                  <div className="adv-reflection">
-                    {inProgress
-                      ? <span className="dots">reflecting…</span>
-                      : reflection
-                        ? <Markdown text={reflection.reflection} />
-                        : <span className="empty" style={{ fontStyle: "italic" }}>no reflection yet — press “Reflect now”</span>}
-                  </div>
-                </div>
-              );
-            })}
-          </div>}
-      {editing && (
-        <AdvisorEditor advisor={editing === "new" ? null : editing}
-                       reads={roster.data?.reads || []}
-                       onClose={() => setEditing(null)}
-                       onSaved={() => { setEditing(null); refresh(); }} />
-      )}
-    </div>
-  );
-}
-
-// Add / edit / remove an advisor. Writes go to the Aito `advisors` table via
-// the API (mirrors the RoutineEditor); the same rows Claude edits over MCP.
-function AdvisorEditor({ advisor, reads, onClose, onSaved }) {
-  const [f, setF] = useState({
-    advisor_id: advisor?.key || "", name: advisor?.name || "",
-    persona: advisor?.persona || "", mandate: advisor?.mandate || "",
-    reads: advisor?.reads || [],
-  });
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState(null);
-  const [confirm, setConfirm] = useState(false);
-  const set = (k) => (e) => setF((p) => ({ ...p, [k]: e.target.value }));
-  const toggleRead = (r) => setF((p) => ({ ...p,
-    reads: p.reads.includes(r) ? p.reads.filter((x) => x !== r) : [...p.reads, r] }));
-  async function save() {
-    setBusy(true); setErr(null);
-    try {
-      if (advisor) await api.updateAdvisor(advisor.key,
-        { name: f.name, persona: f.persona, mandate: f.mandate, reads: f.reads });
-      else await api.createAdvisor(
-        { advisor_id: f.advisor_id, name: f.name, mandate: f.mandate,
-          reads: f.reads, persona: f.persona || null });
-      onSaved();
-    } catch (e) { setErr(e.message); setBusy(false); }
-  }
-  async function remove() {
-    setBusy(true); setErr(null);
-    try { await api.removeAdvisor(advisor.key); onSaved(); }
-    catch (e) { setErr(e.message); setBusy(false); }
-  }
-  const invalid = busy || !f.name.trim() || !f.mandate.trim()
-    || f.reads.length === 0 || (!advisor && !f.advisor_id.trim());
-  return (
-    <Modal onClose={onClose}>
-      <h3>{advisor ? "Edit advisor" : "New advisor"}</h3>
-      {!advisor &&
-        <label className="fld">id (stable key)
-          <input value={f.advisor_id} onChange={set("advisor_id")} autoFocus placeholder="e.g. finance" /></label>}
-      <label className="fld">name
-        <input value={f.name} onChange={set("name")} placeholder="e.g. Finance / Runway" /></label>
-      <label className="fld">persona — a named voice (optional)
-        <input value={f.persona} onChange={set("persona")}
-               placeholder="e.g. Paul Graham — make something people want" /></label>
-      <label className="fld">mandate
-        <textarea value={f.mandate} onChange={set("mandate")} rows={3}
-                  placeholder="what this advisor watches and pushes for" /></label>
-      <div className="fld">reads — the Aito facts it leans on
-        <div className="reads-grid">
-          {reads.map((r) => (
-            <label key={r} className={"read-chip" + (f.reads.includes(r) ? " on" : "")}>
-              <input type="checkbox" checked={f.reads.includes(r)} onChange={() => toggleRead(r)} />{r}
-            </label>
-          ))}
-        </div>
-      </div>
-      {err && <div className="error">Save error: {err}</div>}
-      <div className="modal-actions">
-        {advisor && (confirm
-          ? <button className="nogo" onClick={remove} disabled={busy}>Confirm remove</button>
-          : <button className="ghost" onClick={() => setConfirm(true)} disabled={busy}>Remove</button>)}
-        <span className="spacer" />
-        <button className="ghost" onClick={onClose} disabled={busy}>Cancel</button>
-        <button className="primary" onClick={save} disabled={invalid}>
-          {advisor ? "Save" : "Create"}</button>
-      </div>
-    </Modal>
-  );
-}
-
 // ---- Chat (the assistant as a full-page view, with several conversations) ----
 // The durable home for the assistant: chat-first, with a "Chats (N)" history
 // you open on demand — a scrollable list of every past conversation, kept in
@@ -2426,7 +2103,7 @@ export function ChatView() {
 
 // ---- Activity (the change log: what was created / updated / done / won / lost) ----
 // A read-only feed over the changelog table (docs/22); the same audit the
-// assistant and advisory board can query, and the raw material for future
+// assistant can query, and the raw material for future
 // daily/weekly note roll-ups.
 export function Activity() {
   const r = useAsync(() => api.changelog(), []);
@@ -2657,10 +2334,6 @@ export const VIEWS = {
   admin: { title: "Admin", desc: "Manage the team: add users (their Microsoft-account email + role), change roles, deactivate. Operator only.",
            prims: ["action-pipeline"],
            render: () => <UsersAdmin /> },
-  outbox: { title: "Outbox", desc: "Outbound the agents have staged, waiting for you. Read the rationale, check the thread, then Approve · Edit · Strike. Approving does not send: it releases the message to be drafted into its Gmail thread, where you tap send.",
-           prims: ["action-pipeline"],
-           data: [{ table: "outbox" }],
-           render: () => <Outbox /> },
   routines: { title: "Routines", desc: "Recurring tasks on a cadence — due when their period comes up. Prepare runs the agentic prep (Aito candidates + a Claude prompt).",
            prims: ["kpi-row", "action-pipeline"],
            data: [{ table: "routines" }],
@@ -2685,10 +2358,7 @@ export const VIEWS = {
            render: () => (<>
              <Experiments />
              <Block title="Learning actions" ptype="action-pipeline"><AreaAction area="experiments" lens="pipeline" /></Block></>) },
-  advisory: { title: "Advisory", desc: "A standing board of advisors — GTM, marketing, product, learning, and the chair — each reflecting in its own voice on the business, weekly or on demand. Configure the roster and personas in prompts/board.toml.",
-           prims: ["llm-composer"],
-           render: () => <Advisory /> },
-  activity: { title: "Activity", desc: "The change log — everything created and updated across the system (a todo done, a deal won or lost, an advisor edited), newest first. The same audit the assistant and the advisory board can read.",
+  activity: { title: "Activity", desc: "The change log — everything created and updated across the system (a todo done, a deal won or lost), newest first. The same audit the assistant can read.",
            prims: ["document-tree"],
            render: () => <Activity /> },
   documents: { title: "Documents", desc: "The knowledge store — strategy, plans, notes, and reference the agent grounds on. Tagged by kind and area, linked to companies and people, edited in place.",

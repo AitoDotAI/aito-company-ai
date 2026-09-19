@@ -747,7 +747,6 @@ def export_table(client: AitoClient, table: str, out_dir: Path) -> tuple[Path, i
     Plane B). Writes the loader's *input* columns only — derived columns are
     dropped and the notes_tags transform is reversed — so the file loads back
     through `load-<table>` cleanly. Written to out_dir/<table's load file>."""
-    # only CSV-backed tables export (advisors is config, seeded from board.toml)
     assert table in TABLE_FILES, f"unknown table {table!r}; have {sorted(TABLE_FILES)}"
     derived = {
         "contacts": DERIVED_CONTACT_COLUMNS,
@@ -818,20 +817,8 @@ def load_deals(client: AitoClient, data_dir: Path) -> int:
     return _reload(client, "deals", rows)
 
 
-def load_advisors(client: AitoClient, data_dir: Path | None = None) -> int:
-    """Seed the advisory-board roster into Aito from prompts/board.toml (the
-    default). This is *config*, not a CSV data table — board.toml is the
-    human-editable source, runtime edits then live in the table — so it is
-    deliberately outside the CSV export/load/migrate machinery below (a
-    migrated instance re-seeds from board.toml). data_dir is unused."""
-    from . import board
-    rows = [board.advisor_to_row(a, i * 10) for i, a in enumerate(board.default_roster())]
-    return _reload(client, "advisors", rows)
-
-
 # table -> its loader, and the order to load in (contacts before touches, which
-# load_rolodex drops). Used by load_all and the migration recipe. Advisors is
-# config (seeded from board.toml, not a CSV) and is intentionally absent here.
+# load_rolodex drops). Used by load_all and the migration recipe.
 LOADERS = {
     "contacts": load_rolodex, "touches": load_touches, "sessions": load_sessions,
     "materials": load_materials, "channels": load_channels, "posts": load_posts,
@@ -897,8 +884,7 @@ def export_all(client: AitoClient, out_dir: Path) -> list[tuple[str, int]]:
     live = client.get_schema()["schema"]
     done = []
     for table in schema.TABLES:
-        # advisors (and any non-CSV config table) has no seed file — skip it;
-        # it re-seeds from board.toml, not from a migration CSV.
+        # a non-CSV config table (no seed file) is skipped here.
         if table in live and table in TABLE_FILES:
             _, n = export_table(client, table, out_dir)
             done.append((table, n))

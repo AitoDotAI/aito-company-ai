@@ -1,6 +1,6 @@
 [Unit]
 Description=Company AI — Sunday week plan (composer run)
-Documentation=file://%h/aito-company-ai/docs/15-board.md
+Documentation=file://%h/aito-company-ai/src/company_ai/board.py
 
 [Service]
 Type=oneshot

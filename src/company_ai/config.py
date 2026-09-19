@@ -45,7 +45,7 @@ class Config:
     data_dir: Path | None
     library_dir: Path
     port: int
-    # the board/week-prep composer's LLM (see src/company_ai/llm.py). Abstracted
+    # the week-prep composer's LLM (see src/company_ai/llm.py). Abstracted
     # behind a provider so gpt-5-mini-for-testing can become a high-end model
     # later by changing env only. The LLM composes prose from Aito's outputs; it
     # never scores or predicts — that stays in Aito (CLAUDE.md rule 2).
