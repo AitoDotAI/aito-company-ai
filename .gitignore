@@ -31,3 +31,7 @@ frontend/.vite/
 
 # server-side assistant conversations (operator data, like .briefs)
 .chats/
+
+# off-box backup staging: CSV dumps of every table (ops/backup-offbox.sh).
+# This is the REAL dataset on its way off the box — never tracked (docs/06).
+.backups/

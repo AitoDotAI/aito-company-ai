@@ -1,0 +1,11 @@
+[Unit]
+Description=Company AI — daily off-box backup (CSV dump of every table)
+Documentation=file://%h/aito-company-ai/docs/21-backups.md
+
+[Service]
+Type=oneshot
+# The destination is operator-configured and has no default; the script
+# refuses to run without it. Set it here (or in an override drop-in):
+#   Environment=COMPANY_AI_OFFBOX_DEST=user@host:/srv/backups/company-ai
+Environment=COMPANY_AI_OFFBOX_DEST=
+ExecStart=%h/aito-company-ai/ops/backup-offbox.sh

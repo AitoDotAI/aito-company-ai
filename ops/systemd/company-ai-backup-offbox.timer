@@ -1,0 +1,10 @@
+[Unit]
+Description=Company AI — daily off-box backup (03:50 Europe/Helsinki)
+
+[Timer]
+# 20 minutes after the env snapshot (03:30), so the two planes don't overlap.
+OnCalendar=*-*-* 03:50:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

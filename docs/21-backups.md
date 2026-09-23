@@ -68,6 +68,73 @@ systemctl --user list-timers 'company-ai-*'
 shell, defaults `COMPANY_AI_ENV=.env.aito`). For transaction snapshots, call
 `ops/backup.sh tx` before a risky run, or wire a more frequent timer.
 
+## The second plane: off-box
+
+An env snapshot is a branch **inside the instance**. It undoes a bad write; it
+does **not** survive losing the VM — same disk, same box. So a snapshot alone
+is not a backup of the machine, only of the data's history on it.
+
+`ops/backup-offbox.sh` is the other plane: `export-all` dumps every table to
+CSVs, then rsync pushes them **off** the machine.
+
+```
+cp ops/systemd/company-ai-backup-offbox.{service,timer} ~/.config/systemd/user/
+systemctl --user edit company-ai-backup-offbox.service   # set COMPANY_AI_OFFBOX_DEST
+systemctl --user enable --now company-ai-backup-offbox.timer  # daily 03:50
+```
+
+The destination has **no default** and the script refuses to run without
+`COMPANY_AI_OFFBOX_DEST` — an on-box-only copy that *looks* like a backup is
+worse than none. Staging lands in `.backups/` (gitignored: it is the real
+dataset). `COMPANY_AI_OFFBOX_KEEP` rotates local staging copies; retention on
+the far side belongs to the destination, not to this script.
+
+## Restore runbook
+
+Pick by what broke. Every command that *writes* (`restore`, `create-schema`,
+`load-all`, `backup`) echoes `→ aito: <host>` before it acts — read that line
+before answering the prompt, especially under stress.
+
+**A · A bad write or a bad batch, instance healthy.** The common case.
+
+```
+company-ai backups                       # list restore points
+company-ai restore daily-2026-09-22      # DRY RUN: per-table diff, changes nothing
+company-ai restore daily-2026-09-22 --force
+```
+
+The dry run prints current-vs-snapshot row counts per table — that is your
+confirmation that master becomes what you expect. `--force` promotes, and
+first snapshots the current state as `prerestore-<epoch>`, so the restore is
+itself undoable (promote that back).
+
+**B · Instance is up but the data is wrong beyond one batch.** Same as A;
+reach further back through `company-ai backups`. If every snapshot is also
+bad, the env plane is exhausted — go to C with the newest good off-box dump.
+
+**C · The VM or the instance is gone.** The env snapshots went with it; this is
+what the off-box CSVs are for.
+
+1. Stand up an Aito instance and point `.env.aito` at it (`AITO_INSTANCE_URL`,
+   `AITO_API_KEY`).
+2. `company-ai create-schema` — an empty instance has no tables.
+3. Fetch the newest `offbox-<stamp>/` from `COMPANY_AI_OFFBOX_DEST`.
+4. `company-ai load-all --dir <that directory>`.
+5. Verify before trusting it: `company-ai doctor`, then open the dashboard and
+   check the counts against the dump (`wc -l` the CSVs).
+6. Re-enable both timers on the new box, and take an immediate
+   `ops/backup.sh daily` so there is a restore point on the new instance.
+
+What you lose in C is everything written since the last off-box run — up to 24
+hours at the default schedule. Run `ops/backup-offbox.sh` by hand before any
+migration or risky operator work.
+
+**Rehearsal status.** Plane A (env promote) is exercised by the booktests and
+in normal use. **Plane C has not been rehearsed end-to-end** on this
+deployment — until someone walks steps 1–5 against a scratch instance and
+writes the date here, treat C as a documented intention, not a proven path.
+An untested backup is a belief, not a backup.
+
 ## Notes
 
 - Envs are database-scoped; a read-write key reads/writes any env in the
