@@ -795,3 +795,31 @@ select:focus { outline:none; border-color:var(--purple); }
   display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;
   cursor:pointer; line-height:1.4; }
 .adet:hover { color:var(--ink); }
+
+/* ---- Knowledge graph (docs/31) --------------------------------------- */
+/* Two columns of cards, each pairing a question with the query that answered
+   it. The query is deliberately prominent: it is the argument of the view. */
+.gq-intro { color: var(--ink-dim); margin: 0 0 18px; max-width: 78ch; line-height: 1.55; }
+.gq-intro code { font-family: 'JetBrains Mono',monospace; font-size: 12px; background: var(--tint);
+                 padding: 1px 5px; border-radius: 4px; color: var(--purple); }
+.gq-warn { background: #fdf3e7; border: 1px solid #e8c89a; color: var(--warn);
+           padding: 8px 12px; border-radius: 8px; margin-bottom: 14px; font-size: 13px; }
+.gq-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 16px; }
+.gq-card { background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+           padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+.gq-q { font-weight: 600; font-size: 15px; color: var(--ink); line-height: 1.35; }
+.gq-query { font-family: 'JetBrains Mono',monospace; font-size: 11px; line-height: 1.45; margin: 0;
+            background: var(--indigo); color: #cfd3ff; padding: 10px 12px;
+            border-radius: 8px; overflow-x: auto; white-space: pre; }
+.gq-meta { font-size: 11px; color: var(--ink-faint); text-transform: uppercase;
+           letter-spacing: .06em; }
+.gq-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.gq-table th { text-align: left; font-weight: 500; color: var(--ink-faint); font-size: 11px;
+               text-transform: uppercase; letter-spacing: .05em;
+               padding: 4px 8px 4px 0; border-bottom: 1px solid var(--line); }
+.gq-table td { padding: 5px 8px 5px 0; border-bottom: 1px solid var(--line); color: var(--ink); }
+.gq-table td.num { font-family: 'JetBrains Mono',monospace; text-align: right; padding-right: 14px; }
+.gq-table tr:last-child td { border-bottom: none; }
+.gq-empty, .gq-err { font-size: 13px; color: var(--ink-faint); font-style: italic; }
+.gq-err { color: var(--danger); font-style: normal; font-family: 'JetBrains Mono',monospace; font-size: 11px; }
+@media (max-width: 720px) { .gq-grid { grid-template-columns: 1fr; } }

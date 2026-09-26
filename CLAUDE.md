@@ -140,4 +140,8 @@ names, numbers, or non-public company data anywhere in tracked files.
 - Users & assignees (solo → small team; `users` collection {operator,sdr}, `assignee` on contacts/todos/deals, identity from Entra Easy Auth header → My work; auth is not app code; role enforcement in the `role_guard` middleware): `docs/27-users-and-assignees.md`
 - API tokens (named, revocable bearer tokens for the remote MCP; SHA-256 hash-at-rest, plaintext shown once, operator-only Admin UI, `tokens.verify` accepts env master or an active named token): `docs/28-tokens.md`
 - Remote MCP OAuth (self-hosted OAuth 2.1 AS for claude.ai's connector; SDK serves `/authorize`+`/token`+`/register`+`.well-known`, we implement the in-memory provider `mcpoauth.py`; `/authorize` behind Easy Auth is the real gate; one `/mcp` gate accepts OAuth **and** bearer tokens; `COMPANY_AI_PUBLIC_URL` turns it on): `docs/29-remote-mcp-oauth.md`
+- Knowledge graph (facts harvested onto the company node + link traversal:
+  forward `company_id.industry`, reverse `$refs.contacts.company_id`; the
+  Knowledge graph view shows each question beside the query that answered it):
+  `docs/31-knowledge-graph.md`
 - Extending it (add a table / view / routine — the checklist): `docs/19-extending.md`; contributor setup in `CONTRIBUTING.md`

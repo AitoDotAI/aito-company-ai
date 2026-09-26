@@ -41,6 +41,7 @@ export const api = {
   whoToReach: () => get("/who-to-reach"),
   salesTrend: () => get("/sales-trend"),
   pwin: (stage, blocker, champion_present) => get("/pwin", { stage, blocker, champion_present }),
+  graph: () => get("/graph"),
   companies: () => get("/companies"),
   companyDetail: (id) => get(`/companies/${id}`),
   createCompany: (name) => post("/companies", { name }),

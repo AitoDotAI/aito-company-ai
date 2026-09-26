@@ -14,13 +14,32 @@ Two mappings worth noting:
 # P(win)) traverse the graph instead of a hand-joined string match. Built by the
 # loader from the distinct company names across the CSVs; `company_id` is a name
 # slug (the link target). Created before contacts/deals (its link dependents).
+# The company node carries FACTS, not just a name. Everything below is
+# harvested at load time from the rows that already link here (contacts and
+# deals) — the same "derive it from the data" move as derive_contact_funnel.
+# Without them the hub is unqueryable: "which accounts pay us?" has no column
+# to ask about, and every such question has to be answered by hand-joining the
+# spokes. With them, one `where` answers it, and a link hop answers it *about
+# the spokes* ("contacts at paying customers") — see docs/31-knowledge-graph.md.
 COMPANIES = {
     "type": "table",
     "columns": {
         "company_id": {"type": "String"},          # slug of the name — the link key
         "name": {"type": "String"},
+        # harvested facts
+        "industry": {"type": "String"},            # modal segment across its contacts/deals
+        "relationship": {"type": "String"},        # COMPANY_RELATIONSHIPS, from deal outcomes
+        "country": {"type": "String"},             # modal country across its contacts
+        "mrr_eur": {"type": "Int"},                # won value / 12, 0 when nothing won
+        "open_deals": {"type": "Int"},
+        "contact_count": {"type": "Int"},
     },
 }
+
+# What the company is to us, derived from its deals: a won deal makes it a
+# customer, an open one a prospect, only-lost deals `lost`, and no deals at all
+# `none` (it is in the rolodex but has never been sold to).
+COMPANY_RELATIONSHIPS = {"customer", "prospect", "lost", "none"}
 
 CONTACTS = {
     "type": "table",

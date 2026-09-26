@@ -1976,6 +1976,89 @@ export function QuickFind() {
   );
 }
 
+// The knowledge graph (docs/31): one card per question a person actually asks,
+// each showing the single Aito query that answered it. The query is on screen
+// on purpose — the claim of this view is that the question and the query are
+// nearly the same sentence once the facts live on the company node and the
+// links are walkable.
+function GraphAnswer({ a }) {
+  // Aito returns hit keys sorted alphabetically, which reads badly ("country,
+  // industry, mrr_eur, name"). Take the column order from the query's own
+  // `select` instead — an entry is either a plain field or a {alias: expr}
+  // object — and append anything the response carried that select didn't name.
+  const present = a.hits && a.hits.length ? Object.keys(a.hits[0]) : [];
+  const asked = (a.request && Array.isArray(a.request.select) ? a.request.select : [])
+    .map((c) => (typeof c === "string" ? c : Object.keys(c)[0]));
+  const cols = [
+    ...asked.filter((c) => present.includes(c)),
+    ...present.filter((c) => !asked.includes(c)),
+  ];
+  return (
+    <div className="gq-card">
+      <div className="gq-q">{a.question}</div>
+      <pre className="gq-query">{JSON.stringify(a.request, null, 1)}</pre>
+      {a.error ? (
+        <div className="gq-err">{a.error}</div>
+      ) : (
+        <>
+          <div className="gq-meta">
+            {a.total} {a.total === 1 ? "row" : "rows"}
+            {a.hits && a.total > a.hits.length ? ` · showing ${a.hits.length}` : ""}
+          </div>
+          {cols.length === 0 ? (
+            <div className="gq-empty">no rows</div>
+          ) : (
+            <table className="gq-table">
+              <thead><tr>{cols.map((c) => <th key={c}>{c}</th>)}</tr></thead>
+              <tbody>
+                {a.hits.map((h, i) => (
+                  <tr key={i}>
+                    {cols.map((c) => (
+                      <td key={c} className={typeof h[c] === "number" ? "num" : ""}>
+                        {typeof h[c] === "number" && c === "$p"
+                          ? Math.round(h[c] * 100) + "%"
+                          : String(h[c])}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+export function GraphView() {
+  const r = useAsync(() => api.graph(), []);
+  return (
+    <>
+      <div className="gq-intro">
+        The company is a <b>node</b>; contacts, deals and documents link to it.
+        Aito walks those links in both directions — <code>company_id.industry</code>{" "}
+        forward to the account, <code>$refs.contacts.company_id</code> back to its
+        people — so each question below is <b>one query</b>, not a join.
+      </div>
+      {r.loading && <Loading label="Asking the graph…" />}
+      {r.err && <ErrorBox msg={r.err} />}
+      {r.data && (
+        <>
+          {r.data.failed && r.data.failed.length > 0 && (
+            <div className="gq-warn">
+              {r.data.failed.length} of {r.data.answers.length} queries failed: {r.data.failed.join(", ")}
+            </div>
+          )}
+          <div className="gq-grid">
+            {r.data.answers.map((a) => <GraphAnswer key={a.id} a={a} />)}
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
 export function SearchView() {
   const [text, setText] = useState("");
   const [kind, setKind] = useState("");
@@ -2370,6 +2453,9 @@ export const VIEWS = {
   company: { title: "Company", desc: "One company node — its people, deals, and notes, linked through the entity graph. Open a note to read it.",
            prims: ["entity-node"],
            render: (param) => <CompanyDetail companyId={param} /> },
+  graph: { title: "Knowledge graph", desc: "What we know about each account — and the questions you can answer by walking the links between accounts, people and deals. Every card is one Aito query.",
+           prims: ["graph-query"],
+           render: () => <GraphView /> },
   search: { title: "Search", desc: "Smart search across content — docs, contacts, and deals — ranked by Aito text-match relevance. The same index the assistant grounds on.",
            prims: ["document-tree"],
            render: () => <SearchView /> },

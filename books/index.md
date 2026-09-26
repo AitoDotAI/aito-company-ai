@@ -70,6 +70,8 @@
      * [test_funnels.py::test_sales_funnel_seed](book/test_funnels.py::test_sales_funnel_seed.md)
      * [test_funnels.py::test_unknown_dimension_asserts](book/test_funnels.py::test_unknown_dimension_asserts.md)
      * [test_funnels.py::test_website_funnel_seed](book/test_funnels.py::test_website_funnel_seed.md)
+     * [test_graph.py::test_company_facts_are_harvested](book/test_graph.py::test_company_facts_are_harvested.md)
+     * [test_graph.py::test_graph_questions](book/test_graph.py::test_graph_questions.md)
      * [test_ingest.py::test_add_contact_and_deal](book/test_ingest.py::test_add_contact_and_deal.md)
      * [test_ingest.py::test_add_todo_post_session](book/test_ingest.py::test_add_todo_post_session.md)
      * [test_ingest.py::test_add_validates_loudly](book/test_ingest.py::test_add_validates_loudly.md)

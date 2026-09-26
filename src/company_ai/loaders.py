@@ -240,10 +240,17 @@ def derive_contact_funnel(contact_rows: list[dict], data_dir: Path) -> None:
 
 def companies_from_csvs(data_dir: Path) -> list[dict]:
     """The distinct companies across the rolodex + deals + documents CSVs — the
-    entity rows. `company_id` is the name slug; `name` is the first spelling seen.
+    entity rows — each carrying the facts harvested from the rows that link to
+    it. `company_id` is the name slug; `name` is the first spelling seen.
     A company may appear as a contact's employer, a deal's account, a document's
     subject, or any mix (.ai/tasks/15) — every source that carries a company is
-    scanned so no `company_id` link dangles."""
+    scanned so no `company_id` link dangles.
+
+    The facts (industry, relationship, country, mrr_eur, counts) are DERIVED
+    here rather than authored: they are summaries of the contacts and deals
+    already in the CSVs, so they cannot drift from them. This is load-time
+    featurization, the same move as derive_contact_funnel — no prediction
+    happens here; predicting *from* these facts is Aito's job (rule 2)."""
     by_id: dict[str, str] = {}
     for filename in (ROLODEX_FILE, DEALS_FILE, DOCUMENTS_FILE):
         path = data_dir / filename
@@ -252,7 +259,56 @@ def companies_from_csvs(data_dir: Path) -> list[dict]:
                 name = (r.get("company") or "").strip()
                 if name:
                     by_id.setdefault(company_slug(name), name)
-    return [{"company_id": cid, "name": name} for cid, name in sorted(by_id.items())]
+
+    contacts = _read_csv(data_dir / ROLODEX_FILE) if (data_dir / ROLODEX_FILE).exists() else []
+    deals = _read_csv(data_dir / DEALS_FILE) if (data_dir / DEALS_FILE).exists() else []
+    by_company: dict[str, list[dict]] = {}
+    deals_by_company: dict[str, list[dict]] = {}
+    for r in contacts:
+        by_company.setdefault(company_slug((r.get("company") or "").strip()), []).append(r)
+    for r in deals:
+        deals_by_company.setdefault(company_slug((r.get("company") or "").strip()), []).append(r)
+
+    def _modal(rows: list[dict], field: str) -> str:
+        """Most common non-empty value, ties broken alphabetically so the
+        harvest is deterministic (the privacy gate diffs these CSVs byte-wise)."""
+        counts: dict[str, int] = {}
+        for r in rows:
+            v = (r.get(field) or "").strip()
+            if v:
+                counts[v] = counts.get(v, 0) + 1
+        if not counts:
+            return "unknown"
+        return sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))[0][0]
+
+    rows = []
+    for cid, name in sorted(by_id.items()):
+        cds = deals_by_company.get(cid, [])
+        ccs = by_company.get(cid, [])
+        outcomes = [schema.deal_won(d["stage"]) for d in cds if d.get("stage")]
+        if any(o is True for o in outcomes):
+            relationship = "customer"
+        elif any(o is None for o in outcomes):
+            relationship = "prospect"
+        elif outcomes:
+            relationship = "lost"
+        else:
+            relationship = "none"
+        won_value = sum(int(d.get("value_eur") or 0)
+                        for d in cds if schema.deal_won(d.get("stage", "")) is True)
+        rows.append({
+            "company_id": cid,
+            "name": name,
+            # a company's industry is whatever its people and deals say it is
+            "industry": _modal(ccs or cds, "segment"),
+            "relationship": relationship,
+            "country": _modal(ccs, "country"),
+            "mrr_eur": won_value // 12,
+            "open_deals": sum(1 for d in cds
+                              if schema.deal_won(d.get("stage", "")) is None),
+            "contact_count": len(ccs),
+        })
+    return rows
 
 
 def load_companies(client: AitoClient, data_dir: Path) -> int:

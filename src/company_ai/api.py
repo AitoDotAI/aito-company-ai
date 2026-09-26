@@ -387,6 +387,13 @@ def create_app(config: Config | None = None) -> FastAPI:
         from . import saleskpi
         return _guarded(lambda: saleskpi.win_trend(client()))
 
+    @app.get("/api/graph")
+    def graph_route():
+        # the knowledge graph board: one Aito query per question, each returned
+        # with the query that answered it (docs/31).
+        from . import graph
+        return _guarded(lambda: graph.board(client()))
+
     # ---- Companies (contacts rolled up by company, joined to deals) ----
     @app.get("/api/companies")
     def companies_route():

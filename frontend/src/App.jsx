@@ -10,7 +10,7 @@ import { api } from "./api.js";
 const NAV = [
   { group: "NOW", items: [["now", "Today"], ["overview", "Overview"], ["mywork", "My work"], ["chat", "Chat"], ["routines", "Routines"]] },
   { group: "WORK", items: [["sales", "Sales"], ["marketing", "Marketing"], ["events", "Events"], ["ops", "Operations"], ["rnd", "R&D"], ["exp", "Learning"]] },
-  { group: "KNOWLEDGE", items: [["search", "Search"], ["activity", "Activity"], ["documents", "Documents"]] },
+  { group: "KNOWLEDGE", items: [["graph", "Knowledge graph"], ["search", "Search"], ["activity", "Activity"], ["documents", "Documents"]] },
   { group: "ANALYTICS", items: [["salesanalytics", "Sales analytics"], ["analytics", "Metrics"], ["decisions", "Decisions"], ["data", "Data"]] },
   { group: "ADMIN", items: [["admin", "Admin"]] },
 ];
