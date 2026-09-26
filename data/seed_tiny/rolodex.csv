@@ -1,11 +1,11 @@
 contact_id,name,company,role,phone_present,email_present,segment,tier,ai_lifecycle,source,country,notes_tags,created
-yc001,Niaj Cross,Aperture OÜ,Founder,true,true,accounting,C,shipped,cold,Estonia,rfp-soon,2025-12-09
-yc002,Mona Fields,Tyrell Oy,CEO,true,true,erp,C,none,cold,Finland,rfp-soon;tech-savvy,2025-08-16
-yc003,Rupert Brooks,Hanso Oy,Controller,true,true,accounting,C,announced,cold,Finland,,2025-08-21
-yc004,Quinn Snow,Sirius Oy,Controller,true,true,other,A,shipped,warm,Finland,q3-budget;slow-cycle,2025-12-03
-yc005,Hank Knight,Initrode Oy,CFO,true,false,accounting,C,shipped,referral,Finland,q3-budget;rfp-soon;slow-cycle,2025-05-28
-yc006,Yvonne Gray,Sabre BV,Partner,true,true,ecommerce,A,shipped,warm,Netherlands,newsletter,2026-02-01
-yc007,Niaj Snow,Genco Oy,CFO,true,true,consultancy,B,shipped,cold,Finland,multi-entity,2026-05-08
-yc008,Peggy Stone,Pierce Oy,Partner,true,true,erp,A,announced,cold,Finland,founder-led;newsletter,2025-10-11
-yc009,Quinn Ford,Cobalt Oy,Finance Manager,true,true,accounting,B,shipped,trigger,Finland,,2025-10-24
-yc010,Sybil Stone,Wayne GmbH,Head of Finance,true,true,erp,C,none,warm,Germany,intro-available;rfp-soon,2025-11-26
+yc001,Zara Brooks,Rekall Oy,Founder,true,true,consultancy,C,none,referral,Finland,founder-led;tech-savvy,2025-09-18
+yc002,Eve Pike,Genco Oy,CFO,true,true,analytics,C,none,referral,Finland,intro-available;newsletter,2025-06-08
+yc003,Carol Vale,Vertex OÜ,CEO,true,true,other,A,shipped,warm,Estonia,q3-budget;slow-cycle,2025-08-24
+yc004,Niaj Vale,Vertex OÜ,Head of Product,true,true,other,A,shipped,cold,Estonia,q3-budget;rfp-soon;slow-cycle,2026-05-05
+yc005,Heidi Pike,Rekall Oy,Finance Manager,true,true,consultancy,A,announced,trigger,Finland,,2025-06-25
+yc006,Dave Day,Vertex OÜ,Head of Finance,true,true,other,A,none,cold,Estonia,met-at-event;podcast-listener;spreadsheet-heavy,2025-10-16
+yc007,Carol Brooks,Rekall Oy,CTO,true,false,consultancy,B,shipped,referral,Finland,podcast-listener;q3-budget;slow-cycle,2026-02-06
+yc008,Peggy Pike,Pied OÜ,CFO,true,false,consultancy,C,announced,warm,Estonia,met-at-event,2026-01-25
+yc009,Zara Wells,Genco Oy,IT Manager,true,true,analytics,B,none,cold,Finland,founder-led;rfp-soon,2025-10-24
+yc010,Mona Pike,Nimbus GmbH,CEO,true,true,erp,B,operating,referral,Germany,founder-led,2025-11-26

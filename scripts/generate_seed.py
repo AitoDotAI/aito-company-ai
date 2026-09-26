@@ -47,6 +47,10 @@ SURNAMES = [
 ]
 # stock fictional companies — single distinctive tokens, so a mention scan
 # can match one cleanly. 60 names; the main seed samples 50.
+# Accounts every seed must contain, because fixtures name them (see
+# make_accounts). Keep this list short.
+ANCHOR_COMPANIES = ["Genco"]
+
 MOCK_COMPANIES = [
     "Acme", "Globex", "Initech", "Umbrella", "Hooli", "Stark", "Wayne",
     "Wonka", "Cyberdyne", "Soylent", "Vandelay", "Tyrell", "Aperture",
@@ -63,13 +67,51 @@ SUFFIX_BY_COUNTRY = {
     "Germany": "GmbH", "Netherlands": "BV",
 }
 COUNTRIES = ["Finland"] * 6 + ["Sweden", "Estonia", "Finland", "Germany", "Netherlands"]
-ROLES = [
-    "CFO", "CEO", "Founder", "Controller", "Head of Finance", "COO",
-    "IT Manager", "Head of Product", "CTO", "Finance Manager", "Partner",
-]
+# Weighted, not uniform. A flat list over eleven roles left ~1 CTO in fifty
+# contacts, so "accounts where we know a technical buyer" covered two accounts
+# and the effect planted on it could not be estimated at all. The weights below
+# are also just closer to a real B2B rolodex: finance buys the product,
+# technical people evaluate it, and both are common.
+ROLES = (
+    ["CFO"] * 3 + ["Head of Finance"] * 2 + ["Finance Manager"] * 2
+    + ["Controller"] + ["CEO"] * 2 + ["Founder"] * 2 + ["COO"]
+    + ["CTO"] * 5 + ["IT Manager"] * 2 + ["Head of Product"] * 2 + ["Partner"]
+)
 SEGMENTS = ["accounting"] * 3 + ["erp"] * 2 + ["ecommerce"] * 2 + [
     "analytics", "consultancy", "other",
 ]
+# ---- the planted ACCOUNT-level signal -------------------------------------
+# Deal outcome used to depend only on deal-level features (champion, blocker,
+# the operator's estimate, staleness), while a company's industry was rolled
+# independently per deal. That made every company fact statistically
+# independent of winning: a prediction conditioned on one correctly returned
+# the base rate, and the company node was decoration.
+#
+# So the account now carries two real effects. They are PLANTED on purpose —
+# the same device as the decisions generator's confidence signal — because a
+# demo of inference over a graph has to contain something for the inference to
+# find. Both are properties of the ACCOUNT, not of the deal, so reaching them
+# requires walking the link (docs/31).
+INDUSTRY_WIN_LIFT = {
+    "accounting": 0.18,     # home turf: the product is an accounting AI
+    "analytics": 0.10,
+    "consultancy": 0.04,
+    "other": 0.00,
+    "ecommerce": -0.10,
+    "erp": -0.16,           # long procurement cycles, usually lost
+}
+# Knowing a technical buyer at the account is worth roughly as much as the
+# operator's own mid-range estimate. Reaching this fact means traversing the
+# link BACKWARDS — companies -> their contacts -> is one of them technical —
+# which is exactly what $refs.contacts.company_id expresses.
+# Deliberately a SINGLE role. A $refs `$exists` filter matches by equality only
+# (no $in), so "CTO or IT Manager" cannot be asked in one reverse-link query —
+# and a planted effect that no single query can condition on is not much use in
+# a demo. So the effect hangs on knowing a CTO, and the query that finds it is
+# $refs.contacts.company_id {$exists: {role: "CTO"}}.
+TECHNICAL_ROLES = {"CTO"}
+TECHNICAL_CONTACT_LIFT = 0.14
+
 TAG_POOL = [
     "founder-led", "q3-budget", "met-at-event", "newsletter", "inbound",
     "intro-available", "slow-cycle", "tech-savvy", "spreadsheet-heavy",
@@ -113,25 +155,218 @@ def p_positive(contact: dict, window: str) -> float:
     return min(0.85, max(0.05, p))
 
 
-def make_contacts(rng: random.Random, n: int, prefix: str) -> list[dict]:
+# Notes attached to an account. The prose is written; the ACCOUNT and the
+# PERSON are bound at generation time to entities that actually exist, because
+# data/seed/documents.csv used to hand-name both — and every time the roster
+# changed, its notes pointed at a company or a contact that had moved. A note
+# whose company_id dangles is exactly the bug docs/31 is about.
+ACCOUNT_NOTES = [
+    ("{company} — account plan", "sales", "account-plan;pilot;champion", None,
+     """# {company} — account plan
+
+{industry} account, {country}. {person} ({role}) is the technical champion and
+has run the evaluation personally; procurement starts once they are convinced.
+Budget cycle resets in Q1, so a pilot landing before December is the realistic
+path.
+
+Worth keeping: they bill on milestones rather than seats, which is why per-user
+pricing stalled the first conversation."""),
+    ("{company} — discovery call", "sales", "discovery;timing", "2026-06-11",
+     """# {company} — discovery
+
+{industry}, {country}. {person} ({role}) led the call. Five people attended,
+which is itself the signal — but no technical person was in the room, and every
+deal we have won had one.
+
+They are mid-migration and will not start anything before it finishes. Timing,
+not fit, is the blocker."""),
+    ("{company} — quarterly review", "sales", "qbr;expansion;usage", "2026-06-18",
+     """# {company} — quarterly review
+
+{person} ({role}) now runs the day-to-day. Usage is steady but concentrated in
+one workflow; they have never touched the forecasting side.
+
+The expansion angle is forecasting, but only once they trust the coding accuracy
+they see today. Fair question from them: what does the model do when it is
+unsure?"""),
+    ("{company} — technical evaluation", "sales", "evaluation;technical;calibration", "2026-06-16",
+     """# {company} — technical review
+
+{person} ({role}) evaluated against their own held-out month before talking
+commercials at all. Two things mattered: whether the confidence number is
+calibrated, and whether a wrong prediction is visibly wrong rather than quietly
+wrong.
+
+That is the whole sale with a technical buyer, and it is why accounts where we
+know a CTO close better — they evaluate what is true about the product instead
+of the pitch."""),
+    ("{company} — renewal risk", "sales", "renewal;churn-risk;champion", "2026-06-19",
+     """# {company} — renewal
+
+{person} ({role}) is still on the account but was never the user, and the
+champion who was has moved on. Usage has not dropped yet, which is exactly when
+this is worth catching: a champion leaving shows up in the touch record months
+before it shows up in the numbers.
+
+Action: get introduced to whoever inherits the workflow before renewal."""),
+]
+
+# Notes about the business rather than one account (company left empty).
+GENERAL_NOTES = [
+    ("Ideal customer profile", "internal", "sales", "icp;qualification",
+     """# Ideal customer profile
+
+Finnish and Nordic B2B SaaS and services, 20-200 employees, already running an
+ERP or accounting system and feeling the manual coding cost. The tell is a
+finance team of two to five people who each lose days a month to it."""),
+    ("Q3 content calendar", "internal", "marketing", "content;cadence",
+     """# Q3 content calendar
+
+One technical post a week, one customer story a month. The technical posts
+carry the reach; the customer stories carry the conversions."""),
+    ("Onboarding runbook", "docs", "operations", "onboarding;setup",
+     """# Onboarding runbook
+
+Kickoff, data import, a held-out month for evaluation, then training. The
+held-out month is not optional: it is what turns a demo into a decision."""),
+    ("Predictive database positioning", "docs", None, "positioning;messaging",
+     """# Predictive database positioning
+
+We are not competing on traversal. The claim is inference over linked data:
+predictions that read the neighbourhood, with the probability and the reasons
+returned together."""),
+    ("R&D roadmap themes", "internal", "rnd", "roadmap;vector-search",
+     """# R&D roadmap themes
+
+Near-term: tighten the closed loop so a logged outcome visibly moves the next
+brief. Later, parked: vector search and entity extraction over the notes."""),
+    ("What we learned losing ERP deals", "internal", "sales", "post-mortem;erp;segment",
+     """# What we learned losing ERP deals
+
+Read back six months of ERP-segment losses. The pattern is not price and not
+features: ERP buyers are mid-migration whenever we arrive, and a migration is a
+hard stop rather than an objection to handle.
+
+The win rate between our best and worst industry is wide enough that where we
+spend time matters more than how well we pitch."""),
+]
+
+
+def make_documents(rng, accounts, contacts, prefix):
+    """The knowledge store: general notes plus one note per well-known account,
+    each bound to a real company and a real person at it."""
+    by_company = {}
+    for c in contacts:
+        by_company.setdefault(c["company"], []).append(c)
+    rows, i = [], 0
+
+    def add(title, kind, area, topics, body, company="", sid="", noted_on="", created="2026-06-10"):
+        nonlocal i
+        i += 1
+        rows.append({"doc_id": f"{prefix}{i:03d}", "title": title, "body": body.strip(),
+                     "kind": kind, "area": area or "", "topics": topics,
+                     "noted_on": noted_on or "", "company": company,
+                     "stakeholder_id": sid, "source": "",
+                     "created": created, "updated": created})
+
+    # the anchor account keeps the fixture note titles/topics the booktests name
+    anchor = next((a for a in accounts
+                   if a["company"].split()[0] in ANCHOR_COMPANIES), None)
+    if anchor and by_company.get(anchor["company"]):
+        who = by_company[anchor["company"]][0]
+        base = anchor["company"].split()[0]
+        add(f"{base} account plan", "internal", "sales", "account-plan;pilot;churn",
+            f"""# {anchor['company']} — account plan
+
+Warm intro. They run a legacy stack and want churn prediction. The champion is
+{who['name']} ({who['role']}); pilot scope is one month of invoices, measured
+against their own corrections.""",
+            company=anchor["company"], sid=who["contact_id"])
+        add(f"Daily note — {base} pilot kickoff", "internal", None, "diary;genco;pilot",
+            f"""# 2026-06-14 — {anchor['company']} pilot kickoff
+
+Kickoff went well. {who['name']} walked us through the invoicing export; the
+line-level detail we need is there. Predictions must be visible to the team
+before anyone signs — evaluation by use, not by slide.""",
+            company=anchor["company"], sid=who["contact_id"],
+            noted_on="2026-06-14", created="2026-06-14")
+
+    for title, kind, area, topics, body in GENERAL_NOTES:
+        add(title, kind, area, topics, body)
+
+    # the accounts we know best get the written account notes
+    known = sorted((a for a in accounts
+                    if a["company"] != (anchor or {}).get("company")
+                    and by_company.get(a["company"])),
+                   key=lambda a: (-len(by_company[a["company"]]), a["company"]))
+    for (title_f, area, topics, noted_on, body_f), acct in zip(ACCOUNT_NOTES, known):
+        who = by_company[acct["company"]][0]
+        fmt = dict(company=acct["company"], industry=acct["industry"].capitalize(),
+                   country=acct["country"], person=who["name"], role=who["role"])
+        add(title_f.format(**fmt), "internal", area, topics, body_f.format(**fmt),
+            company=acct["company"], sid=who["contact_id"],
+            noted_on=noted_on or "", created=noted_on or "2026-06-12")
+    return rows
+
+
+def make_accounts(rng: random.Random, n: int) -> list[dict]:
+    """The account roster, generated BEFORE anyone who belongs to it.
+
+    Previously there was no company entity at all: `make_contacts` sampled one
+    company name per contact (so every account had exactly one person), and
+    each deal rolled its own `segment` (so one account could sit in three
+    industries at once). Generating the account first makes its industry and
+    country facts OF THE ACCOUNT, which contacts and deals then inherit — the
+    coherence the knowledge graph depends on."""
+    # Anchors are ALWAYS in the roster. Several booktests use a named account
+    # as their fixture ("the Genco Oy node — people, deals, notes via the
+    # company_id link"), and the hand-written notes in data/seed/documents.csv
+    # name accounts directly. Sampling the whole roster at random meant that
+    # resizing it silently dropped those accounts and broke five unrelated
+    # tests, which is a fixture problem masquerading as a data problem.
+    anchors = [c for c in ANCHOR_COMPANIES if c in MOCK_COMPANIES][:n]
+    rest = rng.sample([c for c in MOCK_COMPANIES if c not in anchors], n - len(anchors))
+    bases = anchors + rest
+    accounts = []
+    for base in bases:
+        # An anchor's country is fixed, so its full name is too ("Genco Oy").
+        # Fixtures name accounts in full; letting the suffix ride on the RNG
+        # renamed the anchor to "Genco OÜ" the moment the roster changed.
+        country = "Finland" if base in ANCHOR_COMPANIES else rng.choice(COUNTRIES)
+        accounts.append({
+            "company": f"{base} {SUFFIX_BY_COUNTRY[country]}",
+            "industry": rng.choice(SEGMENTS),
+            "country": country,
+        })
+    return accounts
+
+
+def make_contacts(rng: random.Random, accounts: list[dict], n: int,
+                  prefix: str) -> list[dict]:
     contacts = []
     names = rng.sample(
         [(f, s) for f in FIRST_NAMES for s in SURNAMES], n
     )
-    companies = rng.sample(MOCK_COMPANIES, n)
+    # every account gets one person, then the remainder are spread over the
+    # roster — so some accounts are well known and some are a single name, and
+    # "which accounts do we know best?" has a real answer.
+    owners = list(accounts)
+    while len(owners) < n:
+        owners.append(rng.choice(accounts))
+    rng.shuffle(owners)
     for i in range(n):
-        country = rng.choice(COUNTRIES)
+        account = owners[i]
+        country = account["country"]
         first, last = names[i]
-        base = companies[i]
         created = AS_OF - timedelta(days=rng.randint(30, 400))
         contacts.append({
             "contact_id": f"{prefix}{i + 1:03d}",
             "name": f"{first} {last}",
-            "company": f"{base} {SUFFIX_BY_COUNTRY[country]}",
+            "company": account["company"],
             "role": rng.choice(ROLES),
             "phone_present": "true" if rng.random() < 0.8 else "false",
             "email_present": "true" if rng.random() < 0.9 else "false",
-            "segment": rng.choice(SEGMENTS),
+            "segment": account["industry"],
             "tier": rng.choice(["A", "B", "B", "C", "C"]),
             "ai_lifecycle": rng.choice(["none", "none", "announced", "shipped", "operating"]),
             "source": rng.choice(["warm", "warm", "trigger", "cold", "cold", "referral"]),
@@ -590,26 +825,44 @@ DEAL_BLOCKERS = ["none", "none", "consultant_lock", "timing_mismatch",
 DEAL_OPEN_STAGES = ["lead", "qualified", "demo", "pilot", "negotiation"]
 
 
-def _deal_won_p(champion, blocker, probability, days_since):
+def _deal_won_p(champion, blocker, probability, days_since,
+                industry="other", technical_contact=False):
+    """P(won) for a deal. The first four terms are the DEAL's own; the last two
+    belong to the ACCOUNT and are only reachable across the company link, which
+    is what makes a graph-conditioned prediction worth making."""
     p = 0.30
     p += 0.25 if champion else -0.15
     p += -0.20 if blocker != "none" else 0.10
     p += (probability - 50) / 200.0          # the operator's own estimate carries signal
     p += -0.15 if days_since > 30 else 0.0   # stalled deals lose
+    p += INDUSTRY_WIN_LIFT.get(industry, 0.0)
+    p += TECHNICAL_CONTACT_LIFT if technical_contact else 0.0
     return min(0.92, max(0.05, p))
 
 
-def make_deals(rng, companies, n_open, n_closed, prefix):
-    segs = ["accounting", "erp", "ecommerce", "analytics", "consultancy", "other"]
+def make_deals(rng, accounts, technical_accounts, n_open, n_closed, prefix):
+    """Deals against the account roster. A deal's `segment` is now INHERITED
+    from its account rather than rolled per row, so an account has one industry
+    instead of one per deal — and that industry, plus whether a technical
+    contact is on file there, moves the outcome (see INDUSTRY_WIN_LIFT)."""
     rows = []
 
-    # deals are with companies you have contacts at — so a sales todo can link
-    # a stakeholder (a contact) at the deal's company. Falls back to a fresh
-    # name if the rolodex is empty.
-    def company():
-        if companies:
-            return rng.choice(companies)
-        return f"{rng.choice(COMPANY_HEADS)}{rng.choice(COMPANY_TAILS)} {rng.choice(['Oy', 'Ab'])}"
+    # Deals concentrate. Drawing accounts uniformly gave every account ~13
+    # deals, so at a ~28% win rate essentially all of them won something and
+    # `relationship` collapsed to "customer" for 21 of 22 accounts. A Zipf-ish
+    # weighting gives a realistic long tail instead: a few accounts we have
+    # worked hard, many with one or two deals — which is what makes customer /
+    # prospect / lost / none an actual distribution.
+    order = list(accounts)
+    rng.shuffle(order)
+    # 1/(i+1) put 60 of 280 deals on ONE account, and a single account's
+    # champion/blocker draws then swamped its whole industry — the planted
+    # per-industry effect came out scrambled. A flatter head keeps the long tail
+    # (so relationship still varies) without letting one account be an industry.
+    weights = [1.0 / (i + 4) ** 0.9 for i in range(len(order))]
+
+    def account():
+        return rng.choices(order, weights=weights, k=1)[0]
 
     # open pipeline
     for i in range(n_open):
@@ -617,9 +870,10 @@ def make_deals(rng, companies, n_open, n_closed, prefix):
         blocker = rng.choice(DEAL_BLOCKERS)
         prob = rng.choice([20, 30, 40, 50, 60, 65, 70])
         last = AS_OF - timedelta(days=rng.randint(1, 45))
+        acct = account()
         rows.append({
-            "deal_id": f"{prefix}{i + 1:03d}", "company": company(),
-            "segment": rng.choice(segs), "stage": rng.choice(DEAL_OPEN_STAGES),
+            "deal_id": f"{prefix}{i + 1:03d}", "company": acct["company"],
+            "segment": acct["industry"], "stage": rng.choice(DEAL_OPEN_STAGES),
             "value_eur": rng.choice([15000, 22500, 35000, 45000, 60000, 80000]),
             "probability": prob, "champion_present": "true" if champion else "false",
             "blocker": blocker, "last_touch_date": last.isoformat(),
@@ -632,10 +886,13 @@ def make_deals(rng, companies, n_open, n_closed, prefix):
         prob = rng.choice([20, 30, 40, 50, 60, 70, 80])
         days = rng.randint(1, 80)
         last = AS_OF - timedelta(days=rng.randint(30, 400))
-        won = rng.random() < _deal_won_p(champion, blocker, prob, days)
+        acct = account()
+        won = rng.random() < _deal_won_p(
+            champion, blocker, prob, days, acct["industry"],
+            acct["company"] in technical_accounts)
         rows.append({
-            "deal_id": f"{prefix}c{i + 1:03d}", "company": company(),
-            "segment": rng.choice(segs),
+            "deal_id": f"{prefix}c{i + 1:03d}", "company": acct["company"],
+            "segment": acct["industry"],
             "stage": "closed_won" if won else "closed_lost",
             "value_eur": rng.choice([15000, 22500, 35000, 45000, 60000, 80000]),
             "probability": prob, "champion_present": "true" if champion else "false",
@@ -827,9 +1084,12 @@ def generate(out_dir: Path, n_contacts: int, n_touches: int, n_sessions: int,
              n_materials: int, n_posts: int, n_todos: int, n_todo_history: int,
              n_deals_open: int, n_deals_closed: int, n_decisions: int,
              n_experiments: int, n_events: int, n_routines: int,
-             seed: int, prefix: str) -> None:
+             seed: int, prefix: str, n_accounts: int = 0) -> None:
     rng = random.Random(seed)
-    contacts = make_contacts(rng, n_contacts, f"{prefix}c")
+    # accounts first: contacts and deals both inherit their account's industry
+    # and country, so the company node is coherent rather than a per-row roll.
+    accounts = make_accounts(rng, n_accounts or max(1, n_contacts // 2))
+    contacts = make_contacts(rng, accounts, n_contacts, f"{prefix}c")
     touches = make_touches(rng, contacts, n_touches, f"{prefix}t")
     sessions = make_sessions(rng, n_sessions, f"{prefix}s")
     # marketing: materials (content) + channels (destinations) → posts (material×channel)
@@ -837,7 +1097,11 @@ def generate(out_dir: Path, n_contacts: int, n_touches: int, n_sessions: int,
     materials = make_materials(rng, n_materials, f"{prefix}m")
     posts = make_posts(rng, materials, channels, n_posts, f"{prefix}p")
     # deals before todos: sales todos link to open deals (the closed loop)
-    deals = make_deals(rng, [c["company"] for c in contacts],
+    # which accounts we know a technical buyer at — a fact about the ACCOUNT
+    # that only exists once its contacts do, and that moves deal outcomes.
+    technical_accounts = {c["company"] for c in contacts
+                          if c["role"] in TECHNICAL_ROLES}
+    deals = make_deals(rng, accounts, technical_accounts,
                        n_deals_open, n_deals_closed, f"{prefix}e")
     # open worklist + closed history (the slip-risk training substrate)
     todos = make_todos(rng, contacts, deals, n_todos, f"{prefix}d") \
@@ -846,6 +1110,7 @@ def generate(out_dir: Path, n_contacts: int, n_touches: int, n_sessions: int,
     experiments = make_experiments(rng, n_experiments, f"{prefix}r")
     events = make_events(rng, n_events, f"{prefix}v")
     routines = make_routines(n_routines, f"{prefix}o")
+    documents = make_documents(rng, accounts, contacts, f"{prefix}dc")
     write_csv(out_dir / "rolodex.csv", contacts)
     write_csv(out_dir / "touches.csv", touches)
     write_csv(out_dir / "sessions.csv", sessions)
@@ -858,16 +1123,42 @@ def generate(out_dir: Path, n_contacts: int, n_touches: int, n_sessions: int,
     write_csv(out_dir / "experiments.csv", experiments)
     write_csv(out_dir / "events.csv", events)
     write_csv(out_dir / "routines.csv", routines)
+    write_csv(out_dir / "documents.csv", documents)
     print(f"{out_dir}: {len(contacts)} contacts, {len(touches)} touches, "
           f"{len(sessions)} sessions, {len(materials)} materials, "
           f"{len(channels)} channels, {len(posts)} posts, {len(todos)} todos, "
           f"{len(deals)} deals, {len(decisions)} decisions, "
           f"{len(experiments)} experiments, {len(events)} events, "
-          f"{len(routines)} routines")
+          f"{len(routines)} routines, {len(documents)} documents")
+
+
+# The seed sizes live HERE and nowhere else. The privacy gate regenerates the
+# seed and compares it byte-for-byte with what is committed, so it has to build
+# it the same way — and when it kept its own copy of this argument list, the two
+# drifted the moment the sizes changed, failing as if the DATA were wrong.
+# n_deals_closed in particular drives how sharply the planted account signal can
+# be estimated: at 65 closed deals a per-industry cell held ~10 rows and Aito
+# correctly refused to read anything into it.
+SEED_SPECS: dict[str, dict] = {
+    "seed": dict(n_contacts=60, n_touches=150, n_sessions=600, n_materials=40,
+                 n_posts=120, n_todos=22, n_todo_history=80, n_deals_open=40,
+                 n_deals_closed=240, n_decisions=60, n_experiments=90,
+                 n_events=14, n_routines=7, seed=20260612, prefix="s",
+                 n_accounts=34),
+    "seed_tiny": dict(n_contacts=10, n_touches=15, n_sessions=30, n_materials=8,
+                      n_posts=12, n_todos=6, n_todo_history=10, n_deals_open=4,
+                      n_deals_closed=10, n_decisions=8, n_experiments=6,
+                      n_events=4, n_routines=4, seed=11, prefix="y",
+                      n_accounts=5),
+}
+
+
+def generate_all(out_root: Path) -> None:
+    """Build every seed dataset under `out_root`. The one way to produce the
+    seed — used by `__main__` and by the privacy gate, so they cannot disagree."""
+    for name, kwargs in SEED_SPECS.items():
+        generate(out_root / name, **kwargs)
 
 
 if __name__ == "__main__":
-    generate(REPO_ROOT / "data" / "seed", 50, 150, 600, 40, 120, 22, 80, 15, 65, 60, 90, 14, 7,
-             seed=20260612, prefix="s")
-    generate(REPO_ROOT / "data" / "seed_tiny", 10, 15, 30, 8, 12, 6, 10, 4, 10, 8, 6, 4, 4,
-             seed=11, prefix="y")
+    generate_all(REPO_ROOT / "data")

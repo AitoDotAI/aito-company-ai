@@ -1,37 +1,37 @@
 doc_id,title,body,kind,area,topics,noted_on,company,stakeholder_id,source,created,updated
-sdc001,Genco account plan,"# Genco Oy — account plan
+ydc001,Genco account plan,"# Genco Oy — account plan
 
 Warm intro. They run a legacy stack and want churn prediction. The champion is
-Judy Frost (CTO); pilot scope is one month of invoices, measured
-against their own corrections.",internal,sales,account-plan;pilot;churn,,Genco Oy,sc003,,2026-06-10,2026-06-10
-sdc002,Daily note — Genco pilot kickoff,"# 2026-06-14 — Genco Oy pilot kickoff
+Eve Pike (CFO); pilot scope is one month of invoices, measured
+against their own corrections.",internal,sales,account-plan;pilot;churn,,Genco Oy,yc002,,2026-06-10,2026-06-10
+ydc002,Daily note — Genco pilot kickoff,"# 2026-06-14 — Genco Oy pilot kickoff
 
-Kickoff went well. Judy Frost walked us through the invoicing export; the
+Kickoff went well. Eve Pike walked us through the invoicing export; the
 line-level detail we need is there. Predictions must be visible to the team
-before anyone signs — evaluation by use, not by slide.",internal,,diary;genco;pilot,2026-06-14,Genco Oy,sc003,,2026-06-14,2026-06-14
-sdc003,Ideal customer profile,"# Ideal customer profile
+before anyone signs — evaluation by use, not by slide.",internal,,diary;genco;pilot,2026-06-14,Genco Oy,yc002,,2026-06-14,2026-06-14
+ydc003,Ideal customer profile,"# Ideal customer profile
 
 Finnish and Nordic B2B SaaS and services, 20-200 employees, already running an
 ERP or accounting system and feeling the manual coding cost. The tell is a
 finance team of two to five people who each lose days a month to it.",internal,sales,icp;qualification,,,,,2026-06-10,2026-06-10
-sdc004,Q3 content calendar,"# Q3 content calendar
+ydc004,Q3 content calendar,"# Q3 content calendar
 
 One technical post a week, one customer story a month. The technical posts
 carry the reach; the customer stories carry the conversions.",internal,marketing,content;cadence,,,,,2026-06-10,2026-06-10
-sdc005,Onboarding runbook,"# Onboarding runbook
+ydc005,Onboarding runbook,"# Onboarding runbook
 
 Kickoff, data import, a held-out month for evaluation, then training. The
 held-out month is not optional: it is what turns a demo into a decision.",docs,operations,onboarding;setup,,,,,2026-06-10,2026-06-10
-sdc006,Predictive database positioning,"# Predictive database positioning
+ydc006,Predictive database positioning,"# Predictive database positioning
 
 We are not competing on traversal. The claim is inference over linked data:
 predictions that read the neighbourhood, with the probability and the reasons
 returned together.",docs,,positioning;messaging,,,,,2026-06-10,2026-06-10
-sdc007,R&D roadmap themes,"# R&D roadmap themes
+ydc007,R&D roadmap themes,"# R&D roadmap themes
 
 Near-term: tighten the closed loop so a logged outcome visibly moves the next
 brief. Later, parked: vector search and entity extraction over the notes.",internal,rnd,roadmap;vector-search,,,,,2026-06-10,2026-06-10
-sdc008,What we learned losing ERP deals,"# What we learned losing ERP deals
+ydc008,What we learned losing ERP deals,"# What we learned losing ERP deals
 
 Read back six months of ERP-segment losses. The pattern is not price and not
 features: ERP buyers are mid-migration whenever we arrive, and a migration is a
@@ -39,46 +39,38 @@ hard stop rather than an objection to handle.
 
 The win rate between our best and worst industry is wide enough that where we
 spend time matters more than how well we pitch.",internal,sales,post-mortem;erp;segment,,,,,2026-06-10,2026-06-10
-sdc009,Nakatomi OÜ — account plan,"# Nakatomi OÜ — account plan
+ydc009,Rekall Oy — account plan,"# Rekall Oy — account plan
 
-Erp account, Estonia. Grace Lane (COO) is the technical champion and
+Consultancy account, Finland. Zara Brooks (Founder) is the technical champion and
 has run the evaluation personally; procurement starts once they are convinced.
 Budget cycle resets in Q1, so a pilot landing before December is the realistic
 path.
 
 Worth keeping: they bill on milestones rather than seats, which is why per-user
-pricing stalled the first conversation.",internal,sales,account-plan;pilot;champion,,Nakatomi OÜ,sc016,,2026-06-12,2026-06-12
-sdc010,Slate OÜ — discovery call,"# Slate OÜ — discovery
+pricing stalled the first conversation.",internal,sales,account-plan;pilot;champion,,Rekall Oy,yc001,,2026-06-12,2026-06-12
+ydc010,Vertex OÜ — discovery call,"# Vertex OÜ — discovery
 
-Accounting, Estonia. Eve Knight (CTO) led the call. Five people attended,
+Other, Estonia. Carol Vale (CEO) led the call. Five people attended,
 which is itself the signal — but no technical person was in the room, and every
 deal we have won had one.
 
 They are mid-migration and will not start anything before it finishes. Timing,
-not fit, is the blocker.",internal,sales,discovery;timing,2026-06-11,Slate OÜ,sc019,,2026-06-11,2026-06-11
-sdc011,Nimbus OÜ — quarterly review,"# Nimbus OÜ — quarterly review
+not fit, is the blocker.",internal,sales,discovery;timing,2026-06-11,Vertex OÜ,yc003,,2026-06-11,2026-06-11
+ydc011,Nimbus GmbH — quarterly review,"# Nimbus GmbH — quarterly review
 
-Olivia Gray (Head of Product) now runs the day-to-day. Usage is steady but concentrated in
+Mona Pike (CEO) now runs the day-to-day. Usage is steady but concentrated in
 one workflow; they have never touched the forecasting side.
 
 The expansion angle is forecasting, but only once they trust the coding accuracy
 they see today. Fair question from them: what does the model do when it is
-unsure?",internal,sales,qbr;expansion;usage,2026-06-18,Nimbus OÜ,sc015,,2026-06-18,2026-06-18
-sdc012,Mooby Ab — technical evaluation,"# Mooby Ab — technical review
+unsure?",internal,sales,qbr;expansion;usage,2026-06-18,Nimbus GmbH,yc010,,2026-06-18,2026-06-18
+ydc012,Pied OÜ — technical evaluation,"# Pied OÜ — technical review
 
-Heidi Banks (CFO) evaluated against their own held-out month before talking
+Peggy Pike (CFO) evaluated against their own held-out month before talking
 commercials at all. Two things mattered: whether the confidence number is
 calibrated, and whether a wrong prediction is visibly wrong rather than quietly
 wrong.
 
 That is the whole sale with a technical buyer, and it is why accounts where we
 know a CTO close better — they evaluate what is true about the product instead
-of the pitch.",internal,sales,evaluation;technical;calibration,2026-06-16,Mooby Ab,sc002,,2026-06-16,2026-06-16
-sdc013,Pymt Oy — renewal risk,"# Pymt Oy — renewal
-
-Walter Lake (CTO) is still on the account but was never the user, and the
-champion who was has moved on. Usage has not dropped yet, which is exactly when
-this is worth catching: a champion leaving shows up in the touch record months
-before it shows up in the numbers.
-
-Action: get introduced to whoever inherits the workflow before renewal.",internal,sales,renewal;churn-risk;champion,2026-06-19,Pymt Oy,sc009,,2026-06-19,2026-06-19
+of the pitch.",internal,sales,evaluation;technical;calibration,2026-06-16,Pied OÜ,yc008,,2026-06-16,2026-06-16

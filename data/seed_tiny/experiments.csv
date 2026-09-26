@@ -1,7 +1,7 @@
 experiment_id,created,area,type,hypothesis,metric,baseline,target,result,effort,status,learning,started,decided
-yr004,2026-01-26,retention,content,A content change lifts m1_retention from 0.19 to 0.316.,m1_retention,0.19,0.316,,large,running,,2026-01-26,
-yr002,2026-03-01,retention,onboarding,A onboarding change lifts m1_retention from 0.318 to 0.399.,m1_retention,0.318,0.399,0.281,medium,invalidated,no lift over baseline; reverted,2026-03-01,2026-03-22
-yr006,2026-03-30,acquisition,pricing,A pricing change lifts signup_rate from 0.345 to 0.584.,signup_rate,0.345,0.584,,large,running,,2026-03-30,
-yr001,2026-04-02,retention,pricing,A pricing change lifts m1_retention from 0.185 to 0.323.,m1_retention,0.185,0.323,0.32,large,inconclusive,signal within noise; needs a bigger sample,2026-04-02,2026-04-22
-yr003,2026-04-05,referral,onboarding,A onboarding change lifts referral_rate from 0.061 to 0.107.,referral_rate,0.061,0.107,0.105,medium,inconclusive,signal within noise; needs a bigger sample,2026-04-05,2026-05-02
-yr005,2026-04-23,activation,feature,A feature change lifts trial_start_rate from 0.263 to 0.397.,trial_start_rate,0.263,0.397,,medium,running,,2026-04-23,
+yr003,2026-01-26,referral,landing_page,A landing_page change lifts referral_rate from 0.12 to 0.148.,referral_rate,0.12,0.148,0.118,small,invalidated,no lift over baseline; reverted,2026-01-26,2026-02-24
+yr002,2026-03-12,activation,onboarding,A onboarding change lifts trial_start_rate from 0.379 to 0.58.,trial_start_rate,0.379,0.58,0.662,medium,validated,trial_start_rate reached 0.662; shipped,2026-03-12,2026-04-07
+yr001,2026-03-28,activation,onboarding,A onboarding change lifts trial_start_rate from 0.125 to 0.204.,trial_start_rate,0.125,0.204,0.217,small,validated,trial_start_rate reached 0.217; shipped,2026-03-28,2026-04-14
+yr005,2026-03-31,activation,onboarding,A onboarding change lifts trial_start_rate from 0.367 to 0.619.,trial_start_rate,0.367,0.619,,small,running,,2026-03-31,
+yr004,2026-04-28,revenue,landing_page,A landing_page change lifts trial_to_paid from 0.126 to 0.152.,trial_to_paid,0.126,0.152,0.13,medium,invalidated,no lift over baseline; reverted,2026-04-28,2026-05-16
+yr006,2026-04-30,referral,content,A content change lifts referral_rate from 0.246 to 0.322.,referral_rate,0.246,0.322,,small,abandoned,killed before a verdict,2026-04-30,

@@ -34,13 +34,14 @@ def test_seed_is_generator_output(t: bt.TestCaseRun) -> None:
     t.h1("Seed CSVs are byte-identical to the generator's output")
     gen = _generator()
     with tempfile.TemporaryDirectory() as tmp:
-        gen.generate(Path(tmp) / "seed", 50, 150, 600, 40, 120, 22, 80, 15, 65, 60, 90, 14, 7,
-                     seed=20260612, prefix="s")
-        gen.generate(Path(tmp) / "seed_tiny", 10, 15, 30, 8, 12, 6, 10, 4, 10, 8, 6, 4, 4,
-                     seed=11, prefix="y")
+        # generate_all owns the sizes; keeping a second copy of that argument
+        # list here made this gate fail whenever the seed was resized, which
+        # reads as "the data is wrong" when nothing is wrong with the data.
+        gen.generate_all(Path(tmp))
         files = ("rolodex.csv", "touches.csv", "sessions.csv", "materials.csv",
                  "channels.csv", "posts.csv", "todos.csv", "deals.csv",
-                 "decisions.csv", "experiments.csv", "events.csv", "routines.csv")
+                 "decisions.csv", "experiments.csv", "events.csv", "routines.csv",
+                 "documents.csv")
         for rel in [f"{d}/{f}" for d in ("seed", "seed_tiny") for f in files]:
             committed = (REPO_ROOT / "data" / rel).read_bytes()
             regenerated = (Path(tmp) / rel).read_bytes()
