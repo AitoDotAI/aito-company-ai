@@ -24,6 +24,17 @@ Aito instance (docker)               intuition: ranking, similarity,
    loaders (CLI)                     rolodex + outcome log -> Aito tables
 ```
 
+## See it in action
+
+**→ [Take the tour](docs/use-cases/README.md)** — what the product does, one
+screen at a time, with screenshots from the public demo data.
+
+[![Overview](docs/assets/dashboard-overview.png)](docs/use-cases/README.md)
+
+*Overview — weighted pipeline, win rate against target, and who to reach
+next. Every rate and likelihood on it is an Aito prediction, from this
+repository's synthetic seed data.*
+
 ## Setup (shared)
 
 One Aito instance is the brain; both sides below read the same tables.
