@@ -70,6 +70,9 @@ def main() -> None:
 
     sub.add_parser("doctor", help="read-only health/drift report for the instance")
 
+    sub.add_parser("reindex-search",
+                   help="rebuild the search index; embeds it when COMPANY_AI_EMBED_* is set")
+
     ea = sub.add_parser("export-all", help="dump every table to CSVs (migration step 1)")
     ea.add_argument("--dir", default=".", help="output directory (default: cwd)")
 
@@ -157,6 +160,7 @@ def main() -> None:
                   "load-deals", "load-decisions", "load-experiments", "load-events",
                   "load-documents", "documents-import", "migrate-journal", "trilium-import",
                   "load-all", "clear", "export", "export-all", "board-run",
+                  "reindex-search",
                   "routines-run", "log", "complete", "archive", "backup", "restore"}
     if args.command in WRITE_CMDS:
         _echo_target(config)
@@ -303,6 +307,24 @@ def main() -> None:
         if report["schema_drift"]:
             print("→ fix: company-ai create-schema  (adds missing tables/columns; "
                   "then reload any table flagged needs_reload or mismatched)")
+    elif args.command == "reindex-search":
+        # The only non-HTTP way to rebuild the index. Embedding happens HERE,
+        # not on write (docs/23), so after turning COMPANY_AI_EMBED_* on, the
+        # semantic layer stays dark until this runs — and the HTTP endpoint is
+        # operator-only, which leaves an operator with no route at all.
+        from . import embed as embed_mod
+        from . import search as search_mod
+        embedder = embed_mod.embedder(config) if config.embed_enabled else None
+        if embedder is None:
+            print("embeddings: OFF (no COMPANY_AI_EMBED_*) — text-match index only")
+        else:
+            print(f"embeddings: ON ({config.embed_deployment}) — building vectors too")
+        stats = search_mod.build_index(client, embed=embedder)
+        print(f"  indexed {stats['indexed']} items")
+        for kind, n in sorted(stats.get("by_kind", {}).items()):
+            print(f"    {kind:8} {n}")
+        if stats.get("vectors") is not None:
+            print(f"  vectors {stats['vectors']}")
     elif args.command == "export-all":
         done = loaders.export_all(client, Path(args.dir))
         for table, n in done:
