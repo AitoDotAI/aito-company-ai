@@ -10,6 +10,13 @@
     {'country': 'Finland', 'industry': 'consultancy', 'mrr_eur': 10000, 'name': 'Globex Oy'}
     {'country': 'Sweden', 'industry': 'ecommerce', 'mrr_eur': 9583, 'name': 'Gringotts Ab'}
 
+## At an account that already pays us, how likely is a deal to close?
+
+  request:  {'from': 'deals', 'where': {'company_id.relationship': 'customer'}, 'predict': 'won', 'select': ['$value', '$p']}
+  total:    2
+    {'$p': 0.502574268609226, '$value': True}
+    {'$p': 0.49742573139077406, '$value': False}
+
 ## Who are the people at accounts that pay us?
 
   request:  {'from': 'contacts', 'where': {'company_id.relationship': 'customer'}, 'select': ['name', 'role', 'company'], 'limit': 6}
@@ -18,12 +25,6 @@
     {'company': 'Hanso Oy', 'name': 'Mallory Vale', 'role': 'Finance Manager'}
     {'company': 'Aperture Oy', 'name': 'Victor Hill', 'role': 'CFO'}
 
-## Which CFOs work at accounts we are still selling to?
-
-  request:  {'from': 'contacts', 'where': {'role': 'CFO', 'company_id.relationship': 'prospect'}, 'select': ['name', 'company', 'country'], 'limit': 6}
-  total:    1
-    {'company': 'Mooby Ab', 'country': 'Sweden', 'name': 'Quinn Stone'}
-
 ## Which accounts have a CTO on file?
 
   request:  {'from': 'companies', 'where': {'$refs.contacts.company_id': {'$exists': {'role': 'CTO'}}}, 'select': ['name', 'industry', 'relationship'], 'limit': 6}
@@ -31,6 +32,12 @@
     {'industry': 'other', 'name': 'Duff BV', 'relationship': 'lost'}
     {'industry': 'accounting', 'name': 'Hardman Oy', 'relationship': 'none'}
     {'industry': 'analytics', 'name': 'Lacuna OÜ', 'relationship': 'customer'}
+
+## Which CFOs work at accounts we are still selling to?
+
+  request:  {'from': 'contacts', 'where': {'role': 'CFO', 'company_id.relationship': 'prospect'}, 'select': ['name', 'company', 'country'], 'limit': 6}
+  total:    1
+    {'company': 'Mooby Ab', 'country': 'Sweden', 'name': 'Quinn Stone'}
 
 ## What is in play across the accounting industry?
 
@@ -47,10 +54,3 @@
     {'deal_count': 5, 'mrr_eur': 0, 'name': 'Abstergo Oy', 'relationship': 'lost'}
     {'deal_count': 5, 'mrr_eur': 13333, 'name': 'Lacuna OÜ', 'relationship': 'customer'}
     {'deal_count': 4, 'mrr_eur': 9583, 'name': 'Gringotts Ab', 'relationship': 'customer'}
-
-## In accounting, how likely is a deal to be won?
-
-  request:  {'from': 'deals', 'where': {'company_id.industry': 'accounting'}, 'predict': 'won', 'select': ['$value', '$p']}
-  total:    2
-    {'$p': 0.7261508779303686, '$value': False}
-    {'$p': 0.27384912206963136, '$value': True}

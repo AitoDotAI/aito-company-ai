@@ -2040,6 +2040,11 @@ export function GraphView() {
         Aito walks those links in both directions — <code>company_id.industry</code>{" "}
         forward to the account, <code>$refs.contacts.company_id</code> back to its
         people — so each question below is <b>one query</b>, not a join.
+        <div className="gq-finding">
+          And a fact on the far side of a link can condition a prediction: a deal
+          at an account that <b>already pays us closes at 50%</b>, against a 25%
+          base rate across all deals.
+        </div>
       </div>
       {r.loading && <Loading label="Asking the graph…" />}
       {r.err && <ErrorBox msg={r.err} />}

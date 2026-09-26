@@ -66,9 +66,20 @@ likely":
 
 ```json
 { "from": "deals",
-  "where": { "company_id.industry": "accounting" },
+  "where": { "company_id.relationship": "customer" },
   "predict": "won", "select": ["$value", "$p"] }
 ```
+
+That returns **50%**, against a **25%** base rate over all deals: a deal at an
+account that already pays us is worth about two at a new one. The condition is
+a fact that exists only because it was harvested onto the node — there is no
+`relationship` column on `deals` to filter by.
+
+Pick this kind of example carefully. `company_id.industry: "accounting"`
+predicts 27% against the same 25% base rate — a number that *looks* decisive
+at 73%/27% while saying essentially nothing. The honest measure of a
+conditioned prediction is its distance from the unconditioned one, so measure
+the baseline before quoting a lift.
 
 ## The surface
 

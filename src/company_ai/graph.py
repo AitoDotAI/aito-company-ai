@@ -36,6 +36,16 @@ QUESTIONS: list[tuple[str, str, dict]] = [
          "select": ["name", "industry", "country", "mrr_eur"], "limit": 6},
     ),
     (
+        "expansion-odds",
+        "At an account that already pays us, how likely is a deal to close?",
+        # The layer above lookup. The condition is a fact that lives on the
+        # OTHER side of the link, and the answer is a calibrated probability
+        # rather than a count: 50% here against a 25% base rate over all deals,
+        # i.e. selling to an existing customer is worth about two new ones.
+        {"from": "deals", "where": {"company_id.relationship": "customer"},
+         "predict": "won", "select": ["$value", "$p"]},
+    ),
+    (
         "people-at-customers",
         "Who are the people at accounts that pay us?",
         # forward hop: from a contact, through company_id, to that company's
@@ -44,19 +54,19 @@ QUESTIONS: list[tuple[str, str, dict]] = [
          "select": ["name", "role", "company"], "limit": 6},
     ),
     (
-        "finance-at-prospects",
-        "Which CFOs work at accounts we are still selling to?",
-        {"from": "contacts",
-         "where": {"role": "CFO", "company_id.relationship": "prospect"},
-         "select": ["name", "company", "country"], "limit": 6},
-    ),
-    (
         "accounts-with-cto",
         "Which accounts have a CTO on file?",
         # reverse hop: a company's set of contacts, filtered by $exists
         {"from": "companies",
          "where": {"$refs.contacts.company_id": {"$exists": {"role": "CTO"}}},
          "select": ["name", "industry", "relationship"], "limit": 6},
+    ),
+    (
+        "finance-at-prospects",
+        "Which CFOs work at accounts we are still selling to?",
+        {"from": "contacts",
+         "where": {"role": "CFO", "company_id.relationship": "prospect"},
+         "select": ["name", "company", "country"], "limit": 6},
     ),
     (
         "accounting-deals",
@@ -75,15 +85,6 @@ QUESTIONS: list[tuple[str, str, dict]] = [
          "select": ["name", "relationship", "mrr_eur",
                     {"deal_count": {"$length": "$refs.deals.company_id.stage"}}],
          "orderBy": {"$desc": "deal_count"}, "limit": 6},
-    ),
-    (
-        "predict-by-industry",
-        "In accounting, how likely is a deal to be won?",
-        # the layer above lookup: condition a prediction on a fact that lives
-        # on the OTHER side of the link, and let Aito answer with a calibrated
-        # probability rather than a count.
-        {"from": "deals", "where": {"company_id.industry": "accounting"},
-         "predict": "won", "select": ["$value", "$p"]},
     ),
 ]
 
