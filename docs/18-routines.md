@@ -16,7 +16,7 @@ with an optional **agentic prep**. Two halves:
    the MCP tools)** to run — the app prepares, Claude executes. `prepare` itself
    runs no loop; the unattended **Auto-run** lane below executes the pack
    through the assistant's fenced loop. Recipes (`routines.py`):
-   - `prospects` — the La Growth Machine case: pulls Aito-ranked candidate
+   - `prospects` — the outreach-tool case: pulls Aito-ranked candidate
      contacts (`who_to_call`) for the next outreach batch and writes a prompt
      ("draft openers via `opener_context`, build the import list…"). Every
      candidate and probability is Aito's.

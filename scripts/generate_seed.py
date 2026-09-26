@@ -792,7 +792,7 @@ def make_events(rng, n, prefix):
 # ---- routines (recurring agentic tasks) ----
 # a fixed standing list (these are the operator's real routines, not random)
 ROUTINE_SPECS = [
-    ("Fill La Growth Machine", "sales", "weekly", "mon", "", "prospects", "next outbound batch"),
+    ("Monday outreach prep", "sales", "weekly", "mon", "", "prospects", "next outbound batch"),
     ("Prepare the week", "operations", "weekly", "sun", "", "brief", ""),
     ("Friday board review", "operations", "weekly", "fri", "", "brief", ""),
     ("Weekly content batch", "marketing", "weekly", "tue", "", "none", "draft + schedule posts"),

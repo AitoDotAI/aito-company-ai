@@ -67,14 +67,14 @@ def test_run_due_executes_and_records(t: bt.TestCaseRun) -> None:
     client = _client()
     _load(client)
 
-    # so01 (Fill La Growth Machine, weekly Mon, never done) is DUE on any day;
+    # so01 (Monday outreach prep, weekly Mon, never done) is DUE on any day;
     # the scripted model calls one read tool then answers, exactly as the loop
     # would drive the real model. `only` keeps the run to this one routine so
     # the script is deterministic.
     llm = ScriptedLLM([
         _tool_call("c1", "who_to_call", {"window": "1215", "top_n": 3}),
         {"role": "assistant",
-         "content": "Top 3 prospects queued for the next La Growth Machine batch."},
+         "content": "Top 3 prospects queued for the next outbound batch."},
     ])
 
     before = _routine(client, "so01")
@@ -94,7 +94,7 @@ def test_run_due_executes_and_records(t: bt.TestCaseRun) -> None:
         t.tln(f"  {d['noted_on']} · kind={d['kind']} · topics={d.get('topics')} · {d['title']!r}")
         t.tln(f"    body: {d['body']}")
     assert len(docs) == 1
-    assert docs[0]["title"] == "Routine: Fill La Growth Machine"
+    assert docs[0]["title"] == "Routine: Monday outreach prep"
     assert docs[0]["noted_on"] == AS_OF.isoformat(), "the routine document is dated to the run (diary)"
 
     t.h1("the routine is ticked — it is no longer due (the loop closes)")

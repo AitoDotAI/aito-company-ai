@@ -1,5 +1,5 @@
 routine_id,title,area,cadence,weekday,day_of_month,prep,prompt,last_done,active,notes,created
-yo01,Fill La Growth Machine,sales,weekly,mon,,prospects,,,true,next outbound batch,2026-05-13
+yo01,Monday outreach prep,sales,weekly,mon,,prospects,,,true,next outbound batch,2026-05-13
 yo02,Prepare the week,operations,weekly,sun,,brief,,,true,,2026-05-13
 yo03,Friday board review,operations,weekly,fri,,brief,,,true,,2026-05-13
 yo04,Weekly content batch,marketing,weekly,tue,,none,,,true,draft + schedule posts,2026-05-13

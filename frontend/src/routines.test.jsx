@@ -11,7 +11,7 @@ vi.mock("./api.js", () => ({
 
 const ROWS = {
   routines: [
-    { routine_id: "r1", title: "Fill La Growth Machine", area: "sales", cadence: "weekly",
+    { routine_id: "r1", title: "Monday outreach prep", area: "sales", cadence: "weekly",
       weekday: "mon", prep: "prospects", due: true, overdue: true, days_overdue: 3, notes: "" },
     { routine_id: "r2", title: "Monthly bookkeeping", area: "operations", cadence: "monthly",
       day_of_month: 1, prep: "none", due: false, overdue: false, days_overdue: 0, last_done: "2026-06-02" },
@@ -24,7 +24,7 @@ describe("Routines view", () => {
   it("shows due/overdue state and a cadence label", async () => {
     api.routines.mockResolvedValue(ROWS);
     render(<Routines />);
-    await screen.findByText("Fill La Growth Machine");
+    await screen.findByText("Monday outreach prep");
     expect(screen.getByText(/overdue 3d/)).toBeInTheDocument();
     expect(screen.getByText("weekly · mon")).toBeInTheDocument();
     expect(screen.getByText("done")).toBeInTheDocument(); // r2 not due
@@ -34,7 +34,7 @@ describe("Routines view", () => {
     api.routines.mockResolvedValue(ROWS);
     api.tickRoutine.mockResolvedValue({});
     render(<Routines />);
-    await screen.findByText("Fill La Growth Machine");
+    await screen.findByText("Monday outreach prep");
     fireEvent.click(screen.getAllByTitle("mark done for this period")[0]);
     await waitFor(() => expect(api.tickRoutine).toHaveBeenCalledWith("r1"));
   });
@@ -42,9 +42,9 @@ describe("Routines view", () => {
   it("tapping the row opens the editor; the ✓ and Prepare buttons don't", async () => {
     api.routines.mockResolvedValue(ROWS);
     render(<Routines />);
-    await screen.findByText("Fill La Growth Machine");
+    await screen.findByText("Monday outreach prep");
     // tap the title → editor opens
-    fireEvent.click(screen.getByText("Fill La Growth Machine"));
+    fireEvent.click(screen.getByText("Monday outreach prep"));
     await screen.findByText("Edit routine");
     // the inline ✓ stops propagation: it ticks, it does not open the editor
     api.tickRoutine.mockResolvedValue({});
@@ -61,9 +61,9 @@ describe("Routines view", () => {
       prompt: "Prepare the next outreach batch… call opener_context(c1)…",
     });
     render(<Routines />);
-    await screen.findByText("Fill La Growth Machine");
+    await screen.findByText("Monday outreach prep");
     fireEvent.click(screen.getByRole("button", { name: /Prepare/ }));
-    await screen.findByText(/Prepare — Fill La Growth Machine/);
+    await screen.findByText(/Prepare — Monday outreach prep/);
     expect(screen.getByText("Acme Oy")).toBeInTheDocument();
     expect(screen.getByDisplayValue(/opener_context/)).toBeInTheDocument(); // the prompt textarea
   });

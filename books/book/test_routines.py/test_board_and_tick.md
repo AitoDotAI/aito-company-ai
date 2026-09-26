@@ -4,7 +4,7 @@
   Monthly metrics review   monthly·5 due=True
   Friday board review      weekly·fri due=True
   Prepare the week         weekly·sun due=True
-  Fill La Growth Machine   weekly·mon due=True
+  Monday outreach prep     weekly·mon due=True
   Weekly content batch     weekly·tue due=True
   Pipeline hygiene         weekly·wed due=True
 

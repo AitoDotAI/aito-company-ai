@@ -73,7 +73,7 @@ def board(client: AitoClient, as_of: date | None = None) -> Result:
 
 def _prospect_pack(client: AitoClient, result: Result, routine: dict, as_of: date) -> dict:
     """Aito-ranked candidates for the next outreach batch + a Claude-Desktop
-    prompt to load them (e.g. into La Growth Machine) and draft openers."""
+    prompt to load them (e.g. into your outreach tool) and draft openers."""
     q = queries.who_to_call(client, "1215", top_n=10, as_of=as_of)
     result.calls.extend(q.calls)
     candidates = q.derived
@@ -86,7 +86,7 @@ def _prospect_pack(client: AitoClient, result: Result, routine: dict, as_of: dat
         f"outcome right now (highest first):\n{lines}\n\n"
         "For each prospect: call opener_context(<contact_id>) and draft a one-line "
         "opener grounded in the retrieved evidence. Then produce the import list "
-        "(company, opener) ready to paste into La Growth Machine. Skip anyone "
+        "(company, opener) ready to paste into your outreach tool. Skip anyone "
         "already in an active sequence. Keep it to these — they're the ones Aito "
         "ranks worth contacting this round.")
     return {"candidates": candidates, "prompt": prompt}

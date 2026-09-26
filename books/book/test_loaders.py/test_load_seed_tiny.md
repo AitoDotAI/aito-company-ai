@@ -163,7 +163,7 @@ response: {"cost_eur": 600, "created": "2026-03-27", "event_id": "yv003", "locat
 ## Sample rows: routines
 
 request:  {"from": "routines", "limit": 1, "where": {"routine_id": "yo01"}}
-response: {"active": true, "area": "sales", "cadence": "weekly", "created": "2026-05-13", "notes": "next outbound batch", "prep": "prospects", "routine_id": "yo01", "title": "Fill La Growth Machine", "weekday": "mon"}
+response: {"active": true, "area": "sales", "cadence": "weekly", "created": "2026-05-13", "notes": "next outbound batch", "prep": "prospects", "routine_id": "yo01", "title": "Monday outreach prep", "weekday": "mon"}
 request:  {"from": "routines", "limit": 1, "where": {"routine_id": "yo02"}}
 response: {"active": true, "area": "operations", "cadence": "weekly", "created": "2026-05-13", "prep": "brief", "routine_id": "yo02", "title": "Prepare the week", "weekday": "sun"}
 request:  {"from": "routines", "limit": 1, "where": {"routine_id": "yo03"}}

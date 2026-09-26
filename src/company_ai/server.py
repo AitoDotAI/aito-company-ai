@@ -172,7 +172,7 @@ def routines_board() -> dict:
 @mcp.tool()
 def prepare_routine(routine_id: str) -> dict:
     """Run a routine's prep: returns Aito-grounded data + a prompt to run here.
-    e.g. a `prospects` routine (Fill La Growth Machine) returns the ranked
+    e.g. a `prospects` routine (Monday outreach prep) returns the ranked
     candidate contacts and a prompt to draft openers and build the batch. The
     prep gathers; you (this session) execute via the MCP tools."""
     from . import routines

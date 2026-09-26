@@ -60,11 +60,11 @@ def test_prepare_prospects_pack(t: bt.TestCaseRun) -> None:
     loaders.load_touches(client, SEED_DIR)
 
     t.h1("Prepare a `prospects` routine → Aito candidates + a Claude prompt")
-    routine = {"title": "Fill La Growth Machine", "prep": "prospects", "prompt": None}
+    routine = {"title": "Monday outreach prep", "prep": "prospects", "prompt": None}
     pack = routines.prepare(client, routine, AS_OF).derived
     t.tln(f"candidates returned: {len(pack['candidates'])}")
     t.tln("prompt mentions the tool the Claude session should call: "
           f"{'opener_context' in pack['prompt']}")
     t.tln("prompt names the routine: "
-          f"{'Fill La Growth Machine' in pack['prompt']}")
+          f"{'Monday outreach prep' in pack['prompt']}")
     assert pack["candidates"] and "opener_context" in pack["prompt"]

@@ -1239,7 +1239,7 @@ function RoutineEditor({ routine, onClose, onSaved }) {
     <Modal onClose={onClose}>
       <h3>{routine ? "Edit routine" : "New routine"}</h3>
       <label className="fld">title<input value={f.title} onChange={set("title")} autoFocus
-        placeholder="e.g. Fill La Growth Machine" /></label>
+        placeholder="e.g. Monday outreach prep" /></label>
       <div className="fld-row">
         <label className="fld">area<select value={f.area} onChange={set("area")}>
           {["sales", "marketing", "operations", "rnd", "experiments"].map((a) => <option key={a}>{a}</option>)}

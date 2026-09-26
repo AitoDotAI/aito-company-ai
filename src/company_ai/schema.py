@@ -323,7 +323,7 @@ EVENTS = {
     },
 }
 
-# routines — recurring agentic tasks (prepare the week, fill La Growth Machine,
+# routines — recurring agentic tasks (prepare the week, Monday outreach prep,
 # monthly bookkeeping). A routine has a cadence and a `prep` recipe; "preparing"
 # it pulls Aito-grounded data and fills a Claude-Desktop prompt (the app
 # prepares, Claude runs — rule 1). Due-ness is computed from cadence +
