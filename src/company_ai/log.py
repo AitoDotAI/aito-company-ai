@@ -74,7 +74,7 @@ def add_company(client: AitoClient, name: str) -> dict:
         {"from": "companies", "where": {"company_id": cid}, "limit": 1})["hits"]
     if existing:
         return {**existing[0], "created": False}
-    row = {"company_id": cid, "name": name}
+    row = schema.new_company_row(cid, name)
     client.upload_batch("companies", [row])
     return {**row, "created": True}
 

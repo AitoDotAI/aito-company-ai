@@ -177,6 +177,21 @@ def _reload(client: AitoClient, table: str, rows: list[dict]) -> int:
     client.upload_batch(table, rows)
     loaded = client.count(table)
     assert loaded == len(rows), f"{table}: read {len(rows)} rows but Aito holds {loaded}"
+    # Flush, for the same reason update_entries does it — and flush BOTH ENDS
+    # of every link this table declares.
+    #
+    # Link resolution is lazy on this build, and it goes stale in both
+    # directions. After `companies` is dropped and recreated, a forward path
+    # (company_id.relationship) matches NOTHING until a flush. After `contacts`
+    # is reloaded, the reverse index on its TARGET is stale, so
+    # $refs.contacts.company_id on a company returns nothing. Neither raises:
+    # both look exactly like "no rows match", which is the most expensive way
+    # for this to fail. Doing it here means no loader and no caller can forget.
+    client.optimize(table)
+    for column in schema.TABLES[table]["columns"].values():
+        link = column.get("link")
+        if link:
+            client.optimize(link.split(".")[0])
     return loaded
 
 
@@ -236,6 +251,12 @@ def derive_contact_funnel(contact_rows: list[dict], data_dir: Path) -> None:
             by_contact.setdefault(t["contact_id"], []).append(t["outcome"])
     for row in contact_rows:
         row.update(schema.contact_funnel_flags(by_contact.get(row["contact_id"], [])))
+
+
+# Roles that count as a technical buyer for `companies.technical_contact`.
+# Kept next to the harvest because it is a property OF THE HARVEST, not of the
+# contact: the generator plants the effect on "we know a CTO there".
+TECHNICAL_CONTACT_ROLES = {"CTO"}
 
 
 def companies_from_csvs(data_dir: Path) -> list[dict]:
@@ -307,6 +328,9 @@ def companies_from_csvs(data_dir: Path) -> list[dict]:
             "open_deals": sum(1 for d in cds
                               if schema.deal_won(d.get("stage", "")) is None),
             "contact_count": len(ccs),
+            # companies <- contacts, walked at load time
+            "technical_contact": any(r.get("role") in TECHNICAL_CONTACT_ROLES
+                                     for r in ccs),
         })
     return rows
 

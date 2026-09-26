@@ -119,7 +119,7 @@ def import_trilium(client, db_path: str, root: str = "workspace") -> dict:
     links, not only the ones with an existing contact/deal). Idempotent on the
     `trilium:<noteId>` source — safe to re-run as Trilium grows. Returns the
     `import_documents` report plus `companies_created`."""
-    from . import log
+    from . import log, schema
     from .loaders import company_slug
     rows = scan_trilium(db_path, root=root)
     existing = {h["company_id"] for h in client.query(
@@ -131,7 +131,7 @@ def import_trilium(client, db_path: str, root: str = "workspace") -> dict:
             if cid not in existing and cid not in new:
                 new[cid] = r["company"].strip()
     if new:
-        client.upload_batch("companies", [{"company_id": cid, "name": name}
+        client.upload_batch("companies", [schema.new_company_row(cid, name)
                                           for cid, name in sorted(new.items())])
         client.optimize("companies")
     report = log.import_documents(client, rows)
