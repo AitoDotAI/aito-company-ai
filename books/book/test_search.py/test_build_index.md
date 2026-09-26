@@ -1,6 +1,6 @@
 # Index built by fanning out over documents + contacts + deals
 
-indexed: 132
-  contact  50
-  deal     80
+indexed: 342
+  contact  60
+  deal     280
   doc      2

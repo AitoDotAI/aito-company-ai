@@ -1,33 +1,31 @@
 # brief --no-llm, seed_tiny, window 1600
 
 DO NEXT (today, all areas)
-  P1 Propagate the positioning demo  (due 2026-06-15)
-  P2 Ship the customer-proof post  (due 2026-06-19)
-  P2 Genco Oy license renewal window  (operations)
+  P2 Send pricing context to Nimbus GmbH  (overdue)
+  P1 Repurpose customer-proof for LinkedIn  (due 2026-06-16)
+  P2 Schema migration tooling  (rnd)
   P2 Rep2 stabilization  (rnd)
-  P2 Pierce Oy usage anomaly review  (operations)
+  P3 Reference ask with Vertex OÜ  (due 2026-06-15)
 
 FOLLOW-UPS (due)
-  Niaj Snow, Genco Oy  send one-pager  due 2026-05-13
-  Yvonne Gray, Sabre BV  send pricing summary  due 2026-06-03
+  Zara Wells, Genco Oy  call back  due 2026-06-03
+  Heidi Pike, Rekall Oy  send one-pager  due 2026-06-04
 
 CALL QUEUE  1600  fri
   (Friday — conversation day)
-  1. Mona Fields, Tyrell Oy   $p=0.24   why: erp C none, never touched
-     opener evidence: conversation: "good chat, asked about pricing"
-  2. Sybil Stone, Wayne GmbH   $p=0.24   why: erp C none, never touched
-     opener evidence: conversation: "good chat, asked about pricing"
-  3. Yvonne Gray, Sabre BV   $p=0.23   why: ecommerce A shipped, 8-21d since touch
+  1. Zara Wells, Genco Oy   $p=0.35   why: analytics B none, 8-21d since touch
      opener evidence: none yet (cold segment)
-  4. Rupert Brooks, Hanso Oy   $p=0.21   why: accounting C announced, never touched
+  2. Peggy Pike, Pied OÜ   $p=0.33   why: consultancy C announced, never touched
+     opener evidence: meeting_booked: "demo booked"
+  3. Heidi Pike, Rekall Oy   $p=0.33   why: consultancy A announced, 8-21d since touch
      opener evidence: none yet (cold segment)
-  5. Niaj Snow, Genco Oy   $p=0.19   why: consultancy B shipped, 22+d since touch
+  4. Eve Pike, Genco Oy   $p=0.32   why: analytics C none, never touched
      opener evidence: none yet (cold segment)
+  5. Zara Brooks, Rekall Oy   $p=0.31   why: consultancy C none, never touched
+     opener evidence: meeting_booked: "demo booked"
 
-SEGMENT READ  conversion vs pipeline 24%
-  erp          30% ↑   best window 1600
-  ecommerce    30% ↑   best window 1215
-  accounting   12% ↓   best window other
-  consultancy  20% ↓   best window 1600
+SEGMENT READ  conversion vs pipeline 29%
+  analytics    35% ↑   best window 1600
+  consultancy  31% ↑   best window 1215
 
-(29 lines <= 40)
+(27 lines <= 40)

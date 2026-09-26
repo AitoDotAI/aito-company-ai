@@ -1,8 +1,8 @@
 # Drag-reorder: sort_order leads, priority stays the importance tag
 
-default order (by priority): ['sd006', 'sd022', 'sd001', 'sd007', 'sd014']
-after reorder (reversed):    ['sd014', 'sd007', 'sd001', 'sd022', 'sd006']
-priorities unchanged (still the tag): [3, 3, 3, 1, 1]
+default order (by priority): ['sd008', 'sd012', 'sd013', 'sd004', 'sd019', 'sd021']
+after reorder (reversed):    ['sd021', 'sd019', 'sd004', 'sd013', 'sd012', 'sd008']
+priorities unchanged (still the tag): [3, 3, 2, 1, 1, 1]
 
 # an unknown id raises (rule 3)
 

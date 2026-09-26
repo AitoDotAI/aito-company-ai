@@ -12,4 +12,4 @@ assignment map (entity -> owner):
 
 # the CRM tables are untouched by assignment (join table only)
 
-contacts still: 50, deals: 80, todos: 102
+contacts still: 60, deals: 280, todos: 102

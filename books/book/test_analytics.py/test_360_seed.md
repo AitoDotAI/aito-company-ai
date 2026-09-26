@@ -15,21 +15,21 @@ _recommend: {"from": "touches", "goal": {"booked": true}, "limit": 6, "recommend
 
 ## Derived
 
-[Conversion] rate=0.2039  (good = outcome was conversation / meeting / callback)
-    cause channel=call  with=0.3846 without=0.0000 mi=0.1600
-    cause days_since_prev_touch=8-21  with=0.3333 without=0.1579 mi=0.0076
-    cause weekday=mon  with=0.1000 without=0.2364 mi=0.0043
-    lever window (lift 8.05): 1600=0.3095, 0800=0.2444, 1215=0.2000, other=0.0385
-[Reach] rate=0.4934  (good = the contact responded at all)
-    cause channel=linkedin  with=0.3214 without=0.5328 mi=0.0049
-    cause channel=call  with=0.5513 without=0.4306 mi=0.0026
-    cause weekday=wed  with=0.3793 without=0.5207 mi=0.0023
-    lever channel (lift 1.65): call=0.5500, email=0.5000, linkedin=0.3333
-[Meetings] rate=0.0658  (good = a meeting was booked)
-    cause channel=call  with=0.1154 without=0.0000 mi=0.0108
-    cause days_since_prev_touch=8-21  with=0.1389 without=0.0351 mi=0.0055
-    cause window=0800  with=0.1163 without=0.0374 mi=0.0037
-    lever channel (lift 5.75): call=0.1250, linkedin=0.0333, email=0.0217
+[Conversion] rate=0.1447  (good = outcome was conversation / meeting / callback)
+    cause channel=call  with=0.3684 without=0.0000 mi=0.1627
+    cause window=1600  with=0.2973 without=0.0885 mi=0.0200
+    cause weekday=thu  with=0.0571 without=0.1652 mi=0.0033
+    lever window (lift 9.54): 1600=0.3077, 0800=0.1455, 1215=0.1212, other=0.0323
+[Reach] rate=0.4671  (good = the contact responded at all)
+    cause window=1600  with=0.5946 without=0.4248 mi=0.0039
+    cause days_since_prev_touch=0-2  with=0.2667 without=0.4889 mi=0.0032
+    cause window=other  with=0.3448 without=0.4959 mi=0.0026
+    lever channel (lift 1.25): email=0.5000, call=0.4746, linkedin=0.4000
+[Meetings] rate=0.0329  (good = a meeting was booked)
+    cause channel=call  with=0.0702 without=0.0000 mi=0.0072
+    cause days_since_prev_touch=8-21  with=0.0625 without=0.0098 mi=0.0037
+    cause weekday=tue  with=0.0769 without=0.0161 mi=0.0030
+    lever channel (lift 5.26): call=0.0847, linkedin=0.0286, email=0.0161
 
 # 360: segment=accounting
 
@@ -48,24 +48,15 @@ _recommend: {"from": "touches", "goal": {"booked": true}, "limit": 6, "recommend
 
 ## Derived
 
-[Conversion] rate=0.1028  (good = outcome was conversation / meeting / callback)
-    why  contact_id.segment=accounting  lift=0.5068
-    cause channel=call  with=0.2308 without=0.0000 mi=0.0254
-    cause window=0800  with=0.2500 without=0.0400 mi=0.0153
-    cause days_since_prev_touch=first  with=0.2222 without=0.0417 mi=0.0127
-    lever window (lift 9.30): 0800=0.3149, 1600=0.2367, 1215=0.1584, other=0.0339
-[Reach] rate=0.3626  (good = the contact responded at all)
-    why  contact_id.segment=accounting  lift=0.7401
-    cause days_since_prev_touch=first  with=0.5556 without=0.2500 mi=0.0146
-    cause weekday=wed  with=0.0000 without=0.3793 mi=0.0132
-    cause channel=call  with=0.4615 without=0.2500 mi=0.0086
-    lever channel (lift 1.65): call=0.5731, email=0.4633, linkedin=0.3472
-[Meetings] rate=0.0192  (good = a meeting was booked)
-    why  contact_id.segment=accounting  lift=0.2894
-    cause weekday=wed  with=0.0000 without=0.0000 mi=0.0072
-    cause days_since_prev_touch=0-2  with=0.0000 without=0.0000 mi=0.0070
-    cause days_since_prev_touch=22+  with=0.0000 without=0.0000 mi=0.0070
-    lever channel (lift 2.78): call=0.1052, linkedin=0.0575, email=0.0378
+[Conversion] rate=0.0762  (good = outcome was conversation / meeting / callback)
+    why  contact_id.segment=accounting  lift=0.5285
+    lever window (lift 7.33): 1600=0.2847, 0800=0.1846, 1215=0.0975, other=0.0389
+[Reach] rate=0.5185  (good = the contact responded at all)
+    why  contact_id.segment=accounting  lift=1.1099
+    lever channel (lift 1.26): email=0.5222, call=0.4189, linkedin=0.4143
+[Meetings] rate=0.0252  (good = a meeting was booked)
+    why  contact_id.segment=accounting  lift=0.7681
+    lever channel (lift 3.86): call=0.0980, linkedin=0.0438, email=0.0254
 
 # 360: segment=erp, tier=A
 
@@ -84,24 +75,15 @@ _recommend: {"from": "touches", "goal": {"booked": true}, "limit": 6, "recommend
 
 ## Derived
 
-[Conversion] rate=0.2717  (good = outcome was conversation / meeting / callback)
-    why  contact_id.segment=erp  lift=1.2235
-    why  contact_id.tier=A  lift=1.0799
-    cause channel=call  with=0.4167 without=0.0000 mi=0.0720
-    cause days_since_prev_touch=8-21  with=0.5000 without=0.1176 mi=0.0344
-    cause window=1600  with=0.5000 without=0.1176 mi=0.0344
-    lever window (lift 14.34): 1600=0.4398, 1215=0.2287, 0800=0.1296, other=0.0307
-[Reach] rate=0.6296  (good = the contact responded at all)
-    why  contact_id.segment=erp  lift=1.1936
-    why  contact_id.tier=A  lift=1.0896
-    cause window=1600  with=1.0000 without=0.4118 mi=0.0860
-    cause window=0800  with=0.2500 without=0.7333 mi=0.0627
-    cause channel=linkedin  with=0.0000 without=0.6500 mi=0.0339
-    lever channel (lift 1.84): call=0.5458, email=0.5236, linkedin=0.2959
-[Meetings] rate=0.1051  (good = a meeting was booked)
-    why  contact_id.segment=erp  lift=1.3343
-    why  contact_id.tier=A  lift=1.1779
-    cause window=1600  with=0.3333 without=0.0000 mi=0.0563
-    cause channel=call  with=0.1667 without=0.0000 mi=0.0159
-    cause channel=email  with=0.0000 without=0.1333 mi=0.0103
-    lever channel (lift 10.39): call=0.1497, linkedin=0.0209, email=0.0144
+[Conversion] rate=0.2040  (good = outcome was conversation / meeting / callback)
+    why  contact_id.segment=erp  lift=1.4954
+    why  contact_id.tier=A  lift=0.9186
+    lever window (lift 14.06): 1600=0.4903, 1215=0.2515, 0800=0.0611, other=0.0349
+[Reach] rate=0.4791  (good = the contact responded at all)
+    why  contact_id.tier=A  lift=1.2128
+    why  contact_id.segment=erp  lift=0.8208
+    lever channel (lift 1.59): call=0.5079, email=0.4355, linkedin=0.3186
+[Meetings] rate=0.0396  (good = a meeting was booked)
+    why  contact_id.segment=erp  lift=1.5059
+    why  contact_id.tier=A  lift=0.7945
+    lever channel (lift 7.34): call=0.1908, linkedin=0.0416, email=0.0260

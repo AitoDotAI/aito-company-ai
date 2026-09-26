@@ -1,10 +1,10 @@
 # Decision scorecard, seed
 
-total=60 acceptance=0.6333 trustworthy=True
-  call_priority    11/17 = 0.6471
-  followup_timing  16/24 = 0.6667
-  opener_choice    11/19 = 0.5789
+total=60 acceptance=0.5667 trustworthy=True
+  call_priority    6/21 = 0.2857
+  followup_timing  15/19 = 0.7895
+  opener_choice    13/20 = 0.6500
   calibration (confidence -> P(accepted)):
-    low     n=19 observed=0.5263 aito_p=0.5528
-    medium  n=24 observed=0.6667 aito_p=0.6533
-    high    n=17 observed=0.7059 aito_p=0.6772
+    low     n=18 observed=0.3333 aito_p=0.4002
+    medium  n=25 observed=0.6000 aito_p=0.5896
+    high    n=17 observed=0.7647 aito_p=0.6951

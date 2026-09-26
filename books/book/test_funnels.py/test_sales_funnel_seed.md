@@ -14,17 +14,17 @@ _recommend: {"from": "contacts", "goal": {"ever_meeting": true}, "limit": 8, "re
 
 ## Derived
 
-  Contacts: 50  rate_of_top=1.0000
-  Touched: 39  rate_of_top=0.7800  (0.7800 from prev)
-  Reached: 30  rate_of_top=0.6000  (0.7692 from prev)
-  Conversation: 20  rate_of_top=0.4000  (0.6667 from prev)
-  Meeting booked: 8  rate_of_top=0.1600  (0.4000 from prev)
-  leak: {'into': 'Meeting booked', 'conversion': 0.4}
-  outlook P(Meeting booked) = 0.1731
-    cause role=CEO with=0.5000 without=0.1136 mi=0.0236
-    cause segment=erp with=0.3636 without=0.1026 mi=0.0163
-    cause tier=C with=0.0476 without=0.2414 mi=0.0125
-    lever source: referral=0.2999, cold=0.2000, trigger=0.1817, warm=0.1764
+  Contacts: 60  rate_of_top=1.0000
+  Touched: 46  rate_of_top=0.7667  (0.7667 from prev)
+  Reached: 35  rate_of_top=0.5833  (0.7609 from prev)
+  Conversation: 15  rate_of_top=0.2500  (0.4286 from prev)
+  Meeting booked: 4  rate_of_top=0.0667  (0.2667 from prev)
+  leak: {'into': 'Meeting booked', 'conversion': 0.26666666666666666}
+  outlook P(Meeting booked) = 0.0806
+    cause country=Netherlands with=0.5000 without=0.0517 mi=0.0138
+    cause role=COO with=0.5000 without=0.0517 mi=0.0138
+    cause segment=consultancy with=0.5000 without=0.0517 mi=0.0138
+    lever source: referral=0.2499, warm=0.1600, trigger=0.0768, cold=0.0454
 
 # Sales funnel: segment=accounting
 
@@ -42,12 +42,12 @@ _recommend: {"from": "contacts", "goal": {"ever_meeting": true}, "limit": 8, "re
 
 ## Derived
 
-  Contacts: 14  rate_of_top=1.0000
-  Touched: 9  rate_of_top=0.6429  (0.6429 from prev)
-  Reached: 7  rate_of_top=0.5000  (0.7778 from prev)
-  Conversation: 3  rate_of_top=0.2143  (0.4286 from prev)
-  Meeting booked: 0  rate_of_top=0.0000  (0.0000 from prev)
-  leak: {'into': 'Meeting booked', 'conversion': 0.0}
-  outlook P(Meeting booked) = 0.0522
-    why segment=accounting lift=0.3102
-    lever source: referral=0.2723, cold=0.2199, warm=0.1981, trigger=0.1744
+  Contacts: 26  rate_of_top=1.0000
+  Touched: 16  rate_of_top=0.6154  (0.6154 from prev)
+  Reached: 13  rate_of_top=0.5000  (0.8125 from prev)
+  Conversation: 4  rate_of_top=0.1538  (0.3077 from prev)
+  Meeting booked: 1  rate_of_top=0.0385  (0.2500 from prev)
+  leak: {'into': 'Meeting booked', 'conversion': 0.25}
+  outlook P(Meeting booked) = 0.0597
+    why segment=accounting lift=0.7449
+    lever source: referral=0.5841, trigger=0.1380, cold=0.0888, warm=0.0733

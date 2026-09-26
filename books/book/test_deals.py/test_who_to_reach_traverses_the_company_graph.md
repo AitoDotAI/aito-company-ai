@@ -1,10 +1,10 @@
 # the company_id link resolves the entity (contacts -> companies)
 
-contact Carol Lane: company='Genco Oy' company_id='genco-oy' -> company_id.name='Genco Oy'
+contact Alice Hill: company='Tyrell Oy' company_id='tyrell-oy' -> company_id.name='Tyrell Oy'
 
 # who_to_reach: stalled deals ranked by close-likelihood + the people at each
 
 stalled companies: 3
-  Vance Oy [lead] p_win=0.53 quiet=46d -> Niaj Wells (COO)
-  Lacuna OÜ [negotiation] p_win=0.53 quiet=19d -> Yvonne Brooks (CTO)
-  Oscorp OÜ [negotiation] p_win=0.53 quiet=39d -> Hank Brooks (Head of Product)
+  Vandelay Oy [negotiation] p_win=0.58 quiet=42d -> Hank Marsh (IT Manager), Eve Frost (CTO)
+  Spectre Oy [pilot] p_win=0.58 quiet=41d -> Heidi Stone (CEO), Judy Banks (Finance Manager)
+  Acme OÜ [negotiation] p_win=0.58 quiet=39d -> Rupert Pike (CFO)

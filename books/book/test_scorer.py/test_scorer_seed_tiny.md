@@ -9,5 +9,5 @@
   _recommend: {"from": "posts", "goal": {"won": true}, "limit": 8, "recommend": "tone", "where": {"link_placement": "comment", "platform": "linkedin"}}
   _recommend: {"from": "posts", "goal": {"won": true}, "limit": 8, "recommend": "link_placement", "where": {"platform": "linkedin", "tone": "narrate"}}
   _recommend: {"from": "posts", "goal": {"won": true}, "limit": 8, "recommend": "ai_made", "where": {"link_placement": "comment", "platform": "linkedin", "tone": "narrate"}}
-  P(win)=0.3066  base=0.2500
-    why tone=narrate  lift=1.1856
+  P(win)=0.2650  base=0.2000
+    why tone=narrate  lift=1.2599

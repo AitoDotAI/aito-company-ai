@@ -3,4 +3,4 @@
 reply: You have open deals worth tracking.
 rounds: 2
 trace: [{'tool': 'deal_pipeline', 'args': {}, 'ok': True}]
-grounding: deal_pipeline returned open_deals=15 (the number the model must use)
+grounding: deal_pipeline returned open_deals=40 (the number the model must use)

@@ -1,56 +1,76 @@
 # Each question is one Aito query — request, then what came back
 
-  7/7 queries answered; failed: none
+  9/9 queries answered; failed: none
 
-## Who actually pays us, and how much?
+## What kind of company is this, judged only by who works there?
 
-  request:  {'from': 'companies', 'where': {'relationship': 'customer'}, 'orderBy': {'$desc': 'mrr_eur'}, 'select': ['name', 'industry', 'country', 'mrr_eur'], 'limit': 6}
-  total:    13
-    {'country': 'Estonia', 'industry': 'analytics', 'mrr_eur': 13333, 'name': 'Lacuna OÜ'}
-    {'country': 'Finland', 'industry': 'consultancy', 'mrr_eur': 10000, 'name': 'Globex Oy'}
-    {'country': 'Sweden', 'industry': 'ecommerce', 'mrr_eur': 9583, 'name': 'Gringotts Ab'}
+  request:  {'from': 'companies', 'where': {'$refs.contacts.company_id': {'$exists': {'role': 'CFO'}}}, 'predict': 'industry', 'select': ['$value', '$p'], 'limit': 5}
+  total:    6
+    {'$p': 0.45180876109960416, '$value': 'accounting'}
+    {'$p': 0.18676738303391519, '$value': 'erp'}
+    {'$p': 0.15975007808127015, '$value': 'ecommerce'}
 
-## At an account that already pays us, how likely is a deal to close?
+## Does knowing a CTO there actually move the odds — and by how much?
 
-  request:  {'from': 'deals', 'where': {'company_id.relationship': 'customer'}, 'predict': 'won', 'select': ['$value', '$p']}
+  request:  {'from': 'deals', 'where': {'company_id.technical_contact': True, 'blocker': 'none'}, 'predict': 'won', 'select': ['$value', '$p', '$why']}
   total:    2
-    {'$p': 0.502574268609226, '$value': True}
-    {'$p': 0.49742573139077406, '$value': False}
+    {'$p': 0.5764969484660526, '$value': True}
+    {'$p': 0.4235030515339474, '$value': False}
+    why: blocker=none                               x1.75
+    why: company_id.technical_contact=True          x1.40
+
+## An accounting account, a champion on board, nothing blocking — what are the odds?
+
+  request:  {'from': 'deals', 'where': {'company_id.industry': 'accounting', 'champion_present': True, 'blocker': 'none'}, 'predict': 'won', 'select': ['$value', '$p', '$why']}
+  total:    2
+    {'$p': 0.7076767341934111, '$value': True}
+    {'$p': 0.2923232658065889, '$value': False}
+    why: blocker=none                               x1.75
+    why: company_id.industry=accounting             x1.45
+    why: champion_present=True                      x1.42
+
+## At an account where we know a CTO, how likely is a deal to close?
+
+  request:  {'from': 'deals', 'where': {'company_id.$refs.contacts.company_id': {'$exists': {'role': 'CTO'}}}, 'predict': 'won', 'select': ['$value', '$p']}
+  total:    2
+    {'$p': 0.6428139846976368, '$value': False}
+    {'$p': 0.3571860153023632, '$value': True}
 
 ## Who are the people at accounts that pay us?
 
   request:  {'from': 'contacts', 'where': {'company_id.relationship': 'customer'}, 'select': ['name', 'role', 'company'], 'limit': 6}
-  total:    13
-    {'company': 'Cobalt Oy', 'name': 'Trent Lake', 'role': 'IT Manager'}
-    {'company': 'Hanso Oy', 'name': 'Mallory Vale', 'role': 'Finance Manager'}
-    {'company': 'Aperture Oy', 'name': 'Victor Hill', 'role': 'CFO'}
+  total:    42
+    {'company': 'Genco Oy', 'name': 'Judy Frost', 'role': 'CTO'}
+    {'company': 'Onyx Oy', 'name': 'Frank Pike', 'role': 'IT Manager'}
+    {'company': 'Dunder GmbH', 'name': 'Quinn Rivers', 'role': 'CTO'}
 
 ## Which accounts have a CTO on file?
 
   request:  {'from': 'companies', 'where': {'$refs.contacts.company_id': {'$exists': {'role': 'CTO'}}}, 'select': ['name', 'industry', 'relationship'], 'limit': 6}
-  total:    6
-    {'industry': 'other', 'name': 'Duff BV', 'relationship': 'lost'}
-    {'industry': 'accounting', 'name': 'Hardman Oy', 'relationship': 'none'}
-    {'industry': 'analytics', 'name': 'Lacuna OÜ', 'relationship': 'customer'}
+  total:    8
+    {'industry': 'accounting', 'name': 'Dunder GmbH', 'relationship': 'customer'}
+    {'industry': 'analytics', 'name': 'Genco Oy', 'relationship': 'customer'}
+    {'industry': 'other', 'name': 'Prestige Oy', 'relationship': 'customer'}
 
 ## Which CFOs work at accounts we are still selling to?
 
   request:  {'from': 'contacts', 'where': {'role': 'CFO', 'company_id.relationship': 'prospect'}, 'select': ['name', 'company', 'country'], 'limit': 6}
-  total:    1
-    {'company': 'Mooby Ab', 'country': 'Sweden', 'name': 'Quinn Stone'}
+  total:    2
+    {'company': 'Initech Oy', 'country': 'Finland', 'name': 'Zara Knight'}
+    {'company': 'Pierce Oy', 'country': 'Finland', 'name': 'Frank Stone'}
 
 ## What is in play across the accounting industry?
 
   request:  {'from': 'deals', 'where': {'company_id.industry': 'accounting'}, 'orderBy': {'$desc': 'value_eur'}, 'select': ['company', 'stage', 'value_eur'], 'limit': 6}
-  total:    20
-    {'company': 'Wayne GmbH', 'stage': 'demo', 'value_eur': 80000}
-    {'company': 'Cobalt Oy', 'stage': 'closed_lost', 'value_eur': 80000}
-    {'company': 'Cobalt Oy', 'stage': 'closed_lost', 'value_eur': 80000}
+  total:    79
+    {'company': 'Hanso GmbH', 'stage': 'lead', 'value_eur': 80000}
+    {'company': 'Acme OÜ', 'stage': 'closed_won', 'value_eur': 80000}
+    {'company': 'Pymt Oy', 'stage': 'closed_won', 'value_eur': 80000}
 
 ## Which accounts have we opened the most deals with?
 
   request:  {'from': 'companies', 'select': ['name', 'relationship', 'mrr_eur', {'deal_count': {'$length': '$refs.deals.company_id.stage'}}], 'orderBy': {'$desc': 'deal_count'}, 'limit': 6}
-  total:    50
-    {'deal_count': 5, 'mrr_eur': 0, 'name': 'Abstergo Oy', 'relationship': 'lost'}
-    {'deal_count': 5, 'mrr_eur': 13333, 'name': 'Lacuna OÜ', 'relationship': 'customer'}
-    {'deal_count': 4, 'mrr_eur': 9583, 'name': 'Gringotts Ab', 'relationship': 'customer'}
+  total:    34
+    {'deal_count': 24, 'mrr_eur': 21250, 'name': 'Delos Ab', 'relationship': 'customer'}
+    {'deal_count': 19, 'mrr_eur': 0, 'name': 'Pendant Oy', 'relationship': 'prospect'}
+    {'deal_count': 17, 'mrr_eur': 8750, 'name': 'Vertex GmbH', 'relationship': 'customer'}

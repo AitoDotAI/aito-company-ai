@@ -59,8 +59,18 @@ def test_search_ranks_by_match(t: bt.TestCaseRun) -> None:
     hits = res.derived["hits"]
     assert hits, "a text query must return ranked hits"
     t.tln(f"\ntop hit: [{hits[0]['kind']}] {hits[0]['title']}")
-    # rule 4 (numerical): the distinctive doc outranks the unrelated onboarding doc
-    ranks = {h["item_id"]: i for i, h in enumerate(hits)}
+
+    # rule 4 (numerical): the distinctive doc outranks the unrelated onboarding
+    # doc. Asserted over the DOC kind rather than the mixed top-5: "pilot" is
+    # also a deal stage, so the size of the seed's open pipeline decides how
+    # many deals crowd the first five rows — which has nothing to do with the
+    # claim being made here, and silently turned this into 99 < 99 when the
+    # seed grew.
+    docs = search.search(client, "pricing pilots procurement", kind="doc", top_n=5)
+    t.h2("Same query, documents only")
+    for i, h in enumerate(docs.derived["hits"], 1):
+        t.tln(f"  {i}. {h['title']}")
+    ranks = {h["item_id"]: i for i, h in enumerate(docs.derived["hits"])}
     assert ranks.get(f"doc:{ids['pricing']}", 99) < ranks.get(f"doc:{ids['onboarding']}", 99), \
         "the pricing doc must outrank the onboarding doc for a pricing query"
     t.tln("pricing doc outranks onboarding doc: True")
@@ -138,13 +148,17 @@ def test_quick_find_across_entities(t: bt.TestCaseRun) -> None:
     loaders.load_todos(client, SEED_DIR)
     loaders.load_documents(client, SEED_DIR)
 
+    # The anchor account (ANCHOR_COMPANIES in the generator): guaranteed to be
+    # in every seed, with both a company row and notes of its own — which is
+    # what makes this a cross-entity lookup rather than a document search.
+    # Naming any other account couples the test to a random roster draw.
     res = search.quick_find(client, "genco")
     t.h1("quick-find 'genco' — grouped hits with open targets")
     for g in res["groups"]:
         for it in g["items"]:
             t.tln(f"  [{g['kind']}] {it['label']!r} -> {it['target']}")
     kinds = {g["kind"] for g in res["groups"]}
-    assert "company" in kinds, "the Genco company node is found"
+    assert "company" in kinds, "the anchor company node is found"
     assert any(it["target"] == "company/genco-oy"
                for g in res["groups"] for it in g["items"]), "with a deep-link target"
     assert any(g["kind"] == "note" for g in res["groups"]), "its notes are found too"

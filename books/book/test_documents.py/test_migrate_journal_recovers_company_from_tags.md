@@ -1,1 +1,1 @@
-harvested jnX -> company='Abstergo Oy' company_id='abstergo-oy' link='Abstergo Oy' topics='meeting;abstergo-oy;pricing'
+harvested jnX -> company='Acme OÜ' company_id='acme-o' link='Acme OÜ' topics='meeting;acme-o;pricing'

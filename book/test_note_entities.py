@@ -40,7 +40,14 @@ def test_add_company_idempotent_and_links(t: bt.TestCaseRun) -> None:
     t.h1("add a brand-new company")
     created = log.add_company(client, "NovaCo")
     t.tln(f"company_id={created['company_id']}  name={created['name']}  created={created['created']}")
-    assert created == {"company_id": "novaco", "name": "NovaCo", "created": True}
+    # the identity fields, not the whole row: a live-created company also
+    # carries the harvested columns (industry, relationship, mrr_eur, ...) at
+    # their "nothing known yet" defaults, and pinning the exact dict here made
+    # this fail the moment the company node started holding facts.
+    assert created["company_id"] == "novaco" and created["name"] == "NovaCo"
+    assert created["created"] is True
+    assert created["relationship"] == "none" and created["mrr_eur"] == 0, \
+        "a company with no deals yet is not a customer and bills nothing"
     assert "novaco" in _company_ids(client)
 
     t.h1("adding it again is idempotent (safe to press twice)")

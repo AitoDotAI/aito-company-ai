@@ -9,14 +9,16 @@
   _recommend: {"from": "posts", "goal": {"won": true}, "limit": 8, "recommend": "tone", "where": {"ai_made": "manual", "lane": "warm", "link_placement": "comment", "platform": "linkedin", "weekday": "wed"}}
   _recommend: {"from": "posts", "goal": {"won": true}, "limit": 8, "recommend": "link_placement", "where": {"ai_made": "manual", "lane": "warm", "platform": "linkedin", "tone": "narrate", "weekday": "wed"}}
   _recommend: {"from": "posts", "goal": {"won": true}, "limit": 8, "recommend": "ai_made", "where": {"lane": "warm", "link_placement": "comment", "platform": "linkedin", "tone": "narrate", "weekday": "wed"}}
-  P(win)=0.5533  base=0.2026
-    why tone=narrate  lift=1.8512
-    why $group=[{'link_placement': 'comment'}, {'platform': 'linkedin'}]  lift=1.5790
-    why weekday=wed  lift=1.1720
-    why ai_made=manual  lift=1.1488
-    lever tone: best=builder (SWITCH)  [builder=0.9994, announce=0.9976, explainer=0.9976, narrate=0.0000]
-    lever link_placement: best=comment  [comment=0.9974, body=0.9589]
-    lever ai_made: best=ai (SWITCH)  [ai=0.9801, ai-assisted=0.9801, manual=0.0000]
+  P(win)=0.1925  base=0.0771
+    why tone=narrate  lift=1.5102
+    why weekday=wed  lift=1.1008
+    why $group=[{'link_placement': 'comment'}, {'platform': 'linkedin'}]  lift=1.0914
+    why platform=linkedin  lift=1.0000
+    why link_placement=comment  lift=1.0000
+    why ai_made=manual  lift=1.0000
+    lever tone: best=narrate  [narrate=0.8207, announce=0.3175, explainer=0.2020, builder=0.1580]
+    lever link_placement: best=comment  [comment=0.3255, body=0.1921]
+    lever ai_made: best=manual  [manual=0.7457, ai-assisted=0.5840, ai=0.3059]
 
 # Its opposite (announce, body link, AI) — should crater
 
@@ -29,15 +31,16 @@
   _recommend: {"from": "posts", "goal": {"won": true}, "limit": 8, "recommend": "tone", "where": {"ai_made": "ai", "lane": "warm", "link_placement": "body", "platform": "linkedin", "weekday": "mon"}}
   _recommend: {"from": "posts", "goal": {"won": true}, "limit": 8, "recommend": "link_placement", "where": {"ai_made": "ai", "lane": "warm", "platform": "linkedin", "tone": "announce", "weekday": "mon"}}
   _recommend: {"from": "posts", "goal": {"won": true}, "limit": 8, "recommend": "ai_made", "where": {"lane": "warm", "link_placement": "body", "platform": "linkedin", "tone": "announce", "weekday": "mon"}}
-  P(win)=0.0192  base=0.2026
-    why tone=announce  lift=0.2429
-    why ai_made=ai  lift=0.3858
-    why link_placement=body  lift=0.6501
-    why $group=[{'link_placement': 'body'}, {'platform': 'linkedin'}, {'weekday': 'mon'}]  lift=1.0726
+  P(win)=0.0229  base=0.0771
+    why $group=[{'link_placement': 'body'}, {'platform': 'linkedin'}]  lift=0.3102
+    why tone=announce  lift=0.5313
+    why weekday=mon  lift=1.3417
+    why link_placement=body  lift=1.0000
     why platform=linkedin  lift=1.0000
-    lever tone: best=narrate (SWITCH)  [narrate=0.9907, builder=0.9903, explainer=0.9392, announce=0.0210]
-    lever link_placement: best=comment (SWITCH)  [comment=0.2983, body=0.0102]
-    lever ai_made: best=ai-assisted (SWITCH)  [ai-assisted=0.4566, ai=0.4514, manual=0.4435]
+    why ai_made=ai  lift=1.0000
+    lever tone: best=builder (SWITCH)  [builder=1.0000, explainer=1.0000, narrate=0.9999, announce=0.9999]
+    lever link_placement: best=comment (SWITCH)  [comment=0.3572, body=0.0848]
+    lever ai_made: best=ai  [ai=0.9637, manual=0.9558, ai-assisted=0.8330]
 
 # Hacker News show-hn draft
 
@@ -50,11 +53,12 @@
   _recommend: {"from": "posts", "goal": {"won": true}, "limit": 8, "recommend": "tone", "where": {"ai_made": "manual", "format": "show-hn", "platform": "hackernews"}}
   _recommend: {"from": "posts", "goal": {"won": true}, "limit": 8, "recommend": "link_placement", "where": {"ai_made": "manual", "format": "show-hn", "platform": "hackernews", "tone": "builder"}}
   _recommend: {"from": "posts", "goal": {"won": true}, "limit": 8, "recommend": "ai_made", "where": {"format": "show-hn", "platform": "hackernews", "tone": "builder"}}
-  P(win)=0.2723  base=0.1562
-    why ai_made=manual  lift=1.4699
-    why $group=[{'format': 'show-hn'}, {'platform': 'hackernews'}]  lift=1.1868
-    why format=show-hn  lift=1.0000
+  P(win)=0.0192  base=0.0305
+    why $group=[{'format': 'show-hn'}, {'platform': 'hackernews'}]  lift=0.3102
+    why tone=builder  lift=0.3102
+    why ai_made=manual  lift=1.0249
     why platform=hackernews  lift=1.0000
-    lever tone: best=announce (SWITCH)  [announce=0.3140, explainer=0.3140, builder=0.0072, narrate=0.0050]
-    lever link_placement: best=n_a  [n_a=0.0000]
-    lever ai_made: best=ai (SWITCH)  [ai=0.0021, manual=0.0016, ai-assisted=0.0012]
+    why format=show-hn  lift=1.0000
+    lever tone: best=builder  [builder=0.9995, narrate=0.9984, explainer=0.9982, announce=0.9980]
+    lever link_placement: best=n_a  [n_a=0.9999]
+    lever ai_made: best=ai (SWITCH)  [ai=0.9828, ai-assisted=0.9510, manual=0.8910]
