@@ -29,20 +29,55 @@ from .aito import AitoClient
 # both, because the point of the demo is that they are close together.
 QUESTIONS: list[tuple[str, str, dict]] = [
     (
-        "paying",
-        "Who actually pays us, and how much?",
-        {"from": "companies", "where": {"relationship": "customer"},
-         "orderBy": {"$desc": "mrr_eur"},
-         "select": ["name", "industry", "country", "mrr_eur"], "limit": 6},
+        "classify-account",
+        "What kind of company is this, judged only by who works there?",
+        # Node classification: infer an attribute OF THE ACCOUNT from the set of
+        # people linked to it. The account's own industry column is not read —
+        # the evidence is the neighbourhood, reached backwards through
+        # $refs.contacts.company_id. This is the shape a graph is for, and it is
+        # the one card here with no relational equivalent.
+        {"from": "companies",
+         "where": {"$refs.contacts.company_id": {"$exists": {"role": "CFO"}}},
+         "predict": "industry", "select": ["$value", "$p"], "limit": 5},
     ),
     (
-        "expansion-odds",
-        "At an account that already pays us, how likely is a deal to close?",
-        # The layer above lookup. The condition is a fact that lives on the
-        # OTHER side of the link, and the answer is a calibrated probability
-        # rather than a count: 50% here against a 25% base rate over all deals,
-        # i.e. selling to an existing customer is worth about two new ones.
-        {"from": "deals", "where": {"company_id.relationship": "customer"},
+        "cto-odds-explained",
+        "Does knowing a CTO there actually move the odds — and by how much?",
+        # The same reverse-link fact as the card below, but HARVESTED onto the
+        # company at load time (companies <- contacts), which turns it into a
+        # forward path. That matters for one reason: Aito cannot explain a
+        # filtered $refs proposition, so asked live the question can have a
+        # number or reasons, not both. Materialised, it gets both — and the
+        # lift on company_id.technical_contact is the answer to "by how much".
+        {"from": "deals",
+         "where": {"company_id.technical_contact": True, "blocker": "none"},
+         "predict": "won", "select": ["$value", "$p", "$why"]},
+    ),
+    (
+        "explained-odds",
+        "An accounting account, a champion on board, nothing blocking — what are the odds?",
+        # Several facts at once, one of them reached across the link: the
+        # account's industry lives on the company, the champion and the blocker
+        # on the deal. $why returns what each of them did to the number, so the
+        # answer arrives with its reasons instead of as a bare probability.
+        {"from": "deals",
+         "where": {"company_id.industry": "accounting",
+                   "champion_present": True,
+                   "blocker": "none"},
+         "predict": "won", "select": ["$value", "$p", "$why"]},
+    ),
+    (
+        "cto-odds",
+        "At an account where we know a CTO, how likely is a deal to close?",
+        # The one card here that a relational database could not also produce.
+        # It walks the link FORWARD from the deal to its account, then BACKWARDS
+        # to that account's contacts, and asks whether any of them is a CTO —
+        # a fact that exists nowhere on the deal. The view puts the answer next
+        # to BASELINE_REQUEST below, because a conditioned probability only
+        # means something against the unconditioned one.
+        {"from": "deals",
+         "where": {"company_id.$refs.contacts.company_id":
+                   {"$exists": {"role": "CTO"}}},
          "predict": "won", "select": ["$value", "$p"]},
     ),
     (
@@ -71,7 +106,6 @@ QUESTIONS: list[tuple[str, str, dict]] = [
     (
         "accounting-deals",
         "What is in play across the accounting industry?",
-        # forward hop from a deal to its account's harvested industry
         {"from": "deals", "where": {"company_id.industry": "accounting"},
          "orderBy": {"$desc": "value_eur"},
          "select": ["company", "stage", "value_eur"], "limit": 6},
@@ -89,6 +123,21 @@ QUESTIONS: list[tuple[str, str, dict]] = [
 ]
 
 
+
+# The same prediction with NO condition. Quoting a conditioned probability
+# without this is how "50%" once got reported as a finding when the base rate
+# was 25% — and how a 27% result can look decisive at 73/27 while saying
+# nothing. Computed, never written down: every time these numbers were typed
+# into prose they drifted the next time the seed was regenerated.
+BASELINE_REQUEST = {"from": "deals", "predict": "won", "select": ["$value", "$p"]}
+
+
+def _p_true(hits: list[dict]) -> float | None:
+    """P(won = true) out of a predict response."""
+    hit = next((h for h in hits if h.get("$value") in (True, "true")), None)
+    return hit["$p"] if hit else None
+
+
 def answer(client: AitoClient, question_id: str, prose: str, request: dict) -> dict:
     """Run one question. A failure is reported, not swallowed: this is a
     deliberately un-battle-tested corner of Aito, and a card that says which
@@ -96,7 +145,22 @@ def answer(client: AitoClient, question_id: str, prose: str, request: dict) -> d
     out = {"id": question_id, "question": prose, "request": request}
     try:
         response = client.query(request)
-        out["hits"] = response.get("hits", [])
+        hits = response.get("hits", [])
+        # $why comes back as a nested tree that is far too big to render raw.
+        # Flatten it to the labelled lift factors the dashboard already uses for
+        # deal close-likelihood, strongest effect first, and drop the tree.
+        if any("$why" in h for h in hits):
+            from . import aitowhy
+            from .deals import _why_label
+            true_hit = next((h for h in hits if h.get("$value") in (True, "true")), None)
+            if true_hit is not None:
+                factors = [{"label": _why_label(f["proposition"]), "lift": f["value"]}
+                           for f in aitowhy.lift_factors(true_hit)]
+                factors.sort(key=lambda w: -abs(w["lift"] - 1.0))
+                out["why"] = factors[:6]
+                out["p"] = true_hit.get("$p")
+            hits = [{k: v for k, v in h.items() if k != "$why"} for h in hits]
+        out["hits"] = hits
         out["total"] = response.get("total")
     except Exception as exc:                      # noqa: BLE001 — reported, see above
         out["error"] = f"{type(exc).__name__}: {exc}"
@@ -106,8 +170,14 @@ def answer(client: AitoClient, question_id: str, prose: str, request: dict) -> d
 def board(client: AitoClient) -> dict:
     """Every question, each with the query that answered it."""
     answers = [answer(client, qid, prose, req) for qid, prose, req in QUESTIONS]
+    base = answer(client, "baseline", "How likely is any deal to close?", BASELINE_REQUEST)
+    conditioned = next((a for a in answers if a["id"] == "cto-odds"), None)
     return {
         "answers": answers,
+        # the lift, for the view to state honestly: both sides measured, neither
+        # written down.
+        "baseline_p": _p_true(base.get("hits", [])),
+        "conditioned_p": _p_true((conditioned or {}).get("hits", [])),
         "ok": sum(1 for a in answers if "error" not in a),
         "failed": [a["id"] for a in answers if "error" in a],
     }

@@ -1997,6 +1997,33 @@ function GraphAnswer({ a }) {
     <div className="gq-card">
       <div className="gq-q">{a.question}</div>
       <pre className="gq-query">{JSON.stringify(a.request, null, 1)}</pre>
+      {a.why && a.why.length > 0 && (
+        <div className="gq-why">
+          <div className="gq-p">
+            <span className="gq-pnum">{Math.round(a.p * 100)}%</span>
+            <span className="gq-plabel">probability of winning</span>
+          </div>
+          {/* Each factor's bar runs from the centre: right of it the fact made
+              winning MORE likely, left of it less. Width is log-scaled because
+              lift is multiplicative — x2 and x0.5 are the same size of effect
+              in opposite directions, and a linear bar hides that. */}
+          {a.why.map((f) => {
+            const mag = Math.min(1, Math.abs(Math.log2(f.lift)) / 1.5);
+            const up = f.lift >= 1;
+            return (
+              <div className="gq-factor" key={f.label}>
+                <span className="gq-flabel" title={f.label}>{f.label}</span>
+                <span className="gq-track">
+                  <span className={"gq-bar " + (up ? "up" : "down")}
+                        style={{ width: `${mag * 50}%`, [up ? "left" : "right"]: "50%" }} />
+                  <span className="gq-mid" />
+                </span>
+                <span className={"gq-lift " + (up ? "up" : "down")}>×{f.lift.toFixed(2)}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
       {a.error ? (
         <div className="gq-err">{a.error}</div>
       ) : (
@@ -2040,11 +2067,16 @@ export function GraphView() {
         Aito walks those links in both directions — <code>company_id.industry</code>{" "}
         forward to the account, <code>$refs.contacts.company_id</code> back to its
         people — so each question below is <b>one query</b>, not a join.
-        <div className="gq-finding">
-          And a fact on the far side of a link can condition a prediction: a deal
-          at an account that <b>already pays us closes at 50%</b>, against a 25%
-          base rate across all deals.
-        </div>
+        {r.data && r.data.conditioned_p != null && r.data.baseline_p != null && (
+          <div className="gq-finding">
+            And the neighbourhood can condition a <b>prediction</b>: a deal at an
+            account where we know a CTO closes at{" "}
+            <b>{Math.round(r.data.conditioned_p * 100)}%</b>, against a{" "}
+            {Math.round(r.data.baseline_p * 100)}% base rate across all deals.
+            Whether a CTO is on file exists nowhere on the deal — only across the
+            link. Both figures come from the queries on this page.
+          </div>
+        )}
       </div>
       {r.loading && <Loading label="Asking the graph…" />}
       {r.err && <ErrorBox msg={r.err} />}

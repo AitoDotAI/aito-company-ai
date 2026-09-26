@@ -60,12 +60,19 @@ function useHashRoute(fallback) {
 
 const isPhone = () => typeof window !== "undefined" && window.innerWidth <= 720;
 
+// ?bare=1 — render the view alone, with no sidebar and no assistant panel.
+// Those two take ~40% of the width and say nothing about what the product
+// does, which makes every screenshot and embed smaller than it needs to be.
+const isBare = () => typeof window !== "undefined" &&
+  new URLSearchParams(window.location.search).has("bare");
+
 export default function App() {
   const [route, go] = useHashRoute("now");
+  const bare = isBare();
   // the assistant is open by default on desktop; on phones it starts closed so
   // the view owns the small screen (open it with the ✦ toggle). Closing persists.
   const [chat, setChat] = useState(
-    () => !isPhone() && localStorage.getItem("asst-open") !== "false");
+    () => !isBare() && !isPhone() && localStorage.getItem("asst-open") !== "false");
   useEffect(() => { localStorage.setItem("asst-open", chat ? "true" : "false"); }, [chat]);
   // conversations live in a shared store (conversations.js) so the quick panel
   // here and the full-page Chat view operate on the same threads. The panel
@@ -80,14 +87,15 @@ export default function App() {
   // desktop: the sidebar can be collapsed away to hand its width to the editor
   // (e.g. take notes on half the screen while a video call has the other half).
   const [navCollapsed, setNavCollapsed] = useState(
-    () => localStorage.getItem("nav-collapsed") === "true");
+    () => isBare() || localStorage.getItem("nav-collapsed") === "true");
   useEffect(() => { localStorage.setItem("nav-collapsed", navCollapsed ? "true" : "false"); }, [navCollapsed]);
   const [viewKey, ...restSeg] = route.split("/");   // "documents/dc1" → key + param
   const param = restSeg.join("/") || null;
   const view = VIEWS[viewKey] || VIEWS.now;
   const navTo = (id) => { go(id); setNavOpen(false); };
   return (
-    <div className={"app" + (chat && route !== "chat" ? " with-chat" : "") + (navCollapsed ? " nav-collapsed" : "")}>
+    <div className={"app" + (chat && route !== "chat" ? " with-chat" : "")
+                   + (navCollapsed ? " nav-collapsed" : "") + (bare ? " bare" : "")}>
       {/* mobile-only top bar: drawer toggle · brand · assistant toggle */}
       <header className="topbar">
         <button className="tb-btn" aria-label="menu" onClick={() => setNavOpen(true)}>☰</button>

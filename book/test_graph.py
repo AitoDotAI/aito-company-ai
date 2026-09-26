@@ -64,6 +64,11 @@ def test_graph_questions(t: bt.TestCaseRun) -> None:
         t.tln(f"  total:    {a['total']}")
         for hit in a["hits"][:3]:
             t.tln(f"    {dict(sorted(hit.items()))}")
+        # the explanation is the point of the $why card: print each factor's
+        # multiplicative lift so a change in the reasons shows up in the diff,
+        # not just a change in the probability.
+        for f in a.get("why", []):
+            t.tln(f"    why: {f['label']:42} x{f['lift']:.2f}")
     # Traversal must actually traverse: a silently-unresolved dotted field
     # returns zero rows rather than raising (docs/31, sharp edges), so an
     # all-empty board would look identical to a broken link.
@@ -74,3 +79,12 @@ def test_graph_questions(t: bt.TestCaseRun) -> None:
     refs = next(a for a in board["answers"] if a["id"] == "accounts-with-cto")
     assert refs["total"] > 0, \
         "reverse traversal $refs.contacts.company_id returned nothing — link unresolved?"
+    # the explained card must come back with its reasons, and one of them must
+    # be the fact that lives across the link — that is what distinguishes this
+    # from a prediction any relational database could make.
+    exp = next(a for a in board["answers"] if a["id"] == "explained-odds")
+    assert exp.get("why"), "$why returned no lift factors"
+    assert any(f["label"].startswith("company_id.") for f in exp["why"]), \
+        f"no factor came from across the link; got {[f['label'] for f in exp['why']]}"
+    assert exp["p"] > board["baseline_p"], \
+        "a deal with a champion, no blocker and a good industry must beat the base rate"

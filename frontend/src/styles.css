@@ -825,3 +825,31 @@ select:focus { outline:none; border-color:var(--purple); }
 @media (max-width: 720px) { .gq-grid { grid-template-columns: 1fr; } }
 .gq-finding { margin-top: 10px; padding: 9px 13px; border-left: 3px solid var(--turquoise);
               background: var(--tint); border-radius: 0 8px 8px 0; color: var(--ink); }
+
+/* $why as a centred lift chart: right of the midline the fact made the
+   outcome more likely, left of it less. */
+.gq-why { border-top: 1px solid var(--line); padding-top: 12px; margin-top: 2px;
+          display: flex; flex-direction: column; gap: 7px; }
+.gq-p { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+.gq-pnum { font-family: 'JetBrains Mono',monospace; font-size: 30px; font-weight: 600;
+           color: var(--purple); line-height: 1; }
+.gq-plabel { font-size: 12px; color: var(--ink-dim); }
+.gq-factor { display: grid; grid-template-columns: 1fr 78px 46px; align-items: center; gap: 8px; }
+.gq-flabel { font-family: 'JetBrains Mono',monospace; font-size: 10.5px; color: var(--ink);
+             overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gq-track { position: relative; height: 12px; background: var(--tint); border-radius: 3px; }
+.gq-mid { position: absolute; left: 50%; top: -1px; bottom: -1px; width: 1px; background: var(--ink-faint); }
+.gq-bar { position: absolute; top: 0; bottom: 0; border-radius: 2px; }
+.gq-bar.up { background: var(--ok); }
+.gq-bar.down { background: var(--danger); }
+.gq-lift { font-family: 'JetBrains Mono',monospace; font-size: 11px; text-align: right; }
+.gq-lift.up { color: var(--ok); }
+.gq-lift.down { color: var(--danger); }
+
+/* ?bare=1 — the view alone, for screenshots and embeds. Hides the chrome that
+   carries no information about the product: the sidebar, its reopen tab, the
+   mobile top bar, and the header's action buttons. */
+.app.bare .side, .app.bare .nav-reopen, .app.bare .topbar,
+.app.bare .head-actions { display: none !important; }
+.app.bare { grid-template-columns: 1fr !important; }
+.app.bare main { padding-left: 28px; padding-right: 28px; }
