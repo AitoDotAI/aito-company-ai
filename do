@@ -123,10 +123,12 @@ cmd_seed() {
   local dir="${SEED_DIR:-data/seed}"
   say "seeding via $(env_label) from $dir"
   uv run company-ai create-schema
-  uv run company-ai load-companies --dir "$dir"   # link target; load before contacts/deals
-  for cmd in load-rolodex load-touches load-sessions load-materials load-channels load-posts load-todos load-deals load-decisions load-experiments load-events load-documents; do
-    uv run company-ai "$cmd" --dir "$dir"
-  done
+  # load-all walks loaders.LOAD_ORDER (companies first as the link target, then
+  # every table whose CSV is present). Deriving the list there instead of
+  # repeating it here is the point: the hand-maintained list this replaced had
+  # drifted and silently skipped routines + users, so those shipped empty in the
+  # public demo even though data/seed carries both.
+  uv run company-ai load-all --dir "$dir"
 }
 
 cmd_seed_tiny() { SEED_DIR=data/seed_tiny cmd_seed "${1:-}"; }
