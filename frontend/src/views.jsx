@@ -2096,10 +2096,17 @@ export function GraphView() {
   );
 }
 
-export function SearchView() {
-  const [text, setText] = useState("");
-  const [kind, setKind] = useState("");
-  const [query, setQuery] = useState("");     // the submitted query
+export function SearchView({ initial }) {
+  // `#/search/<query>` runs that search on arrival, so a search is a shareable
+  // link rather than something only a keyboard can reach.
+  const seeded = initial ? decodeURIComponent(initial) : "";
+  // ?kind=doc alongside the query, so a shared link carries the filter too —
+  // without it the largest collection (deals) crowds out everything else.
+  const seededKind = typeof window === "undefined" ? ""
+    : new URLSearchParams(window.location.search).get("kind") || "";
+  const [text, setText] = useState(seeded);
+  const [kind, setKind] = useState(seededKind);
+  const [query, setQuery] = useState(seeded);   // the submitted query
   const [clicked, setClicked] = useState({}); // item_id -> true, once recorded
   const r = useAsync(
     () => (query ? api.search(query, kind) : Promise.resolve(null)),
@@ -2149,6 +2156,12 @@ export function SearchView() {
                   </button>
                 ))}
               </div>
+              {r.data.semantic && (
+                <div className="sr-note">
+                  matched by meaning as well as words — the query was embedded and
+                  compared against the index, so a result need share no term with it
+                </div>
+              )}
               {r.data.learned && <div className="sr-note">ranking trained by past clicks</div>}
             </>
       )}
@@ -2495,7 +2508,7 @@ export const VIEWS = {
            render: () => <GraphView /> },
   search: { title: "Search", desc: "Smart search across content — docs, contacts, and deals — ranked by Aito text-match relevance. The same index the assistant grounds on.",
            prims: ["document-tree"],
-           render: () => <SearchView /> },
+           render: (param) => <SearchView initial={param} /> },
   salesanalytics: { title: "Sales analytics", desc: "Pipeline health, close-likelihood by stage, who to reach, and the sales funnel with its lever — the sales counterpart to the marketing metrics.",
            prims: ["kpi-row", "predict", "chart"],
            data: [{ table: "deals" }, { table: "contacts" }],
