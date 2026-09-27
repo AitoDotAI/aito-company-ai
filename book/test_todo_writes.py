@@ -218,6 +218,16 @@ def test_success_is_the_persisted_row_not_an_echo(t: bt.TestCaseRun) -> None:
     t.tln(f"returned priority={row['priority']} rev set={bool(row['rev'])}")
 
 
+def test_a_landed_write_behind_slow_reads_is_not_applied_twice(t: bt.TestCaseRun) -> None:
+    t.h1("the append lands, but every read-back retry sees the old row")
+    fake = FakeAito([_todo("td-1", detail="base", rev=log.INITIAL_REV)])
+    fake.stale_reads = log._READ_BACK_ATTEMPTS
+    row = log.update_todo(fake, "td-1", {}, append_detail="=== once ===")
+    stored = _row(fake, "td-1")["detail"]
+    t.tln(f"appended exactly once: {stored.count('=== once ===') == 1}")
+    t.tln(f"returned the persisted row: {row['detail'] == stored}")
+
+
 def test_a_write_that_dies_midway_leaves_the_table_intact(t: bt.TestCaseRun) -> None:
     fake = _board(5)
 

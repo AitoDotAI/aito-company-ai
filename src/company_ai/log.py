@@ -356,6 +356,10 @@ def _write_todo(client: AitoClient, todo_id: str, build, attempts: int = _WRITE_
             return before, _read_back(client, todo_id, {**fields, "rev": rev}, sleep=sleep)
         except TodoWriteNotPersisted:
             now = _todo_rows(client, todo_id)
+            if now and now[0].get("rev") == rev:
+                # OUR write landed; the read-back was only slow. Never rebuild
+                # on our own write (an append would be applied twice).
+                return before, {**{c: None for c in schema.TODOS["columns"]}, **now[0]}
             if now and now[0].get("rev") != before.get("rev"):
                 continue          # a concurrent write landed first: rebuild on it
             raise

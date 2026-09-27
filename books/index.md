@@ -135,6 +135,7 @@
      * [test_sheets.py::test_table_sheet_shows_all_rows](book/test_sheets.py::test_table_sheet_shows_all_rows.md)
      * [test_sheets.py::test_unknown_table_asserts](book/test_sheets.py::test_unknown_table_asserts.md)
      * [test_todo_writes.py::test_a_claim_race_has_one_winner](book/test_todo_writes.py::test_a_claim_race_has_one_winner.md)
+     * [test_todo_writes.py::test_a_landed_write_behind_slow_reads_is_not_applied_twice](book/test_todo_writes.py::test_a_landed_write_behind_slow_reads_is_not_applied_twice.md)
      * [test_todo_writes.py::test_a_write_that_dies_midway_leaves_the_table_intact](book/test_todo_writes.py::test_a_write_that_dies_midway_leaves_the_table_intact.md)
      * [test_todo_writes.py::test_concurrent_appends_both_land](book/test_todo_writes.py::test_concurrent_appends_both_land.md)
      * [test_todo_writes.py::test_concurrent_edits_of_the_same_row_compose](book/test_todo_writes.py::test_concurrent_edits_of_the_same_row_compose.md)
