@@ -31,19 +31,31 @@ def embedder(config: Config):
     if not config.embed_enabled:
         return None
 
-    url = (f"{config.embed_endpoint}/openai/deployments/{config.embed_deployment}"
-           f"/embeddings?api-version={config.embed_api_version}")
-    headers = {"api-key": config.embed_api_key, "content-type": "application/json"}
+    # Two providers, one call shape apart. Azure addresses a DEPLOYMENT in the
+    # path and authenticates with an `api-key` header; OpenAI has a fixed
+    # endpoint, names the MODEL in the body, and uses a bearer token.
+    if config.embed_is_azure:
+        url = (f"{config.embed_endpoint}/openai/deployments/{config.embed_target}"
+               f"/embeddings?api-version={config.embed_api_version}")
+        headers = {"api-key": config.embed_api_key, "content-type": "application/json"}
+        body_extra: dict = {}
+    else:
+        base = config.embed_endpoint or "https://api.openai.com/v1"
+        url = f"{base}/embeddings"
+        headers = {"authorization": f"Bearer {config.embed_api_key}",
+                   "content-type": "application/json"}
+        body_extra = {"model": config.embed_target}
 
     def embed(texts: list[str]) -> list[list[float]]:
-        items = [t if t and t.strip() else " " for t in texts]  # Azure rejects empty input
+        items = [t if t and t.strip() else " " for t in texts]  # empty input is rejected
         out: list[list[float]] = []
         for i in range(0, len(items), _BATCH):
             chunk = items[i:i + _BATCH]
-            # `dimensions` asks text-embedding-3-large for a shorter vector
+            # `dimensions` asks text-embedding-3-* for a shorter vector
             # (Matryoshka) so it fits this Aito build's Vector-column cap (1017).
             r = requests.post(url, headers=headers,
-                              json={"input": chunk, "dimensions": EMBED_DIM}, timeout=60)
+                              json={"input": chunk, "dimensions": EMBED_DIM, **body_extra},
+                              timeout=60)
             if r.status_code != 200:
                 raise EmbedError(f"embeddings -> {r.status_code}: {r.text[:300]}")
             data = sorted(r.json()["data"], key=lambda d: d["index"])

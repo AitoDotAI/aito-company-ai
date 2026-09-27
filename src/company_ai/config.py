@@ -11,6 +11,8 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 SEED_DIR = REPO_ROOT / "data" / "seed"
 SEED_TINY_DIR = REPO_ROOT / "data" / "seed_tiny"
 
+DEFAULT_EMBED_MODEL = "text-embedding-3-large"
+
 _LOCAL_HOSTS = {"localhost", "127.0.0.1", "0.0.0.0", "::1", ""}
 
 
@@ -97,10 +99,43 @@ class Config:
     embed_deployment: str
     embed_api_version: str
     embed_api_key: str
+    embed_model: str = ""
+
+    @property
+    def embed_target(self) -> str:
+        """The model to ask for — an Azure deployment name or an OpenAI model.
+
+        Defaulted, because `text-embedding-3-large` is what both sides use and
+        naming it twice is just another thing to get wrong. What is NOT
+        defaulted is the provider signal (an endpoint, or an explicit model):
+        the key already falls back to the LLM key, so a default on both would
+        turn embeddings — and billing — on for anyone who merely has a key."""
+        named = self.embed_deployment if self.embed_is_azure else self.embed_model
+        return named or DEFAULT_EMBED_MODEL
+
+    @property
+    def embed_is_azure(self) -> bool:
+        """Azure OpenAI (endpoint + deployment + `api-key` header) rather than
+        OpenAI proper. An Azure resource is any endpoint that is not
+        api.openai.com; naming a MODEL instead of a deployment selects OpenAI."""
+        if self.embed_model and not self.embed_deployment:
+            return False
+        return bool(self.embed_endpoint) and "api.openai.com" not in self.embed_endpoint
 
     @property
     def embed_enabled(self) -> bool:
-        return bool(self.embed_endpoint and self.embed_deployment and self.embed_api_key)
+        """Semantic search needs a key plus enough to address a model.
+
+        Azure wants an endpoint and a deployment; OpenAI wants a model name and
+        nothing else, since its endpoint is fixed. Requiring an Azure resource
+        for the semantic layer made it unreachable for anyone outside Aito,
+        which is the wrong default for a repository anyone can clone."""
+        if not self.embed_api_key:
+            return False
+        if self.embed_is_azure:
+            return bool(self.embed_endpoint)   # deployment defaults
+        return bool(self.embed_model)
+
 
     @staticmethod
     def from_env() -> "Config":
@@ -174,9 +209,27 @@ class Config:
             public_url=_env_first("COMPANY_AI_PUBLIC_URL").rstrip("/"),
             # embeddings: its own endpoint/deployment; key falls back to the LLM
             # key (shared Azure resource). api-version defaults to the GA embeddings one.
-            embed_endpoint=_env_first("COMPANY_AI_EMBED_ENDPOINT").rstrip("/"),
-            embed_deployment=_env_first("COMPANY_AI_EMBED_DEPLOYMENT"),
+            # Falls back to the CHAT resource's endpoint, the same way the key
+            # already falls back to the chat key: when one Azure resource serves
+            # both, naming it twice is just another thing to get wrong. An
+            # embeddings resource in its own region still wins by being set.
+            embed_endpoint=_env_first("COMPANY_AI_EMBED_ENDPOINT",
+                                      "AZURE_OPENAI_ENDPOINT",
+                                      "COMPANY_AI_LLM_AZURE_ENDPOINT",
+                                      "REACT_APP_OPENAI_MODEL_URL").rstrip("/"),
+            embed_deployment=_env_first("COMPANY_AI_EMBED_DEPLOYMENT",
+                                        "AZURE_OPENAI_EMBED_DEPLOYMENT"),
+            # the OpenAI path: a model name instead of an Azure deployment.
+            # Explicit on purpose — the key already falls back to the LLM key,
+            # so defaulting a model would switch embeddings (and billing) on
+            # for anyone who merely has an LLM key set.
+            embed_model=_env_first("COMPANY_AI_EMBED_MODEL"),
             embed_api_version=_env_first("COMPANY_AI_EMBED_API_VERSION", default="2024-02-01"),
+            # OPENAI_API_KEY last: it is the name everyone already has set, so
+            # accepting it saves a rename — but it is only ever a KEY. It never
+            # switches embeddings on by itself; a model or deployment still has
+            # to be named explicitly (see embed_enabled).
             embed_api_key=_env_first("COMPANY_AI_EMBED_API_KEY", "COMPANY_AI_LLM_API_KEY",
-                                     "REACT_APP_OPENAI_MODEL_API_KEY"),
+                                     "REACT_APP_OPENAI_MODEL_API_KEY", "OPENAI_API_KEY",
+                                     "AZURE_OPENAI_API_KEY", "AZURE_OPENAI_KEY"),
         )

@@ -316,9 +316,27 @@ def main() -> None:
         from . import search as search_mod
         embedder = embed_mod.embedder(config) if config.embed_enabled else None
         if embedder is None:
-            print("embeddings: OFF (no COMPANY_AI_EMBED_*) — text-match index only")
+            # Say WHICH file was read and WHICH names are missing. "Embeddings
+            # are off" with no reason sends people to edit the wrong file — and
+            # the dotenv that gets loaded is not always the one they think.
+            # Names and set/unset only; never a value.
+            import os
+            names = ("COMPANY_AI_EMBED_ENDPOINT", "COMPANY_AI_EMBED_DEPLOYMENT",
+                     "COMPANY_AI_EMBED_MODEL", "COMPANY_AI_EMBED_API_KEY",
+                     "COMPANY_AI_LLM_API_KEY", "OPENAI_API_KEY",
+                     "AZURE_OPENAI_ENDPOINT", "AZURE_OPENAI_API_KEY", "AZURE_OPENAI_KEY",
+                     "COMPANY_AI_LLM_AZURE_ENDPOINT", "REACT_APP_OPENAI_MODEL_URL",
+                     "REACT_APP_OPENAI_MODEL_API_KEY")
+            print("embeddings: OFF — text-match index only")
+            print(f"  dotenv read: {os.environ.get('COMPANY_AI_ENV') or 'the default'}")
+            for name in names:
+                print(f"    {'set  ' if os.environ.get(name) else 'unset'}  {name}")
+            print("  need EITHER  COMPANY_AI_EMBED_MODEL + a key      (OpenAI)")
+            print("         OR    _ENDPOINT + _DEPLOYMENT + a key     (Azure)")
+            print("  the key may be COMPANY_AI_EMBED_API_KEY or COMPANY_AI_LLM_API_KEY")
         else:
-            print(f"embeddings: ON ({config.embed_deployment}) — building vectors too")
+            kind = "Azure" if config.embed_is_azure else "OpenAI"
+            print(f"embeddings: ON — {kind} {config.embed_target} — building vectors too")
         stats = search_mod.build_index(client, embed=embedder)
         print(f"  indexed {stats['indexed']} items")
         for kind, n in sorted(stats.get("by_kind", {}).items()):
