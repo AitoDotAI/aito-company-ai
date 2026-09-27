@@ -81,9 +81,19 @@ class AitoClient:
         try:
             present = name in self.get_schema()["schema"]
         except AitoError:
+            # A schema read can fail transiently (409 while the instance is
+            # migrating). That is indistinguishable from "absent" here, so fall
+            # through to the create and let the create decide.
             present = False
         if not present:
-            self.create_table(name, definition)
+            try:
+                self.create_table(name, definition)
+            except AitoError as exc:
+                # The method promises idempotence, so losing the race — or
+                # having guessed "absent" from a failed read — must not be an
+                # error. Anything else still raises (rule 3).
+                if "already exists" not in str(exc):
+                    raise
         AitoClient._ensured.add(name)
 
     def delete_table(self, name: str) -> Any:
