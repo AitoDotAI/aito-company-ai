@@ -70,6 +70,9 @@ def main() -> None:
 
     sub.add_parser("doctor", help="read-only health/drift report for the instance")
 
+    sub.add_parser("reindex-search",
+                   help="rebuild the search index; embeds it when COMPANY_AI_EMBED_* is set")
+
     ea = sub.add_parser("export-all", help="dump every table to CSVs (migration step 1)")
     ea.add_argument("--dir", default=".", help="output directory (default: cwd)")
 
@@ -157,6 +160,7 @@ def main() -> None:
                   "load-deals", "load-decisions", "load-experiments", "load-events",
                   "load-documents", "documents-import", "migrate-journal", "trilium-import",
                   "load-all", "clear", "export", "export-all", "board-run",
+                  "reindex-search",
                   "routines-run", "log", "complete", "archive", "backup", "restore"}
     if args.command in WRITE_CMDS:
         _echo_target(config)
@@ -303,6 +307,42 @@ def main() -> None:
         if report["schema_drift"]:
             print("→ fix: company-ai create-schema  (adds missing tables/columns; "
                   "then reload any table flagged needs_reload or mismatched)")
+    elif args.command == "reindex-search":
+        # The only non-HTTP way to rebuild the index. Embedding happens HERE,
+        # not on write (docs/23), so after turning COMPANY_AI_EMBED_* on, the
+        # semantic layer stays dark until this runs — and the HTTP endpoint is
+        # operator-only, which leaves an operator with no route at all.
+        from . import embed as embed_mod
+        from . import search as search_mod
+        embedder = embed_mod.embedder(config) if config.embed_enabled else None
+        if embedder is None:
+            # Say WHICH file was read and WHICH names are missing. "Embeddings
+            # are off" with no reason sends people to edit the wrong file — and
+            # the dotenv that gets loaded is not always the one they think.
+            # Names and set/unset only; never a value.
+            import os
+            names = ("COMPANY_AI_EMBED_ENDPOINT", "COMPANY_AI_EMBED_DEPLOYMENT",
+                     "COMPANY_AI_EMBED_MODEL", "COMPANY_AI_EMBED_API_KEY",
+                     "COMPANY_AI_LLM_API_KEY", "OPENAI_API_KEY",
+                     "AZURE_OPENAI_ENDPOINT", "AZURE_OPENAI_API_KEY", "AZURE_OPENAI_KEY",
+                     "COMPANY_AI_LLM_AZURE_ENDPOINT", "REACT_APP_OPENAI_MODEL_URL",
+                     "REACT_APP_OPENAI_MODEL_API_KEY")
+            print("embeddings: OFF — text-match index only")
+            print(f"  dotenv read: {os.environ.get('COMPANY_AI_ENV') or 'the default'}")
+            for name in names:
+                print(f"    {'set  ' if os.environ.get(name) else 'unset'}  {name}")
+            print("  need EITHER  COMPANY_AI_EMBED_MODEL + a key      (OpenAI)")
+            print("         OR    _ENDPOINT + _DEPLOYMENT + a key     (Azure)")
+            print("  the key may be COMPANY_AI_EMBED_API_KEY or COMPANY_AI_LLM_API_KEY")
+        else:
+            kind = "Azure" if config.embed_is_azure else "OpenAI"
+            print(f"embeddings: ON — {kind} {config.embed_target} — building vectors too")
+        stats = search_mod.build_index(client, embed=embedder)
+        print(f"  indexed {stats['indexed']} items")
+        for kind, n in sorted(stats.get("by_kind", {}).items()):
+            print(f"    {kind:8} {n}")
+        if stats.get("vectors") is not None:
+            print(f"  vectors {stats['vectors']}")
     elif args.command == "export-all":
         done = loaders.export_all(client, Path(args.dir))
         for table, n in done:

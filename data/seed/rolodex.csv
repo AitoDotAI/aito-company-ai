@@ -1,51 +1,61 @@
 contact_id,name,company,role,phone_present,email_present,segment,tier,ai_lifecycle,source,country,notes_tags,created
-sc001,Carol Lane,Genco Oy,Partner,false,false,consultancy,A,none,cold,Finland,met-at-event;spreadsheet-heavy,2025-07-14
-sc002,Judy Lake,Pied BV,CFO,true,true,erp,A,announced,cold,Netherlands,founder-led;met-at-event,2026-01-24
-sc003,Mallory Hill,Wonka Oy,CTO,true,true,other,A,operating,trigger,Finland,,2026-02-09
-sc004,Zara Snow,Soylent Oy,COO,true,true,erp,C,announced,cold,Finland,multi-entity;slow-cycle,2026-05-11
-sc005,Bob Snow,Nakatomi GmbH,Partner,false,true,ecommerce,B,none,referral,Germany,inbound,2025-06-30
-sc006,Peggy Fields,Duff BV,CTO,true,true,other,B,shipped,referral,Netherlands,inbound,2025-06-30
-sc007,Ivan Brooks,Strickland Oy,CFO,false,true,accounting,B,none,referral,Finland,rfp-soon,2025-12-29
-sc008,Frank Lane,Tyrell GmbH,Finance Manager,true,true,erp,C,none,warm,Germany,rfp-soon,2026-04-10
-sc009,Trent Lake,Cobalt Oy,IT Manager,true,true,accounting,C,none,referral,Finland,founder-led;inbound;met-at-event,2025-08-20
-sc010,Hank Brooks,Oscorp OÜ,Head of Product,true,true,erp,A,shipped,cold,Estonia,,2025-05-21
-sc011,Mallory Vale,Hanso Oy,Finance Manager,true,true,accounting,C,operating,trigger,Finland,newsletter;rfp-soon,2026-03-31
-sc012,Olivia Marsh,Pierce Oy,Head of Finance,true,true,other,B,announced,trigger,Finland,rfp-soon;tech-savvy,2025-09-02
-sc013,Victor Hill,Aperture Oy,CFO,true,true,erp,B,operating,referral,Finland,inbound;spreadsheet-heavy,2025-11-20
-sc014,Eve Fields,Sterling BV,CEO,true,true,analytics,A,operating,referral,Netherlands,,2026-04-13
-sc015,Carol Gray,Omni Oy,Head of Product,true,true,ecommerce,C,announced,cold,Finland,podcast-listener,2025-07-02
-sc016,Walter Vale,Nimbus Oy,Partner,true,true,ecommerce,C,shipped,warm,Finland,spreadsheet-heavy,2025-07-19
-sc017,Sybil Marsh,Monarch Oy,CFO,true,true,accounting,A,announced,cold,Finland,,2025-12-17
-sc018,Peggy Lake,Widmore Oy,COO,true,true,erp,A,none,warm,Finland,multi-entity;podcast-listener;slow-cycle,2025-09-27
-sc019,Yvonne Hill,Pymt Oy,Head of Product,true,true,analytics,C,announced,cold,Finland,rfp-soon,2025-08-05
-sc020,Quinn Knight,Dunder Ab,Finance Manager,true,true,other,B,none,cold,Sweden,inbound;rfp-soon;slow-cycle,2026-03-20
-sc021,Victor Vale,Encom OÜ,Head of Product,true,true,ecommerce,C,operating,warm,Estonia,slow-cycle,2026-02-07
-sc022,Trent Hill,Lumon OÜ,CTO,true,true,analytics,B,shipped,cold,Estonia,newsletter;q3-budget;spreadsheet-heavy,2026-02-25
-sc023,Yvonne Pike,Stark Oy,Founder,false,true,accounting,C,operating,cold,Finland,inbound;multi-entity;rfp-soon,2026-02-07
-sc024,Quinn Gray,Umbrella Oy,CEO,true,false,accounting,B,shipped,trigger,Finland,multi-entity;newsletter;tech-savvy,2026-01-28
-sc025,Eve Reed,Prestige Oy,CEO,true,true,ecommerce,B,none,warm,Finland,inbound;multi-entity;q3-budget,2025-11-30
-sc026,Hank Rivers,Sirius Ab,CFO,true,true,erp,C,none,cold,Sweden,,2025-05-13
-sc027,Trent Frost,Raviga Oy,Head of Product,false,true,accounting,B,none,cold,Finland,intro-available;rfp-soon;tech-savvy,2025-07-31
-sc028,Frank Banks,Globex Oy,Head of Product,true,true,consultancy,B,announced,warm,Finland,multi-entity;slow-cycle,2025-12-09
-sc029,Trent Wells,Virtucon Oy,Partner,true,true,accounting,C,operating,warm,Finland,rfp-soon;spreadsheet-heavy,2025-10-18
-sc030,Mallory Fields,Zorin Oy,Head of Finance,true,false,consultancy,A,none,trigger,Finland,podcast-listener;slow-cycle,2026-03-30
-sc031,Sybil Snow,Initrode Oy,CFO,true,true,accounting,C,operating,trigger,Finland,rfp-soon,2025-09-28
-sc032,Judy Pike,Onyx Oy,IT Manager,true,true,consultancy,A,operating,referral,Finland,intro-available;met-at-event;tech-savvy,2026-02-25
-sc033,Judy Hill,Abstergo Oy,IT Manager,true,true,erp,C,none,cold,Finland,met-at-event,2025-12-28
-sc034,Yvonne Brooks,Lacuna OÜ,CTO,true,true,analytics,A,shipped,warm,Estonia,multi-entity;q3-budget;spreadsheet-heavy,2026-02-19
-sc035,Carol Day,Acme Ab,CEO,true,true,consultancy,C,operating,warm,Sweden,intro-available;newsletter,2025-06-11
-sc036,Bob Brooks,Wayne GmbH,Controller,true,true,accounting,A,announced,cold,Germany,multi-entity;newsletter;slow-cycle,2025-07-19
-sc037,Niaj Frost,Pearson Oy,Finance Manager,true,true,erp,B,operating,cold,Finland,,2025-12-23
-sc038,Alice Banks,Hooli Oy,Controller,true,true,ecommerce,C,shipped,warm,Finland,,2026-04-05
-sc039,Alice Day,Vehement Oy,Head of Product,true,true,accounting,A,none,warm,Finland,founder-led;met-at-event;newsletter,2026-01-11
-sc040,Victor Snow,Tessier Ab,CFO,true,false,erp,B,announced,trigger,Sweden,,2025-12-02
-sc041,Yvonne Marsh,Weyland Oy,CEO,true,true,accounting,C,none,warm,Finland,founder-led,2025-07-24
-sc042,Quinn Stone,Mooby Ab,CFO,true,false,accounting,C,none,warm,Sweden,,2026-01-26
-sc043,Yvonne Stone,Hardman Oy,CTO,true,true,accounting,C,shipped,trigger,Finland,,2026-01-02
-sc044,Niaj Lake,Rekall BV,CEO,true,true,erp,A,announced,cold,Netherlands,founder-led;newsletter;podcast-listener,2025-11-15
-sc045,Grace Lake,Pendant Oy,CTO,true,true,ecommerce,B,none,referral,Finland,met-at-event;rfp-soon,2025-12-23
-sc046,Niaj Wells,Vance Oy,COO,true,true,ecommerce,C,none,trigger,Finland,met-at-event;q3-budget,2025-05-16
-sc047,Sybil Brooks,Gringotts Ab,CFO,true,true,ecommerce,C,shipped,cold,Sweden,,2026-02-17
-sc048,Dave Pike,Vertex OÜ,IT Manager,true,true,analytics,B,operating,warm,Estonia,intro-available;met-at-event;spreadsheet-heavy,2026-03-17
-sc049,Mona Hill,Bluth Oy,Founder,true,false,other,C,shipped,cold,Finland,met-at-event;slow-cycle,2025-08-15
-sc050,Frank Cross,Sabre Oy,Partner,true,true,other,B,operating,warm,Finland,q3-budget,2025-07-11
+sc001,Alice Hill,Tyrell Oy,CEO,false,true,erp,A,operating,trigger,Finland,founder-led;podcast-listener;rfp-soon,2025-08-02
+sc002,Heidi Banks,Mooby Ab,CFO,false,true,accounting,C,none,cold,Sweden,podcast-listener;spreadsheet-heavy,2025-06-04
+sc003,Judy Frost,Genco Oy,CTO,false,true,analytics,C,operating,cold,Finland,newsletter,2025-12-18
+sc004,Frank Pike,Onyx Oy,IT Manager,true,true,analytics,B,operating,cold,Finland,founder-led;tech-savvy,2025-11-09
+sc005,Quinn Rivers,Dunder GmbH,CTO,true,true,accounting,B,shipped,warm,Germany,tech-savvy,2026-01-24
+sc006,Quinn Pike,Aperture Oy,CEO,true,true,other,A,none,cold,Finland,newsletter;slow-cycle;spreadsheet-heavy,2025-11-27
+sc007,Heidi Stone,Spectre Oy,CEO,false,true,ecommerce,C,announced,cold,Finland,rfp-soon,2025-09-29
+sc008,Alice Snow,Pied Oy,Head of Finance,false,true,accounting,C,operating,trigger,Finland,,2025-10-24
+sc009,Walter Lake,Pymt Oy,CTO,true,true,accounting,C,none,cold,Finland,podcast-listener,2025-07-15
+sc010,Hank Marsh,Vandelay Oy,IT Manager,true,true,erp,C,none,cold,Finland,inbound;met-at-event;tech-savvy,2025-11-28
+sc011,Zara Pike,Wayne OÜ,Partner,true,true,ecommerce,B,none,trigger,Estonia,met-at-event,2025-05-16
+sc012,Zara Banks,Sterling Oy,Head of Finance,false,false,erp,C,operating,cold,Finland,inbound;multi-entity;rfp-soon,2025-11-12
+sc013,Grace Ford,Pendant Oy,Finance Manager,true,true,ecommerce,B,none,warm,Finland,inbound;newsletter;tech-savvy,2026-03-17
+sc014,Hank Knight,Pymt Oy,CTO,true,true,accounting,B,announced,cold,Finland,q3-budget,2026-02-02
+sc015,Olivia Gray,Nimbus OÜ,Head of Product,false,true,accounting,A,shipped,referral,Estonia,,2026-01-16
+sc016,Grace Lane,Nakatomi OÜ,COO,true,true,erp,A,operating,warm,Estonia,,2025-11-05
+sc017,Eve Frost,Vandelay Oy,CTO,false,true,erp,B,none,warm,Finland,intro-available;rfp-soon;tech-savvy,2025-07-31
+sc018,Bob Wells,Lumon Oy,CEO,false,true,ecommerce,B,operating,warm,Finland,intro-available;met-at-event,2025-08-02
+sc019,Eve Knight,Slate OÜ,CTO,false,true,accounting,A,none,warm,Estonia,,2025-10-27
+sc020,Peggy Rivers,Nakatomi OÜ,Founder,true,true,erp,A,none,trigger,Estonia,,2025-08-13
+sc021,Rupert Fields,Nakatomi OÜ,Head of Product,true,true,erp,B,announced,referral,Estonia,founder-led;spreadsheet-heavy;tech-savvy,2025-09-18
+sc022,Yvonne Knight,Delos Ab,Head of Finance,true,true,consultancy,C,announced,warm,Sweden,met-at-event;slow-cycle,2026-02-12
+sc023,Olivia Snow,Omni OÜ,IT Manager,true,true,ecommerce,A,operating,referral,Estonia,intro-available;met-at-event;tech-savvy,2025-08-02
+sc024,Zara Day,Vance BV,CEO,true,true,consultancy,B,operating,warm,Netherlands,met-at-event,2025-11-08
+sc025,Rupert Gray,Prestige Oy,Finance Manager,false,true,other,B,announced,cold,Finland,,2025-09-15
+sc026,Carol Ford,Lumon Oy,Finance Manager,true,true,ecommerce,C,none,cold,Finland,slow-cycle;spreadsheet-heavy,2025-10-31
+sc027,Walter Ford,Mooby Ab,CFO,true,true,accounting,C,none,cold,Sweden,,2025-07-27
+sc028,Rupert Pike,Acme OÜ,CFO,true,true,accounting,C,none,warm,Estonia,founder-led;inbound;rfp-soon,2026-04-01
+sc029,Ivan Vale,Nimbus OÜ,CEO,true,true,accounting,B,operating,cold,Estonia,,2026-01-03
+sc030,Sybil Gray,Hanso GmbH,CFO,true,true,accounting,B,announced,cold,Germany,founder-led;intro-available;q3-budget,2026-04-07
+sc031,Carol Wells,Wonka Oy,CTO,true,true,analytics,B,none,warm,Finland,,2026-01-11
+sc032,Heidi Fields,Slate OÜ,CFO,true,true,accounting,B,none,trigger,Estonia,inbound;intro-available;newsletter,2025-09-29
+sc033,Bob Banks,Nimbus OÜ,Partner,true,true,accounting,B,announced,warm,Estonia,newsletter,2025-11-29
+sc034,Zara Knight,Initech Oy,CFO,true,true,erp,B,none,cold,Finland,,2026-01-27
+sc035,Judy Banks,Spectre Oy,Finance Manager,true,false,ecommerce,B,announced,cold,Finland,met-at-event;rfp-soon;spreadsheet-heavy,2025-07-18
+sc036,Sybil Banks,Monarch GmbH,Founder,true,true,accounting,A,none,cold,Germany,inbound;podcast-listener,2025-09-24
+sc037,Grace Marsh,Wonka Oy,CEO,true,true,analytics,B,operating,trigger,Finland,q3-budget,2026-04-10
+sc038,Victor Brooks,Pied Oy,Head of Finance,true,true,accounting,B,operating,referral,Finland,q3-budget,2025-10-29
+sc039,Frank Reed,Slate OÜ,Founder,true,true,accounting,C,operating,warm,Estonia,intro-available;q3-budget,2025-05-16
+sc040,Heidi Marsh,Slate OÜ,COO,true,false,accounting,B,operating,warm,Estonia,rfp-soon;slow-cycle,2026-03-04
+sc041,Judy Snow,Sirius Oy,CFO,true,true,accounting,C,announced,trigger,Finland,intro-available;newsletter;rfp-soon,2025-08-10
+sc042,Mallory Reed,Duff OÜ,Founder,true,true,erp,B,operating,warm,Estonia,intro-available;slow-cycle;tech-savvy,2025-09-26
+sc043,Ivan Lane,Strickland GmbH,CFO,true,false,ecommerce,B,announced,cold,Germany,newsletter;rfp-soon,2026-02-17
+sc044,Mallory Frost,Sterling Oy,Head of Finance,true,false,erp,C,shipped,trigger,Finland,,2025-07-07
+sc045,Mallory Wells,Sirius Oy,Head of Finance,true,true,accounting,B,announced,referral,Finland,founder-led,2025-06-13
+sc046,Sybil Ford,Krusty Oy,Head of Product,true,true,erp,B,none,warm,Finland,,2025-11-25
+sc047,Quinn Cross,Mooby Ab,IT Manager,false,true,accounting,C,shipped,warm,Sweden,inbound;podcast-listener,2026-02-19
+sc048,Victor Frost,Prestige Oy,CTO,true,true,other,C,operating,cold,Finland,newsletter;podcast-listener,2026-04-06
+sc049,Zara Cross,Vertex GmbH,Founder,true,true,ecommerce,B,shipped,warm,Germany,,2025-08-16
+sc050,Olivia Knight,Pymt Oy,CEO,true,true,accounting,A,shipped,trigger,Finland,q3-budget,2025-10-12
+sc051,Alice Pike,Monarch GmbH,IT Manager,false,true,accounting,A,shipped,warm,Germany,,2025-12-07
+sc052,Mallory Day,Nakatomi OÜ,Partner,true,true,erp,B,none,warm,Estonia,inbound;slow-cycle,2025-09-25
+sc053,Yvonne Snow,Genco Oy,Finance Manager,true,true,analytics,C,announced,warm,Finland,founder-led;met-at-event;newsletter,2025-11-05
+sc054,Carol Vale,Nakatomi OÜ,Head of Finance,true,false,erp,C,operating,trigger,Estonia,inbound;podcast-listener,2025-11-14
+sc055,Victor Lake,Nimbus OÜ,CEO,true,true,accounting,B,none,warm,Estonia,newsletter;rfp-soon;spreadsheet-heavy,2025-08-05
+sc056,Frank Stone,Pierce Oy,CFO,false,true,accounting,B,operating,cold,Finland,,2025-08-24
+sc057,Heidi Lake,Pierce Oy,CEO,true,true,accounting,B,announced,warm,Finland,tech-savvy,2025-05-23
+sc058,Trent Banks,Cobalt Oy,CEO,true,true,erp,B,none,warm,Finland,slow-cycle,2025-12-04
+sc059,Peggy Fields,Slate OÜ,Head of Finance,true,true,accounting,A,none,trigger,Estonia,newsletter,2025-10-04
+sc060,Frank Knight,Rekall BV,CTO,false,true,erp,C,none,referral,Netherlands,rfp-soon;spreadsheet-heavy,2026-04-25

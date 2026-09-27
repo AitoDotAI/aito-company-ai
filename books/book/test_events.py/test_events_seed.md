@@ -1,4 +1,4 @@
 # Events seed: the status mix
 
 loaded 14
-status mix: {'candidate': 6, 'go': 6, 'no_go': 2}
+status mix: {'attended': 4, 'candidate': 5, 'go': 2, 'no_go': 3}

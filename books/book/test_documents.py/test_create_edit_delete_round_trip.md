@@ -1,7 +1,7 @@
 # create a document (validated like a load: kind/area/contact)
 
-created: [internal/sales] Sales opener playbook · Genco Oy · Carol Lane
-count now: 8 (was 7)
+created: [internal/sales] Sales opener playbook · Genco Oy · Alice Hill
+count now: 14 (was 13)
 
 # edit it (retag docs, drop the area) — the full-rewrite path, no _modify
 
@@ -13,4 +13,4 @@ after edit: kind=docs area=None
 
 # delete it
 
-count back to: 7
+count back to: 13

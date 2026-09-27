@@ -1,14 +1,77 @@
-# aito-company-ai
+# Company AI
 
-A one-person company's sales agent whose intuition is a predictive
-database. Claude reasons; [Aito](https://aito.ai) ranks, retrieves, and
-attaches calibrated probabilities; this repo is the thin plumbing between
-them. Every morning it answers three questions: who to call in today's
-window and why, what the opener is, and what yesterday's outcomes changed.
-It learns from every logged outcome.
+**A small company's sales assistant that learns from what actually happened.**
 
-The operational pattern behind [agent.aito.ai](https://agent.aito.ai),
-run on our own pipeline. The morning brief is three MCP calls and a prompt.
+It keeps track of the things a salesperson otherwise keeps in their head —
+who the customers are, which deals are moving, who was in the last meeting,
+what was said — and answers questions about them.
+
+What makes it different from a normal CRM is where the numbers come from.
+Nobody configures a scoring rule. Every rate, ranking and likelihood is
+worked out from **this company's own history**, so when the history changes
+the answers change by themselves. A deal looks promising because deals that
+looked like it were won before.
+
+[![Overview](docs/assets/dashboard-overview.png)](docs/use-cases/README.md)
+
+*The Overview screen, on this repository's public demo data — invented
+companies, invented people, no real contacts anywhere.*
+
+**→ [Take the tour](docs/use-cases/README.md)** — what it does, one screen at
+a time, in pictures.
+
+## The kind of question it answers
+
+- **Who should I call today, and what do I say?** Ranked by who is most
+  likely to move, with the reason attached.
+- **Which of these deals will actually close?** A probability for every open
+  deal, learned from the ones that closed before — next to your own guess,
+  because where the two disagree is the deal worth looking at.
+- **Who actually pays us, and what are they worth?** Customers, prospects and
+  lapsed accounts, with what each brings in.
+- **Where is the funnel leaking, and what should I post?** The stage costing
+  the most, and how a draft is likely to do before you publish it.
+- **What do we already know about this account?** Notes and meetings filed
+  against the company and the people, not in a folder someone has to find.
+
+It is honest when it does not know. Early on, with little history, the
+probabilities are weak and look weak. A confident number from four data
+points would be the bug, not the feature.
+
+## Two ways to use it
+
+**As a conversation.** Ask in plain language — the assistant answers from the
+same data, and shows which query produced each number, so an answer can
+always be checked rather than trusted.
+
+**As a dashboard.** A set of read-only screens over the same numbers, for
+when you want to look rather than ask.
+
+## Try it
+
+You need [Docker](https://www.docker.com/) and about a minute. This loads the
+invented demo data, not anything real:
+
+```sh
+docker run -d -p 9005:9005 ghcr.io/aitohq/aito   # the database
+cp .env.example .env                             # point at it
+./do install && ./do seed && ./do start          # → http://localhost:8770
+```
+
+---
+
+## How it works
+
+The rest of this file is for people who want to run or change it.
+
+Claude does the reasoning; [Aito](https://aito.ai) — a predictive database —
+does the ranking, retrieval and the calibrated probabilities; this repository
+is the thin layer between them. It holds schema, loaders, an MCP server, a
+morning-brief prompt, a read-only dashboard, and the tests. It runs a real
+pipeline daily.
+
+The operational pattern behind [agent.aito.ai](https://agent.aito.ai), run on
+our own pipeline. The morning brief is three MCP calls and a prompt.
 
 ```
 Claude session (Code or Desktop)     reasoning: composes the brief,
@@ -24,17 +87,6 @@ Aito instance (docker)               intuition: ranking, similarity,
    loaders (CLI)                     rolodex + outcome log -> Aito tables
 ```
 
-## See it in action
-
-**→ [Take the tour](docs/use-cases/README.md)** — what the product does, one
-screen at a time, with screenshots from the public demo data.
-
-[![Overview](docs/assets/dashboard-overview.png)](docs/use-cases/README.md)
-
-*Overview — weighted pipeline, win rate against target, and who to reach
-next. Every rate and likelihood on it is an Aito prediction, from this
-repository's synthetic seed data.*
-
 ## Setup (shared)
 
 One Aito instance is the brain; both sides below read the same tables.
@@ -42,14 +94,16 @@ One Aito instance is the brain; both sides below read the same tables.
 ```sh
 docker run -d -p 9005:9005 ghcr.io/aitohq/aito        # 1. an Aito instance
 cp .env.example .env                                   # 2. point at it
-uv run company-ai create-schema                        # 3. tables
-uv run company-ai load-rolodex --seed                  # 4. synthetic seed data
-uv run company-ai load-touches --seed                  #    (omit --seed for the real set)
-uv run company-ai load-sessions --seed                 #    website funnel data
-uv run company-ai load-posts --seed                    #    distribution post log
-uv run company-ai load-todos --seed                    #    the action source
-uv run company-ai load-deals --seed                    #    the sales pipeline
+./do seed                                              # 3. schema + every table
 ```
+
+`./do seed` runs `create-schema` and then `load-all`, which walks
+`loaders.LOAD_ORDER` and loads every table whose CSV is present. Listing the
+loads by hand here is how this drifted before: the list named six tables while
+the seed had fifteen, so a fresh clone came up with an empty Routines view and
+no users while looking complete. To load your own data instead of the
+synthetic set, point it at a directory of CSVs with
+`company-ai load-all --dir <dir>`.
 
 Then pick a side — most days you use both. Full guide:
 [`docs/08-two-sides.md`](docs/08-two-sides.md).

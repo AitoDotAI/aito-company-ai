@@ -9,5 +9,5 @@ queryable immediately: True
 # Add a deal — it enters the open pipeline
 
 won derived from stage 'qualified': None
-open deals 15 -> 16
+open deals 40 -> 41
 new deal ranked with a close-likelihood: p_win=True

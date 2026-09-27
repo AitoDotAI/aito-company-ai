@@ -1,41 +1,41 @@
 material_id,type,title,topic,lane,ai_made,length_chars,created
-sm001,blog,oss tool notes,oss_tool,warm,manual,680,2026-01-29
-sm002,thread,positioning teardown,positioning,warm,ai-assisted,120,2026-06-06
-sm003,talk,core product story,core_product,warm,ai-assisted,320,2026-03-11
-sm004,whitepaper,product story,product,cold,ai-assisted,320,2026-06-06
-sm005,whitepaper,oss tool guide,oss_tool,warm,ai-assisted,680,2026-03-10
-sm006,whitepaper,product story,product,warm,ai,540,2026-04-18
-sm007,thread,product deep dive,product,cold,ai-assisted,320,2025-12-19
-sm008,thread,positioning teardown,positioning,warm,ai,540,2026-03-20
-sm009,note,oss tool benchmark,oss_tool,warm,manual,320,2026-04-03
-sm010,talk,product guide,product,warm,manual,680,2026-05-30
-sm011,talk,product notes,product,cold,manual,320,2026-01-12
-sm012,blog,product story,product,cold,ai-assisted,240,2026-01-18
-sm013,thread,core product deep dive,core_product,cold,ai-assisted,120,2026-01-19
-sm014,blog,agent inference story,agent_inference,warm,ai-assisted,180,2026-05-25
-sm015,talk,customer proof teardown,customer_proof,warm,manual,240,2025-11-27
-sm016,whitepaper,customer proof notes,customer_proof,warm,manual,680,2026-03-18
-sm017,video,core product benchmark,core_product,warm,manual,420,2026-03-01
-sm018,blog,agent inference benchmark,agent_inference,warm,manual,120,2026-04-07
-sm019,blog,product teardown,product,warm,ai,320,2026-05-16
-sm020,thread,positioning benchmark,positioning,warm,ai,180,2026-01-24
-sm021,note,core product notes,core_product,warm,ai-assisted,680,2026-03-03
-sm022,video,oss tool deep dive,oss_tool,cold,ai,240,2025-12-27
-sm023,blog,product story,product,cold,manual,680,2026-01-04
-sm024,whitepaper,customer proof deep dive,customer_proof,warm,manual,180,2026-04-21
-sm025,blog,oss tool benchmark,oss_tool,warm,manual,240,2026-01-01
-sm026,note,customer proof story,customer_proof,warm,ai,420,2026-02-23
-sm027,whitepaper,customer proof guide,customer_proof,warm,manual,420,2026-04-05
-sm028,whitepaper,product deep dive,product,warm,manual,180,2025-12-23
-sm029,video,agent inference teardown,agent_inference,cold,manual,240,2026-04-27
-sm030,note,positioning teardown,positioning,warm,ai-assisted,120,2026-03-27
-sm031,note,agent inference deep dive,agent_inference,warm,manual,320,2026-03-19
-sm032,note,oss tool guide,oss_tool,cold,manual,420,2026-01-09
-sm033,note,oss tool story,oss_tool,cold,ai-assisted,320,2025-12-17
-sm034,blog,core product guide,core_product,warm,ai-assisted,420,2025-12-08
-sm035,video,positioning guide,positioning,cold,manual,680,2025-12-29
-sm036,blog,agent inference story,agent_inference,warm,manual,120,2026-05-18
-sm037,blog,product benchmark,product,warm,ai,420,2025-12-10
-sm038,blog,oss tool teardown,oss_tool,cold,ai-assisted,320,2026-02-04
-sm039,thread,product deep dive,product,warm,manual,540,2025-12-06
-sm040,video,agent inference guide,agent_inference,warm,manual,320,2025-12-12
+sm001,note,product notes,product,warm,manual,680,2026-01-04
+sm002,whitepaper,customer proof deep dive,customer_proof,warm,manual,180,2026-04-21
+sm003,blog,oss tool benchmark,oss_tool,warm,manual,240,2026-01-01
+sm004,note,customer proof story,customer_proof,warm,ai,420,2026-02-23
+sm005,whitepaper,customer proof guide,customer_proof,warm,manual,420,2026-04-05
+sm006,whitepaper,product deep dive,product,warm,manual,180,2025-12-23
+sm007,video,agent inference teardown,agent_inference,cold,manual,240,2026-04-27
+sm008,note,positioning teardown,positioning,warm,ai-assisted,120,2026-03-27
+sm009,note,agent inference deep dive,agent_inference,warm,manual,320,2026-03-19
+sm010,note,oss tool guide,oss_tool,cold,manual,420,2026-01-09
+sm011,note,oss tool story,oss_tool,cold,ai-assisted,320,2025-12-17
+sm012,blog,core product guide,core_product,warm,ai-assisted,420,2025-12-08
+sm013,video,positioning guide,positioning,cold,manual,680,2025-12-29
+sm014,blog,agent inference story,agent_inference,warm,manual,120,2026-05-18
+sm015,blog,product benchmark,product,warm,ai,420,2025-12-10
+sm016,blog,oss tool teardown,oss_tool,cold,ai-assisted,320,2026-02-04
+sm017,thread,product deep dive,product,warm,manual,540,2025-12-06
+sm018,video,agent inference guide,agent_inference,warm,manual,320,2025-12-12
+sm019,video,core product benchmark,core_product,cold,ai-assisted,180,2026-03-03
+sm020,talk,product teardown,product,warm,manual,540,2026-03-11
+sm021,thread,oss tool deep dive,oss_tool,warm,manual,540,2026-01-25
+sm022,demo,customer proof story,customer_proof,warm,ai,320,2025-12-07
+sm023,whitepaper,oss tool deep dive,oss_tool,warm,manual,540,2026-01-19
+sm024,note,customer proof notes,customer_proof,warm,ai,180,2026-03-22
+sm025,video,positioning story,positioning,warm,ai,420,2025-12-08
+sm026,demo,customer proof deep dive,customer_proof,warm,manual,120,2026-04-20
+sm027,note,agent inference deep dive,agent_inference,cold,ai-assisted,120,2026-01-11
+sm028,note,product teardown,product,warm,ai,680,2025-12-21
+sm029,blog,customer proof guide,customer_proof,warm,manual,240,2026-06-07
+sm030,video,positioning story,positioning,warm,ai-assisted,540,2026-05-24
+sm031,note,oss tool guide,oss_tool,cold,ai-assisted,420,2025-11-27
+sm032,demo,oss tool notes,oss_tool,warm,ai-assisted,240,2026-02-25
+sm033,talk,product story,product,warm,ai,180,2026-03-18
+sm034,demo,agent inference deep dive,agent_inference,cold,ai,180,2026-04-19
+sm035,video,agent inference story,agent_inference,warm,ai,540,2026-06-09
+sm036,whitepaper,oss tool deep dive,oss_tool,warm,manual,540,2026-05-11
+sm037,blog,product notes,product,warm,manual,540,2026-04-25
+sm038,talk,oss tool benchmark,oss_tool,warm,manual,120,2026-03-07
+sm039,video,agent inference story,agent_inference,warm,ai,180,2026-02-26
+sm040,blog,oss tool benchmark,oss_tool,warm,ai,680,2026-01-19

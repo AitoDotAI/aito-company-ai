@@ -1976,10 +1976,137 @@ export function QuickFind() {
   );
 }
 
-export function SearchView() {
-  const [text, setText] = useState("");
-  const [kind, setKind] = useState("");
-  const [query, setQuery] = useState("");     // the submitted query
+// The knowledge graph (docs/31): one card per question a person actually asks,
+// each showing the single Aito query that answered it. The query is on screen
+// on purpose — the claim of this view is that the question and the query are
+// nearly the same sentence once the facts live on the company node and the
+// links are walkable.
+function GraphAnswer({ a }) {
+  // Aito returns hit keys sorted alphabetically, which reads badly ("country,
+  // industry, mrr_eur, name"). Take the column order from the query's own
+  // `select` instead — an entry is either a plain field or a {alias: expr}
+  // object — and append anything the response carried that select didn't name.
+  const present = a.hits && a.hits.length ? Object.keys(a.hits[0]) : [];
+  const asked = (a.request && Array.isArray(a.request.select) ? a.request.select : [])
+    .map((c) => (typeof c === "string" ? c : Object.keys(c)[0]));
+  const cols = [
+    ...asked.filter((c) => present.includes(c)),
+    ...present.filter((c) => !asked.includes(c)),
+  ];
+  return (
+    <div className="gq-card">
+      <div className="gq-q">{a.question}</div>
+      <pre className="gq-query">{JSON.stringify(a.request, null, 1)}</pre>
+      {a.why && a.why.length > 0 && (
+        <div className="gq-why">
+          <div className="gq-p">
+            <span className="gq-pnum">{Math.round(a.p * 100)}%</span>
+            <span className="gq-plabel">probability of winning</span>
+          </div>
+          {/* Each factor's bar runs from the centre: right of it the fact made
+              winning MORE likely, left of it less. Width is log-scaled because
+              lift is multiplicative — x2 and x0.5 are the same size of effect
+              in opposite directions, and a linear bar hides that. */}
+          {a.why.map((f) => {
+            const mag = Math.min(1, Math.abs(Math.log2(f.lift)) / 1.5);
+            const up = f.lift >= 1;
+            return (
+              <div className="gq-factor" key={f.label}>
+                <span className="gq-flabel" title={f.label}>{f.label}</span>
+                <span className="gq-track">
+                  <span className={"gq-bar " + (up ? "up" : "down")}
+                        style={{ width: `${mag * 50}%`, [up ? "left" : "right"]: "50%" }} />
+                  <span className="gq-mid" />
+                </span>
+                <span className={"gq-lift " + (up ? "up" : "down")}>×{f.lift.toFixed(2)}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {a.error ? (
+        <div className="gq-err">{a.error}</div>
+      ) : (
+        <>
+          <div className="gq-meta">
+            {a.total} {a.total === 1 ? "row" : "rows"}
+            {a.hits && a.total > a.hits.length ? ` · showing ${a.hits.length}` : ""}
+          </div>
+          {cols.length === 0 ? (
+            <div className="gq-empty">no rows</div>
+          ) : (
+            <table className="gq-table">
+              <thead><tr>{cols.map((c) => <th key={c}>{c}</th>)}</tr></thead>
+              <tbody>
+                {a.hits.map((h, i) => (
+                  <tr key={i}>
+                    {cols.map((c) => (
+                      <td key={c} className={typeof h[c] === "number" ? "num" : ""}>
+                        {typeof h[c] === "number" && c === "$p"
+                          ? Math.round(h[c] * 100) + "%"
+                          : String(h[c])}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+export function GraphView() {
+  const r = useAsync(() => api.graph(), []);
+  return (
+    <>
+      <div className="gq-intro">
+        The company is a <b>node</b>; contacts, deals and documents link to it.
+        Aito walks those links in both directions — <code>company_id.industry</code>{" "}
+        forward to the account, <code>$refs.contacts.company_id</code> back to its
+        people — so each question below is <b>one query</b>, not a join.
+        {r.data && r.data.conditioned_p != null && r.data.baseline_p != null && (
+          <div className="gq-finding">
+            And the neighbourhood can condition a <b>prediction</b>: a deal at an
+            account where we know a CTO closes at{" "}
+            <b>{Math.round(r.data.conditioned_p * 100)}%</b>, against a{" "}
+            {Math.round(r.data.baseline_p * 100)}% base rate across all deals.
+            Whether a CTO is on file exists nowhere on the deal — only across the
+            link. Both figures come from the queries on this page.
+          </div>
+        )}
+      </div>
+      {r.loading && <Loading label="Asking the graph…" />}
+      {r.err && <ErrorBox msg={r.err} />}
+      {r.data && (
+        <>
+          {r.data.failed && r.data.failed.length > 0 && (
+            <div className="gq-warn">
+              {r.data.failed.length} of {r.data.answers.length} queries failed: {r.data.failed.join(", ")}
+            </div>
+          )}
+          <div className="gq-grid">
+            {r.data.answers.map((a) => <GraphAnswer key={a.id} a={a} />)}
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
+export function SearchView({ initial }) {
+  // `#/search/<query>` runs that search on arrival, so a search is a shareable
+  // link rather than something only a keyboard can reach.
+  const seeded = initial ? decodeURIComponent(initial) : "";
+  // ?kind=doc alongside the query, so a shared link carries the filter too —
+  // without it the largest collection (deals) crowds out everything else.
+  const seededKind = typeof window === "undefined" ? ""
+    : new URLSearchParams(window.location.search).get("kind") || "";
+  const [text, setText] = useState(seeded);
+  const [kind, setKind] = useState(seededKind);
+  const [query, setQuery] = useState(seeded);   // the submitted query
   const [clicked, setClicked] = useState({}); // item_id -> true, once recorded
   const r = useAsync(
     () => (query ? api.search(query, kind) : Promise.resolve(null)),
@@ -2029,6 +2156,12 @@ export function SearchView() {
                   </button>
                 ))}
               </div>
+              {r.data.semantic && (
+                <div className="sr-note">
+                  matched by meaning as well as words — the query was embedded and
+                  compared against the index, so a result need share no term with it
+                </div>
+              )}
               {r.data.learned && <div className="sr-note">ranking trained by past clicks</div>}
             </>
       )}
@@ -2370,9 +2503,12 @@ export const VIEWS = {
   company: { title: "Company", desc: "One company node — its people, deals, and notes, linked through the entity graph. Open a note to read it.",
            prims: ["entity-node"],
            render: (param) => <CompanyDetail companyId={param} /> },
+  graph: { title: "Knowledge graph", desc: "What we know about each account — and the questions you can answer by walking the links between accounts, people and deals. Every card is one Aito query.",
+           prims: ["graph-query"],
+           render: () => <GraphView /> },
   search: { title: "Search", desc: "Smart search across content — docs, contacts, and deals — ranked by Aito text-match relevance. The same index the assistant grounds on.",
            prims: ["document-tree"],
-           render: () => <SearchView /> },
+           render: (param) => <SearchView initial={param} /> },
   salesanalytics: { title: "Sales analytics", desc: "Pipeline health, close-likelihood by stage, who to reach, and the sales funnel with its lever — the sales counterpart to the marketing metrics.",
            prims: ["kpi-row", "predict", "chart"],
            data: [{ table: "deals" }, { table: "contacts" }],

@@ -26,6 +26,7 @@
 #   ./do mcp [config]         run the MCP server in the foreground (stdio)
 #   ./do image                build the deployable container (app + synthetic seed)
 #   ./do smoke [config]       build + boot the image locally, check it serves
+#   ./do reindex [config]     rebuild the search index (+ embeddings if configured)
 #   ./do clean                wipe build artifacts and PID/log files
 #
 # Examples:
@@ -135,6 +136,9 @@ cmd_seed_tiny() { SEED_DIR=data/seed_tiny cmd_seed "${1:-}"; }
 
 cmd_doctor() { resolve "${1:-}"; uv run company-ai doctor; }
 
+# rebuild the search index (and its embeddings, when configured)
+cmd_reindex() { resolve "${1:-}"; uv run company-ai reindex-search; }
+
 # bring an instance's schema up to the code, non-destructively: diagnose,
 # add any missing tables/columns (create-schema; never drops data), re-check.
 cmd_migrate() {
@@ -237,6 +241,7 @@ case "${1:-help}" in
   seed-tiny)      shift; cmd_seed_tiny "$@" ;;
   migrate)        shift; cmd_migrate "$@" ;;
   doctor)         shift; cmd_doctor "$@" ;;
+  reindex)        shift; cmd_reindex "$@" ;;
   start)          shift; cmd_start "$@" ;;
   stop)           shift; cmd_stop "$@" ;;
   restart)        shift; cmd_restart "$@" ;;

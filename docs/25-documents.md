@@ -18,7 +18,7 @@ A document is an Aito collection row — the journal is the closest cousin
 
 ```
 documents (collection)
-  doc_id          String   id, "dc0007" (seed) / "dc-<ts>" (live)
+  doc_id          String   id, "sdc001" (seed) / "dc-<ts>" (live)
   title           Text     first heading / given title
   body            Text     the document, markdown
   kind            String   docs | internal            (DOC_KINDS)

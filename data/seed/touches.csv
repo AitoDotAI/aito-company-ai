@@ -1,151 +1,151 @@
 touch_id,contact_id,ts,weekday,window,channel,outcome,next_action,next_action_due,notes
-st101,sc010,2026-04-03T08:49:00,fri,0800,call,no_answer,,,
-st017,sc028,2026-04-03T09:14:00,fri,0800,email,no_reply,,,
-st021,sc003,2026-04-03T12:38:00,fri,1215,email,reply,,,"replied, lukewarm but open"
-st011,sc039,2026-04-06T14:00:00,mon,other,email,reply,,,asked for a one-pager
-st081,sc020,2026-04-06T17:23:00,mon,1600,call,declined,,,happy with current setup
-st091,sc007,2026-04-06T18:45:00,mon,other,email,reply,,,asked for a one-pager
-st069,sc040,2026-04-07T12:35:00,tue,1215,call,callback_requested,call back,2026-04-09,asked to call next week
-st075,sc026,2026-04-08T08:38:00,wed,0800,call,no_answer,,,
-st024,sc021,2026-04-08T12:46:00,wed,1215,email,reply,send one-pager,2026-04-10,asked for a one-pager
-st071,sc001,2026-04-08T12:48:00,wed,1215,linkedin,no_reply,,,
-st068,sc018,2026-04-08T14:00:00,wed,other,linkedin,no_reply,,,
-st038,sc010,2026-04-08T16:10:00,wed,1600,call,meeting_booked,prepare demo,2026-04-12,demo booked
-st013,sc013,2026-04-08T16:44:00,wed,1600,call,callback_requested,call back,2026-04-09,asked to call next week
-st026,sc044,2026-04-09T08:11:00,thu,0800,call,no_answer,,,
-st104,sc024,2026-04-09T09:10:00,thu,0800,call,no_answer,,,
-st051,sc048,2026-04-09T10:30:00,thu,other,email,reply,send one-pager,2026-04-12,"replied, lukewarm but open"
-st108,sc048,2026-04-09T14:00:00,thu,other,email,no_reply,,,
-st070,sc019,2026-04-09T16:35:00,thu,1600,call,no_answer,,,
-st059,sc032,2026-04-09T16:36:00,thu,1600,email,bounced,,,address invalid
-st078,sc012,2026-04-10T09:22:00,fri,0800,call,no_answer,,,
-st142,sc036,2026-04-10T09:26:00,fri,0800,email,no_reply,,,
-st062,sc038,2026-04-10T12:48:00,fri,1215,call,conversation,send pricing summary,2026-04-14,"walked through the idea, wants material"
-st041,sc037,2026-04-10T12:57:00,fri,1215,email,reply,send one-pager,2026-04-12,"replied, lukewarm but open"
-st132,sc021,2026-04-10T18:45:00,fri,other,linkedin,no_reply,,,
-st093,sc001,2026-04-13T16:31:00,mon,1600,linkedin,no_reply,,,
-st023,sc039,2026-04-13T17:05:00,mon,1600,call,callback_requested,call back,2026-04-16,"in a meeting, call after 15th"
-st129,sc024,2026-04-13T17:15:00,mon,1600,call,no_answer,,,
-st080,sc018,2026-04-13T17:29:00,mon,1600,email,reply,,,asked for a one-pager
-st086,sc026,2026-04-13T17:30:00,mon,1600,call,no_answer,,,
-st073,sc022,2026-04-14T12:29:00,tue,1215,linkedin,no_reply,,,
-st076,sc029,2026-04-16T08:27:00,thu,0800,call,conversation,,,interested but needs the board
-st003,sc022,2026-04-16T08:44:00,thu,0800,call,no_answer,,,
-st089,sc039,2026-04-16T09:22:00,thu,0800,email,reply,send one-pager,2026-04-18,asked for a one-pager
-st135,sc018,2026-04-16T12:50:00,thu,1215,call,conversation,send pricing summary,2026-04-20,"long call, budget talk in autumn"
-st046,sc039,2026-04-16T14:00:00,thu,other,linkedin,no_reply,,,
-st057,sc021,2026-04-17T09:08:00,fri,0800,call,conversation,send pricing summary,2026-04-18,"long call, budget talk in autumn"
-st109,sc010,2026-04-17T17:05:00,fri,1600,call,conversation,send pricing summary,2026-04-21,"good chat, asked about pricing"
-st127,sc029,2026-04-17T18:45:00,fri,other,email,no_reply,,,
-st014,sc044,2026-04-20T08:35:00,mon,0800,linkedin,no_reply,,,
-st136,sc022,2026-04-20T12:23:00,mon,1215,linkedin,no_reply,,,
-st103,sc012,2026-04-20T12:37:00,mon,1215,email,no_reply,,,
-st114,sc003,2026-04-21T09:27:00,tue,0800,call,meeting_booked,prepare demo,2026-04-22,agreed to a 30min walkthrough
-st145,sc021,2026-04-21T12:48:00,tue,1215,email,reply,send one-pager,2026-04-23,asked for a one-pager
-st121,sc037,2026-04-21T16:21:00,tue,1600,call,conversation,send pricing summary,2026-04-24,"long call, budget talk in autumn"
-st032,sc002,2026-04-22T09:00:00,wed,0800,call,declined,,,no budget this year
-st105,sc028,2026-04-22T09:08:00,wed,0800,linkedin,no_reply,,,
-st087,sc010,2026-04-22T12:49:00,wed,1215,email,reply,send one-pager,2026-04-25,asked for a one-pager
-st140,sc021,2026-04-22T16:51:00,wed,1600,call,conversation,send pricing summary,2026-04-23,interested but needs the board
-st049,sc040,2026-04-23T12:30:00,thu,1215,linkedin,reply,send one-pager,2026-04-25,"replied, lukewarm but open"
-st118,sc010,2026-04-23T14:00:00,thu,other,linkedin,no_reply,,,
-st033,sc010,2026-04-23T17:11:00,thu,1600,call,declined,,,happy with current setup
-st064,sc017,2026-04-24T09:05:00,fri,0800,call,callback_requested,call back,2026-04-28,"in a meeting, call after 15th"
-st111,sc005,2026-04-24T14:00:00,fri,other,email,no_reply,,,
-st061,sc010,2026-04-27T08:26:00,mon,0800,call,no_answer,,,
-st131,sc045,2026-04-27T08:35:00,mon,0800,call,no_answer,,,
-st120,sc002,2026-04-27T12:29:00,mon,1215,call,no_answer,,,
-st128,sc022,2026-04-27T12:47:00,mon,1215,call,declined,,,no budget this year
-st113,sc024,2026-04-27T16:28:00,mon,1600,call,declined,,,happy with current setup
-st088,sc050,2026-04-27T16:50:00,mon,1600,call,no_answer,,,
-st022,sc006,2026-04-27T18:45:00,mon,other,email,reply,,,"replied, lukewarm but open"
-st102,sc014,2026-04-28T09:25:00,tue,0800,call,meeting_booked,prepare demo,2026-04-29,demo booked
-st031,sc034,2026-04-28T10:30:00,tue,other,linkedin,reply,send one-pager,2026-05-02,asked for a one-pager
-st005,sc036,2026-04-28T16:18:00,tue,1600,linkedin,no_reply,,,
-st100,sc034,2026-04-28T16:18:00,tue,1600,call,callback_requested,call back,2026-05-01,"in a meeting, call after 15th"
-st052,sc014,2026-04-29T08:59:00,wed,0800,call,no_answer,,,
-st006,sc005,2026-04-29T12:25:00,wed,1215,email,no_reply,,,
-st034,sc032,2026-04-29T16:11:00,wed,1600,call,no_answer,,,
-st146,sc037,2026-04-30T08:49:00,thu,0800,call,meeting_booked,prepare demo,2026-05-04,demo booked
-st060,sc028,2026-04-30T12:18:00,thu,1215,call,no_answer,,,
-st141,sc002,2026-05-01T09:12:00,fri,0800,call,declined,,,no budget this year
-st010,sc032,2026-05-04T08:45:00,mon,0800,email,reply,send one-pager,2026-05-06,"replied, lukewarm but open"
-st001,sc050,2026-05-04T12:41:00,mon,1215,call,conversation,,,interested but needs the board
-st133,sc003,2026-05-04T12:47:00,mon,1215,call,conversation,send pricing summary,2026-05-07,"good chat, asked about pricing"
-st125,sc014,2026-05-04T16:16:00,mon,1600,email,reply,send one-pager,2026-05-07,asked for a one-pager
-st025,sc034,2026-05-04T18:45:00,mon,other,email,reply,send one-pager,2026-05-08,asked for a one-pager
-st056,sc007,2026-05-04T18:45:00,mon,other,email,no_reply,,,
-st042,sc022,2026-05-05T09:11:00,tue,0800,call,no_answer,,,
-st035,sc046,2026-05-05T09:24:00,tue,0800,call,no_answer,,,
-st099,sc006,2026-05-05T12:18:00,tue,1215,email,no_reply,,,
-st044,sc018,2026-05-06T08:33:00,wed,0800,email,no_reply,,,
-st123,sc032,2026-05-06T12:38:00,wed,1215,call,callback_requested,call back,2026-05-09,"in a meeting, call after 15th"
-st067,sc007,2026-05-06T12:39:00,wed,1215,email,no_reply,,,
-st015,sc006,2026-05-08T12:26:00,fri,1215,call,no_answer,,,
-st047,sc028,2026-05-08T17:11:00,fri,1600,call,conversation,send pricing summary,2026-05-12,"walked through the idea, wants material"
-st116,sc050,2026-05-11T08:49:00,mon,0800,call,declined,,,no budget this year
-st096,sc015,2026-05-11T12:52:00,mon,1215,call,no_answer,,,
-st009,sc025,2026-05-11T14:00:00,mon,other,linkedin,reply,send one-pager,2026-05-13,"replied, lukewarm but open"
-st050,sc017,2026-05-12T12:25:00,tue,1215,call,no_answer,,,
-st030,sc007,2026-05-12T14:00:00,tue,other,linkedin,no_reply,,,
-st016,sc015,2026-05-12T17:01:00,tue,1600,call,declined,,,happy with current setup
-st053,sc039,2026-05-13T12:41:00,wed,1215,call,no_answer,,,
-st074,sc049,2026-05-13T12:54:00,wed,1215,call,no_answer,,,
-st007,sc038,2026-05-14T08:36:00,thu,0800,call,meeting_booked,,,demo booked
-st139,sc014,2026-05-14T16:09:00,thu,1600,call,meeting_booked,,,agreed to a 30min walkthrough
-st066,sc030,2026-05-15T08:47:00,fri,0800,linkedin,no_reply,,,
-st040,sc036,2026-05-15T12:42:00,fri,1215,email,no_reply,,,
-st112,sc017,2026-05-15T16:41:00,fri,1600,email,no_reply,,,
-st143,sc029,2026-05-15T17:02:00,fri,1600,call,no_answer,,,
-st004,sc014,2026-05-18T12:29:00,mon,1215,email,reply,send one-pager,2026-05-21,asked for a one-pager
-st055,sc002,2026-05-19T14:00:00,tue,other,email,no_reply,,,
-st098,sc048,2026-05-20T09:14:00,wed,0800,email,no_reply,,,
-st122,sc025,2026-05-20T09:17:00,wed,0800,call,meeting_booked,prepare demo,2026-05-24,demo booked
-st106,sc036,2026-05-21T12:50:00,thu,1215,call,declined,,,happy with current setup
-st090,sc044,2026-05-22T08:06:00,fri,0800,email,no_reply,,,
-st085,sc034,2026-05-22T16:25:00,fri,1600,call,no_answer,,,
-st037,sc014,2026-05-25T12:17:00,mon,1215,call,declined,,,no budget this year
-st045,sc012,2026-05-25T12:45:00,mon,1215,call,declined,,,happy with current setup
-st115,sc015,2026-05-25T12:48:00,mon,1215,email,no_reply,,,
-st054,sc025,2026-05-27T08:23:00,wed,0800,call,no_answer,,,
-st084,sc001,2026-05-27T08:35:00,wed,0800,linkedin,no_reply,,,
-st082,sc045,2026-05-27T09:02:00,wed,0800,linkedin,bounced,,,address invalid
-st138,sc006,2026-05-27T12:48:00,wed,1215,call,conversation,send pricing summary,2026-05-31,"good chat, asked about pricing"
-st036,sc027,2026-05-27T17:22:00,wed,1600,email,no_reply,,,
-st126,sc028,2026-05-28T08:43:00,thu,0800,call,callback_requested,call back,2026-06-01,asked to call next week
-st079,sc027,2026-05-28T08:52:00,thu,0800,linkedin,bounced,,,address invalid
-st130,sc036,2026-05-28T10:30:00,thu,other,email,no_reply,,,
-st117,sc049,2026-05-28T12:44:00,thu,1215,call,no_answer,,,
-st124,sc030,2026-05-29T16:41:00,fri,1600,call,no_answer,,,
-st043,sc025,2026-06-01T09:11:00,mon,0800,call,no_answer,,,
-st092,sc030,2026-06-01T12:37:00,mon,1215,call,no_answer,,,
-st012,sc042,2026-06-01T17:03:00,mon,1600,linkedin,no_reply,,,
-st097,sc013,2026-06-01T17:11:00,mon,1600,call,meeting_booked,prepare demo,2026-06-02,agreed to a 30min walkthrough
-st072,sc017,2026-06-01T17:20:00,mon,1600,call,no_answer,,,
-st094,sc013,2026-06-02T12:34:00,tue,1215,linkedin,reply,send one-pager,2026-06-06,asked for a one-pager
-st008,sc002,2026-06-02T12:39:00,tue,1215,call,conversation,send pricing summary,2026-06-05,"walked through the idea, wants material"
-st039,sc017,2026-06-02T16:20:00,tue,1600,linkedin,reply,send one-pager,2026-06-04,"replied, lukewarm but open"
-st134,sc026,2026-06-02T16:24:00,tue,1600,call,no_answer,,,
-st110,sc036,2026-06-03T14:00:00,wed,other,linkedin,no_reply,,,
-st018,sc024,2026-06-04T08:06:00,thu,0800,call,no_answer,,,
-st077,sc012,2026-06-04T08:23:00,thu,0800,linkedin,reply,send one-pager,2026-06-07,"replied, lukewarm but open"
-st137,sc006,2026-06-04T16:46:00,thu,1600,email,reply,send one-pager,2026-06-08,"replied, lukewarm but open"
-st028,sc018,2026-06-04T18:45:00,thu,other,email,reply,send one-pager,2026-06-08,"replied, lukewarm but open"
-st144,sc013,2026-06-05T10:30:00,fri,other,email,reply,,,"replied, lukewarm but open"
-st095,sc018,2026-06-05T12:41:00,fri,1215,email,reply,send one-pager,2026-06-07,asked for a one-pager
-st063,sc020,2026-06-05T16:03:00,fri,1600,call,no_answer,,,
-st083,sc044,2026-06-05T16:28:00,fri,1600,call,meeting_booked,prepare demo,2026-06-09,demo booked
-st048,sc034,2026-06-08T08:10:00,mon,0800,linkedin,reply,send one-pager,2026-06-12,asked for a one-pager
-st019,sc017,2026-06-08T14:00:00,mon,other,email,bounced,,,address invalid
-st002,sc045,2026-06-08T16:04:00,mon,1600,linkedin,reply,send one-pager,2026-06-10,"replied, lukewarm but open"
-st029,sc020,2026-06-08T17:17:00,mon,1600,linkedin,no_reply,,,
-st027,sc039,2026-06-09T12:34:00,tue,1215,call,declined,,,happy with current setup
-st107,sc003,2026-06-10T12:22:00,wed,1215,email,reply,send one-pager,2026-06-11,asked for a one-pager
-st119,sc026,2026-06-10T14:00:00,wed,other,email,no_reply,,,
-st058,sc034,2026-06-10T16:28:00,wed,1600,call,conversation,,,"good chat, asked about pricing"
-st150,sc043,2026-06-11T08:34:00,thu,0800,linkedin,reply,send one-pager,2026-06-13,asked for a one-pager
-st149,sc003,2026-06-11T08:37:00,thu,0800,call,conversation,send pricing summary,2026-06-15,interested but needs the board
-st147,sc012,2026-06-11T12:43:00,thu,1215,call,declined,,,no budget this year
-st065,sc037,2026-06-11T12:56:00,thu,1215,call,no_answer,,,
-st020,sc010,2026-06-11T17:29:00,thu,1600,email,reply,send one-pager,2026-06-12,asked for a one-pager
-st148,sc013,2026-06-11T18:45:00,thu,other,email,reply,send one-pager,2026-06-15,asked for a one-pager
+st004,sc029,2026-04-03T12:38:00,fri,1215,email,reply,,,"replied, lukewarm but open"
+st040,sc015,2026-04-06T14:00:00,mon,other,linkedin,reply,send one-pager,2026-04-07,"replied, lukewarm but open"
+st063,sc051,2026-04-06T17:23:00,mon,1600,email,reply,send one-pager,2026-04-09,"replied, lukewarm but open"
+st051,sc019,2026-04-07T08:41:00,tue,0800,email,reply,send one-pager,2026-04-09,"replied, lukewarm but open"
+st133,sc020,2026-04-07T08:52:00,tue,0800,linkedin,no_reply,,,
+st082,sc006,2026-04-07T09:28:00,tue,0800,linkedin,no_reply,,,
+st014,sc012,2026-04-07T14:00:00,tue,other,linkedin,no_reply,,,
+st083,sc024,2026-04-08T12:34:00,wed,1215,email,reply,send one-pager,2026-04-10,asked for a one-pager
+st007,sc056,2026-04-08T12:46:00,wed,1215,linkedin,reply,send one-pager,2026-04-10,asked for a one-pager
+st053,sc058,2026-04-08T12:48:00,wed,1215,call,no_answer,,,
+st050,sc053,2026-04-08T14:00:00,wed,other,linkedin,no_reply,,,
+st086,sc049,2026-04-09T09:10:00,thu,0800,call,no_answer,,,
+st033,sc051,2026-04-09T10:30:00,thu,other,email,reply,send one-pager,2026-04-12,"replied, lukewarm but open"
+st090,sc034,2026-04-09T14:00:00,thu,other,email,no_reply,,,
+st052,sc050,2026-04-09T16:35:00,thu,1600,call,no_answer,,,
+st060,sc046,2026-04-10T09:22:00,fri,0800,call,no_answer,,,
+st124,sc031,2026-04-10T09:26:00,fri,0800,email,no_reply,,,
+st121,sc043,2026-04-10T16:00:00,fri,1600,call,conversation,send pricing summary,2026-04-13,interested but needs the board
+st134,sc050,2026-04-13T14:00:00,mon,other,email,no_reply,,,
+st084,sc031,2026-04-13T16:08:00,mon,1600,linkedin,reply,send one-pager,2026-04-14,"replied, lukewarm but open"
+st047,sc006,2026-04-13T16:49:00,mon,1600,call,conversation,,,interested but needs the board
+st006,sc046,2026-04-13T17:05:00,mon,1600,call,callback_requested,call back,2026-04-16,"in a meeting, call after 15th"
+st112,sc034,2026-04-13T17:15:00,mon,1600,call,no_answer,,,
+st062,sc056,2026-04-13T17:29:00,mon,1600,email,reply,,,asked for a one-pager
+st068,sc006,2026-04-13T18:45:00,mon,other,email,no_reply,,,
+st126,sc029,2026-04-14T08:59:00,tue,0800,call,no_answer,,,
+st140,sc046,2026-04-14T09:17:00,tue,0800,call,no_answer,,,
+st012,sc029,2026-04-14T12:46:00,tue,1215,email,no_reply,,,
+st075,sc015,2026-04-14T18:45:00,tue,other,email,reply,send one-pager,2026-04-18,asked for a one-pager
+st065,sc025,2026-04-15T12:58:00,wed,1215,email,no_reply,,,
+st106,sc052,2026-04-16T08:51:00,thu,0800,linkedin,no_reply,,,
+st119,sc060,2026-04-16T09:11:00,thu,0800,linkedin,reply,send one-pager,2026-04-17,asked for a one-pager
+st146,sc058,2026-04-16T10:30:00,thu,other,email,no_reply,,,
+st071,sc016,2026-04-16T12:56:00,thu,1215,call,conversation,send pricing summary,2026-04-18,interested but needs the board
+st028,sc019,2026-04-16T14:00:00,thu,other,linkedin,no_reply,,,
+st019,sc035,2026-04-16T16:00:00,thu,1600,call,no_answer,,,
+st105,sc023,2026-04-17T12:56:00,fri,1215,linkedin,reply,send one-pager,2026-04-18,"replied, lukewarm but open"
+st091,sc013,2026-04-17T17:05:00,fri,1600,call,conversation,send pricing summary,2026-04-21,"good chat, asked about pricing"
+st110,sc052,2026-04-17T18:45:00,fri,other,email,no_reply,,,
+st085,sc059,2026-04-20T12:37:00,mon,1215,email,no_reply,,,
+st037,sc019,2026-04-21T08:07:00,tue,0800,email,reply,,,"replied, lukewarm but open"
+st042,sc042,2026-04-21T09:23:00,tue,0800,call,conversation,send pricing summary,2026-04-24,interested but needs the board
+st096,sc024,2026-04-21T09:27:00,tue,0800,call,meeting_booked,prepare demo,2026-04-22,agreed to a 30min walkthrough
+st103,sc014,2026-04-21T16:21:00,tue,1600,call,no_answer,,,
+st122,sc037,2026-04-22T08:51:00,wed,0800,call,conversation,send pricing summary,2026-04-23,interested but needs the board
+st087,sc001,2026-04-22T09:08:00,wed,0800,linkedin,no_reply,,,
+st069,sc051,2026-04-22T12:49:00,wed,1215,linkedin,reply,send one-pager,2026-04-25,asked for a one-pager
+st043,sc020,2026-04-22T12:57:00,wed,1215,email,no_reply,,,
+st015,sc019,2026-04-22T14:00:00,wed,other,email,no_reply,,,
+st038,sc032,2026-04-23T10:30:00,thu,other,linkedin,reply,send one-pager,2026-04-27,"replied, lukewarm but open"
+st031,sc045,2026-04-23T12:30:00,thu,1215,email,reply,send one-pager,2026-04-25,"replied, lukewarm but open"
+st100,sc059,2026-04-23T14:00:00,thu,other,linkedin,no_reply,,,
+st016,sc026,2026-04-23T17:11:00,thu,1600,call,declined,,,happy with current setup
+st093,sc032,2026-04-24T08:39:00,fri,0800,call,no_answer,,,
+st009,sc006,2026-04-24T16:17:00,fri,1600,linkedin,reply,,,"replied, lukewarm but open"
+st102,sc045,2026-04-27T12:29:00,mon,1215,call,no_answer,,,
+st111,sc053,2026-04-27T12:47:00,mon,1215,call,declined,,,no budget this year
+st095,sc033,2026-04-27T16:28:00,mon,1600,call,declined,,,happy with current setup
+st070,sc016,2026-04-27T16:50:00,mon,1600,call,meeting_booked,prepare demo,2026-04-28,agreed to a 30min walkthrough
+st005,sc030,2026-04-27T18:45:00,mon,other,email,reply,,,"replied, lukewarm but open"
+st023,sc016,2026-04-28T12:51:00,tue,1215,email,reply,send one-pager,2026-05-01,asked for a one-pager
+st081,sc012,2026-04-28T16:18:00,tue,1600,linkedin,no_reply,,,
+st104,sc032,2026-04-29T08:43:00,wed,0800,email,reply,send one-pager,2026-05-01,"replied, lukewarm but open"
+st034,sc030,2026-04-29T08:59:00,wed,0800,call,no_answer,,,
+st017,sc004,2026-04-29T16:11:00,wed,1600,call,no_answer,,,
+st128,sc025,2026-04-30T14:00:00,thu,other,email,reply,send one-pager,2026-05-04,"replied, lukewarm but open"
+st123,sc058,2026-05-01T09:12:00,fri,0800,call,declined,,,no budget this year
+st136,sc001,2026-05-04T08:00:00,mon,0800,email,no_reply,,,
+st011,sc023,2026-05-04T14:00:00,mon,other,email,reply,send one-pager,2026-05-08,"replied, lukewarm but open"
+st108,sc036,2026-05-04T16:16:00,mon,1600,email,no_reply,,,
+st008,sc026,2026-05-04T18:45:00,mon,other,email,no_reply,,,
+st131,sc049,2026-05-05T08:06:00,tue,0800,call,conversation,send pricing summary,2026-05-09,interested but needs the board
+st080,sc045,2026-05-05T08:07:00,tue,0800,email,no_reply,,,
+st010,sc032,2026-05-05T08:46:00,tue,0800,call,conversation,send pricing summary,2026-05-09,"walked through the idea, wants material"
+st018,sc045,2026-05-05T09:24:00,tue,0800,call,meeting_booked,prepare demo,2026-05-08,demo booked
+st046,sc036,2026-05-05T12:46:00,tue,1215,call,no_answer,,,
+st026,sc052,2026-05-06T08:33:00,wed,0800,call,no_answer,,,
+st049,sc015,2026-05-06T12:39:00,wed,1215,email,reply,,,asked for a one-pager
+st114,sc050,2026-05-07T08:50:00,thu,0800,email,reply,send one-pager,2026-05-08,asked for a one-pager
+st066,sc020,2026-05-07T09:14:00,thu,0800,call,conversation,send pricing summary,2026-05-08,"walked through the idea, wants material"
+st132,sc051,2026-05-08T08:46:00,fri,0800,linkedin,no_reply,,,
+st120,sc052,2026-05-08T09:08:00,fri,0800,call,no_answer,,,
+st029,sc024,2026-05-08T17:11:00,fri,1600,call,conversation,send pricing summary,2026-05-12,"walked through the idea, wants material"
+st098,sc035,2026-05-11T08:49:00,mon,0800,call,declined,,,no budget this year
+st077,sc022,2026-05-11T12:52:00,mon,1215,call,no_answer,,,
+st067,sc054,2026-05-11T17:30:00,mon,1600,call,no_answer,,,
+st143,sc048,2026-05-12T09:22:00,tue,0800,call,no_answer,,,
+st032,sc055,2026-05-12T12:25:00,tue,1215,call,no_answer,,,
+st021,sc026,2026-05-12T14:00:00,tue,other,email,no_reply,,,
+st137,sc019,2026-05-13T09:19:00,wed,0800,linkedin,reply,send one-pager,2026-05-17,asked for a one-pager
+st141,sc029,2026-05-13T12:33:00,wed,1215,linkedin,bounced,,,address invalid
+st035,sc037,2026-05-13T12:41:00,wed,1215,call,no_answer,,,
+st115,sc032,2026-05-13T16:13:00,wed,1600,email,no_reply,,,
+st020,sc018,2026-05-13T16:33:00,wed,1600,email,bounced,,,address invalid
+st048,sc052,2026-05-15T08:47:00,fri,0800,call,no_answer,,,
+st058,sc050,2026-05-15T12:17:00,fri,1215,email,reply,send one-pager,2026-05-19,asked for a one-pager
+st139,sc042,2026-05-15T12:24:00,fri,1215,call,callback_requested,call back,2026-05-18,asked to call next week
+st094,sc019,2026-05-15T16:41:00,fri,1600,linkedin,no_reply,,,
+st125,sc020,2026-05-15T17:02:00,fri,1600,call,conversation,send pricing summary,2026-05-19,"good chat, asked about pricing"
+st116,sc004,2026-05-18T08:05:00,mon,0800,email,no_reply,,,
+st025,sc006,2026-05-18T16:17:00,mon,1600,call,no_answer,,,
+st079,sc023,2026-05-20T09:14:00,wed,0800,email,reply,send one-pager,2026-05-24,asked for a one-pager
+st056,sc036,2026-05-20T10:30:00,wed,other,email,no_reply,,,
+st022,sc046,2026-05-21T08:07:00,thu,0800,call,no_answer,,,
+st045,sc033,2026-05-21T08:48:00,thu,0800,call,no_answer,,,
+st127,sc019,2026-05-21T12:44:00,thu,1215,email,reply,send one-pager,2026-05-24,"replied, lukewarm but open"
+st088,sc032,2026-05-21T12:50:00,thu,1215,call,declined,,,happy with current setup
+st072,sc015,2026-05-22T08:06:00,fri,0800,linkedin,reply,send one-pager,2026-05-23,"replied, lukewarm but open"
+st057,sc020,2026-05-22T09:20:00,fri,0800,email,no_reply,,,
+st027,sc018,2026-05-25T12:45:00,mon,1215,email,no_reply,,,
+st097,sc031,2026-05-25T12:48:00,mon,1215,email,no_reply,,,
+st073,sc051,2026-05-25T16:03:00,mon,1600,linkedin,no_reply,,,
+st145,sc025,2026-05-26T08:17:00,tue,0800,email,bounced,,,address invalid
+st144,sc030,2026-05-26T18:45:00,tue,other,linkedin,no_reply,,,
+st013,sc012,2026-05-27T09:20:00,wed,0800,linkedin,no_reply,,,
+st036,sc001,2026-05-27T10:30:00,wed,other,email,reply,send one-pager,2026-05-28,"replied, lukewarm but open"
+st129,sc042,2026-05-27T12:24:00,wed,1215,call,meeting_booked,prepare demo,2026-05-28,agreed to a 30min walkthrough
+st135,sc020,2026-05-27T16:04:00,wed,1600,call,callback_requested,,,asked to call next week
+st109,sc022,2026-05-28T08:43:00,thu,0800,email,reply,send one-pager,2026-06-01,"replied, lukewarm but open"
+st061,sc007,2026-05-28T08:52:00,thu,0800,linkedin,bounced,,,address invalid
+st113,sc049,2026-05-28T10:30:00,thu,other,email,reply,send one-pager,2026-05-29,"replied, lukewarm but open"
+st099,sc035,2026-05-28T12:44:00,thu,1215,call,no_answer,,,
+st074,sc015,2026-06-01T08:44:00,mon,0800,email,reply,send one-pager,2026-06-02,asked for a one-pager
+st130,sc059,2026-06-01T16:39:00,mon,1600,call,no_answer,,,
+st107,sc044,2026-06-01T17:14:00,mon,1600,call,callback_requested,call back,2026-06-05,asked to call next week
+st054,sc040,2026-06-01T17:20:00,mon,1600,call,conversation,send pricing summary,2026-06-05,interested but needs the board
+st055,sc051,2026-06-02T08:30:00,tue,0800,email,reply,,,asked for a one-pager
+st117,sc059,2026-06-02T16:24:00,tue,1600,call,callback_requested,call back,2026-06-03,"in a meeting, call after 15th"
+st142,sc042,2026-06-03T09:30:00,wed,0800,email,no_reply,,,
+st092,sc036,2026-06-03T14:00:00,wed,other,linkedin,no_reply,,,
+st024,sc018,2026-06-03T16:06:00,wed,1600,email,reply,send one-pager,2026-06-07,"replied, lukewarm but open"
+st118,sc038,2026-06-03T16:25:00,wed,1600,email,reply,send one-pager,2026-06-07,"replied, lukewarm but open"
+st001,sc020,2026-06-04T08:06:00,thu,0800,call,no_answer,,,
+st041,sc004,2026-06-04T09:07:00,thu,0800,email,no_reply,,,
+st078,sc019,2026-06-04T14:00:00,thu,other,email,reply,,,asked for a one-pager
+st059,sc059,2026-06-04T16:23:00,thu,1600,linkedin,reply,send one-pager,2026-06-07,"replied, lukewarm but open"
+st138,sc017,2026-06-05T09:04:00,fri,0800,email,no_reply,,,
+st076,sc023,2026-06-05T12:41:00,fri,1215,email,reply,send one-pager,2026-06-07,asked for a one-pager
+st030,sc019,2026-06-08T08:10:00,mon,0800,linkedin,reply,send one-pager,2026-06-12,asked for a one-pager
+st002,sc034,2026-06-08T14:00:00,mon,other,email,bounced,,,address invalid
+st064,sc050,2026-06-10T10:30:00,wed,other,email,no_reply,,,
+st089,sc023,2026-06-10T12:22:00,wed,1215,email,reply,send one-pager,2026-06-11,asked for a one-pager
+st101,sc029,2026-06-10T14:00:00,wed,other,email,no_reply,,,
+st039,sc043,2026-06-10T16:28:00,wed,1600,linkedin,no_reply,,,
+st147,sc034,2026-06-11T08:27:00,thu,0800,call,no_answer,,,
+st150,sc004,2026-06-11T08:46:00,thu,0800,linkedin,no_reply,,,
+st148,sc033,2026-06-11T09:23:00,thu,0800,call,no_answer,,,
+st149,sc042,2026-06-11T16:19:00,thu,1600,email,reply,send one-pager,2026-06-13,asked for a one-pager
+st003,sc035,2026-06-11T17:29:00,thu,1600,linkedin,reply,send one-pager,2026-06-12,asked for a one-pager
+st044,sc035,2026-06-11T18:45:00,thu,other,linkedin,no_reply,,,

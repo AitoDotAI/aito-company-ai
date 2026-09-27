@@ -6,7 +6,7 @@
 request:  {"from": "touches", "limit": 100, "where": {"ts": {"$gte": "2026-06-11T00:00:00"}}}
 response: total=4 (rows omitted)
 request:  {"from": "touches", "limit": 100, "where": {"next_action_due": {"$gt": "", "$lte": "2026-06-15"}}}
-response: total=6 (rows omitted)
+response: total=5 (rows omitted)
 
 ## Derived
 
@@ -14,51 +14,51 @@ response: total=6 (rows omitted)
   "follow_ups_due": [
     {
       "company": "Genco Oy",
-      "contact_id": "yc007",
-      "due": "2026-05-13",
-      "name": "Niaj Snow",
-      "next_action": "send one-pager"
+      "contact_id": "yc009",
+      "due": "2026-06-03",
+      "name": "Zara Wells",
+      "next_action": "call back"
     },
     {
-      "company": "Sabre BV",
-      "contact_id": "yc006",
-      "due": "2026-06-03",
-      "name": "Yvonne Gray",
-      "next_action": "send pricing summary"
+      "company": "Rekall Oy",
+      "contact_id": "yc005",
+      "due": "2026-06-04",
+      "name": "Heidi Pike",
+      "next_action": "send one-pager"
     }
   ],
   "since_yesterday": [
     {
       "channel": "call",
-      "company": "Sirius Oy",
-      "name": "Quinn Snow",
+      "company": "Nimbus GmbH",
+      "name": "Mona Pike",
       "notes": null,
       "outcome": "no_answer",
       "ts": "2026-06-11T12:24:00"
     },
     {
-      "channel": "call",
-      "company": "Pierce Oy",
-      "name": "Peggy Stone",
-      "notes": "good chat, asked about pricing",
-      "outcome": "conversation",
-      "ts": "2026-06-11T16:11:00"
-    },
-    {
-      "channel": "call",
-      "company": "Cobalt Oy",
-      "name": "Quinn Ford",
-      "notes": null,
-      "outcome": "no_answer",
-      "ts": "2026-06-11T16:56:00"
-    },
-    {
       "channel": "email",
-      "company": "Cobalt Oy",
-      "name": "Quinn Ford",
+      "company": "Vertex O\u00dc",
+      "name": "Carol Vale",
+      "notes": "replied, lukewarm but open",
+      "outcome": "reply",
+      "ts": "2026-06-11T14:00:00"
+    },
+    {
+      "channel": "linkedin",
+      "company": "Rekall Oy",
+      "name": "Carol Brooks",
       "notes": null,
       "outcome": "no_reply",
       "ts": "2026-06-11T17:24:00"
+    },
+    {
+      "channel": "email",
+      "company": "Vertex O\u00dc",
+      "name": "Niaj Vale",
+      "notes": null,
+      "outcome": "no_reply",
+      "ts": "2026-06-11T18:45:00"
     }
   ]
 }
@@ -72,91 +72,91 @@ request:  {"from": "contacts", "limit": 10000}
 response: total=10 (rows omitted)
 request:  {"from": "touches", "limit": 10000}
 response: total=15 (rows omitted)
-request:  {"from": "touches", "limit": 8, "predict": "outcome", "where": {"contact_id.ai_lifecycle": "none", "contact_id.segment": "erp", "contact_id.tier": "C", "days_since_prev_touch": "first", "weekday": "fri", "window": "0800"}}
-response: {"hits": [{"$p": 0.3544475079473707, "$value": "reply"}, {"$p": 0.23698903441521904, "$value": "no_reply"}, {"$p": 0.141888363470936, "$value": "conversation"}, {"$p": 0.09696445709863845, "$value": "no_answer"}, {"$p": 0.09573406327777988, "$value": "declined"}, {"$p": 0.07397657379005598, "$value": "callback_requested"}], "offset": 0, "total": 6}
-request:  {"from": "touches", "limit": 8, "predict": "outcome", "where": {"contact_id.ai_lifecycle": "none", "contact_id.segment": "erp", "contact_id.tier": "C", "days_since_prev_touch": "first", "weekday": "fri", "window": "0800"}}
-response: {"hits": [{"$p": 0.3544475079473707, "$value": "reply"}, {"$p": 0.23698903441521904, "$value": "no_reply"}, {"$p": 0.141888363470936, "$value": "conversation"}, {"$p": 0.09696445709863845, "$value": "no_answer"}, {"$p": 0.09573406327777988, "$value": "declined"}, {"$p": 0.07397657379005598, "$value": "callback_requested"}], "offset": 0, "total": 6}
-request:  {"from": "touches", "limit": 8, "predict": "outcome", "where": {"contact_id.ai_lifecycle": "shipped", "contact_id.segment": "ecommerce", "contact_id.tier": "A", "days_since_prev_touch": "8-21", "weekday": "fri", "window": "0800"}}
-response: {"hits": [{"$p": 0.2758181096374647, "$value": "reply"}, {"$p": 0.2396283528044679, "$value": "no_reply"}, {"$p": 0.17171176406505373, "$value": "no_answer"}, {"$p": 0.13270362195900298, "$value": "conversation"}, {"$p": 0.10122337545549301, "$value": "declined"}, {"$p": 0.07891477607851764, "$value": "callback_requested"}], "offset": 0, "total": 6}
-request:  {"from": "touches", "limit": 8, "predict": "outcome", "where": {"contact_id.ai_lifecycle": "announced", "contact_id.segment": "accounting", "contact_id.tier": "C", "days_since_prev_touch": "first", "weekday": "fri", "window": "0800"}}
-response: {"hits": [{"$p": 0.30892247235557996, "$value": "no_reply"}, {"$p": 0.2892500144488576, "$value": "reply"}, {"$p": 0.12468360193333547, "$value": "conversation"}, {"$p": 0.10798238257825463, "$value": "declined"}, {"$p": 0.10162318697205297, "$value": "no_answer"}, {"$p": 0.06753834171191922, "$value": "callback_requested"}], "offset": 0, "total": 6}
-request:  {"from": "touches", "limit": 8, "predict": "outcome", "where": {"contact_id.ai_lifecycle": "shipped", "contact_id.segment": "consultancy", "contact_id.tier": "B", "days_since_prev_touch": "22+", "weekday": "fri", "window": "0800"}}
-response: {"hits": [{"$p": 0.3500148383891098, "$value": "no_reply"}, {"$p": 0.2688490941281822, "$value": "reply"}, {"$p": 0.10649729591212805, "$value": "declined"}, {"$p": 0.10251669219688073, "$value": "no_answer"}, {"$p": 0.10129752270034094, "$value": "conversation"}, {"$p": 0.07082455667335831, "$value": "callback_requested"}], "offset": 0, "total": 6}
+request:  {"from": "touches", "limit": 8, "predict": "outcome", "where": {"contact_id.ai_lifecycle": "announced", "contact_id.segment": "consultancy", "contact_id.tier": "A", "days_since_prev_touch": "8-21", "weekday": "fri", "window": "0800"}}
+response: {"hits": [{"$p": 0.3651610164056862, "$value": "meeting_booked"}, {"$p": 0.2449204983273895, "$value": "reply"}, {"$p": 0.16700632867973955, "$value": "no_reply"}, {"$p": 0.1524214550680594, "$value": "no_answer"}, {"$p": 0.0704907015191254, "$value": "callback_requested"}], "offset": 0, "total": 5}
+request:  {"from": "touches", "limit": 8, "predict": "outcome", "where": {"contact_id.ai_lifecycle": "announced", "contact_id.segment": "consultancy", "contact_id.tier": "C", "days_since_prev_touch": "first", "weekday": "fri", "window": "0800"}}
+response: {"hits": [{"$p": 0.35410329393047185, "$value": "meeting_booked"}, {"$p": 0.2300245027129004, "$value": "reply"}, {"$p": 0.20788148477730423, "$value": "no_reply"}, {"$p": 0.1315987700324968, "$value": "no_answer"}, {"$p": 0.07639194854682672, "$value": "callback_requested"}], "offset": 0, "total": 5}
+request:  {"from": "touches", "limit": 8, "predict": "outcome", "where": {"contact_id.ai_lifecycle": "none", "contact_id.segment": "analytics", "contact_id.tier": "B", "days_since_prev_touch": "8-21", "weekday": "fri", "window": "0800"}}
+response: {"hits": [{"$p": 0.2801506177247798, "$value": "no_reply"}, {"$p": 0.2590339860925988, "$value": "meeting_booked"}, {"$p": 0.16344202708305003, "$value": "reply"}, {"$p": 0.15264580877730322, "$value": "no_answer"}, {"$p": 0.14472756032226827, "$value": "callback_requested"}], "offset": 0, "total": 5}
+request:  {"from": "touches", "limit": 8, "predict": "outcome", "where": {"contact_id.ai_lifecycle": "none", "contact_id.segment": "analytics", "contact_id.tier": "C", "days_since_prev_touch": "first", "weekday": "fri", "window": "0800"}}
+response: {"hits": [{"$p": 0.30478240173281734, "$value": "no_reply"}, {"$p": 0.25954632157222624, "$value": "meeting_booked"}, {"$p": 0.18148043588835402, "$value": "reply"}, {"$p": 0.13355457703349394, "$value": "no_answer"}, {"$p": 0.1206362637731084, "$value": "callback_requested"}], "offset": 0, "total": 5}
+request:  {"from": "touches", "limit": 8, "predict": "outcome", "where": {"contact_id.ai_lifecycle": "none", "contact_id.segment": "consultancy", "contact_id.tier": "C", "days_since_prev_touch": "first", "weekday": "fri", "window": "0800"}}
+response: {"hits": [{"$p": 0.31429268282447276, "$value": "no_reply"}, {"$p": 0.27967334778582204, "$value": "meeting_booked"}, {"$p": 0.17700421500127, "$value": "reply"}, {"$p": 0.1344478632555045, "$value": "no_answer"}, {"$p": 0.09458189113293065, "$value": "callback_requested"}], "offset": 0, "total": 5}
 
 ## Derived
 
 [
   {
-    "$p": 0.21586493726099198,
-    "company": "Tyrell Oy",
-    "contact_id": "yc002",
-    "name": "Mona Fields",
+    "$p": 0.4356517179248116,
+    "company": "Rekall Oy",
+    "contact_id": "yc005",
+    "name": "Heidi Pike",
     "phone_present": true,
     "why": {
-      "ai_lifecycle": "none",
-      "days_since_prev_touch": "first",
-      "segment": "erp",
-      "tier": "C",
-      "weekday": "fri",
-      "window": "0800"
-    }
-  },
-  {
-    "$p": 0.21586493726099198,
-    "company": "Wayne GmbH",
-    "contact_id": "yc010",
-    "name": "Sybil Stone",
-    "phone_present": true,
-    "why": {
-      "ai_lifecycle": "none",
-      "days_since_prev_touch": "first",
-      "segment": "erp",
-      "tier": "C",
-      "weekday": "fri",
-      "window": "0800"
-    }
-  },
-  {
-    "$p": 0.21161839803752064,
-    "company": "Sabre BV",
-    "contact_id": "yc006",
-    "name": "Yvonne Gray",
-    "phone_present": true,
-    "why": {
-      "ai_lifecycle": "shipped",
+      "ai_lifecycle": "announced",
       "days_since_prev_touch": "8-21",
-      "segment": "ecommerce",
+      "segment": "consultancy",
       "tier": "A",
       "weekday": "fri",
       "window": "0800"
     }
   },
   {
-    "$p": 0.1922219436452547,
-    "company": "Hanso Oy",
-    "contact_id": "yc003",
-    "name": "Rupert Brooks",
+    "$p": 0.4304952424772986,
+    "company": "Pied O\u00dc",
+    "contact_id": "yc008",
+    "name": "Peggy Pike",
     "phone_present": true,
     "why": {
       "ai_lifecycle": "announced",
       "days_since_prev_touch": "first",
-      "segment": "accounting",
+      "segment": "consultancy",
       "tier": "C",
       "weekday": "fri",
       "window": "0800"
     }
   },
   {
-    "$p": 0.17212207937369925,
+    "$p": 0.40376154641486706,
     "company": "Genco Oy",
-    "contact_id": "yc007",
-    "name": "Niaj Snow",
+    "contact_id": "yc009",
+    "name": "Zara Wells",
     "phone_present": true,
     "why": {
-      "ai_lifecycle": "shipped",
-      "days_since_prev_touch": "22+",
-      "segment": "consultancy",
+      "ai_lifecycle": "none",
+      "days_since_prev_touch": "8-21",
+      "segment": "analytics",
       "tier": "B",
+      "weekday": "fri",
+      "window": "0800"
+    }
+  },
+  {
+    "$p": 0.38018258534533467,
+    "company": "Genco Oy",
+    "contact_id": "yc002",
+    "name": "Eve Pike",
+    "phone_present": true,
+    "why": {
+      "ai_lifecycle": "none",
+      "days_since_prev_touch": "first",
+      "segment": "analytics",
+      "tier": "C",
+      "weekday": "fri",
+      "window": "0800"
+    }
+  },
+  {
+    "$p": 0.3742552389187527,
+    "company": "Rekall Oy",
+    "contact_id": "yc001",
+    "name": "Zara Brooks",
+    "phone_present": true,
+    "why": {
+      "ai_lifecycle": "none",
+      "days_since_prev_touch": "first",
+      "segment": "consultancy",
+      "tier": "C",
       "weekday": "fri",
       "window": "0800"
     }
@@ -171,25 +171,10 @@ response: {"hits": [{"$p": 0.3500148383891098, "$value": "no_reply"}, {"$p": 0.2
 request:  {"from": "contacts", "limit": 1, "where": {"contact_id": "yc002"}}
 response: total=1 (rows omitted)
 request:  {"from": "touches", "limit": 1000, "where": {"contact_id": {"$not": "yc002"}, "outcome": {"$or": ["conversation", "meeting_booked"]}}}
-response: total=2 (rows omitted)
-request:  {"from": "contacts", "limit": 1000, "select": ["contact_id", "name", "company", "segment", "tier", "ai_lifecycle"], "where": {"contact_id": {"$or": ["yc006", "yc008"]}, "segment": "erp"}}
-response: total=1 (rows omitted)
+response: total=3 (rows omitted)
+request:  {"from": "contacts", "limit": 1000, "select": ["contact_id", "name", "company", "segment", "tier", "ai_lifecycle"], "where": {"contact_id": {"$or": ["yc004", "yc005", "yc010"]}, "segment": "analytics"}}
+response: total=0 (rows omitted)
 
 ## Derived
 
-[
-  {
-    "ai_lifecycle": "announced",
-    "company": "Pierce Oy",
-    "evidence": {
-      "channel": "call",
-      "notes": "good chat, asked about pricing",
-      "outcome": "conversation",
-      "ts": "2026-06-11T16:11:00",
-      "window": "1600"
-    },
-    "segment": "erp",
-    "similar_contact": "Peggy Stone",
-    "tier": "A"
-  }
-]
+[]

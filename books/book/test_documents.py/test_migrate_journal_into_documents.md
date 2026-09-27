@@ -1,5 +1,5 @@
 journal entries: 3; migrated: 3, replaced: 0
-documents: 7 -> 10
+documents: 13 -> 16
 
 # migrated entries: date -> noted_on, kind/tags/deal-link -> topics
 
@@ -9,4 +9,4 @@ documents: 7 -> 10
 
 # re-running is idempotent (replace on source, no duplicates)
 
-second run: +0 migrated, 3 replaced, 10 total
+second run: +0 migrated, 3 replaced, 16 total

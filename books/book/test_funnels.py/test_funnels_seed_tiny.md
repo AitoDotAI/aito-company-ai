@@ -19,10 +19,10 @@ _recommend: {"from": "sessions", "goal": {"converted_paid": true}, "limit": 8, "
   Converted to paid: 1  rate_of_top=0.0333  (0.2000 from prev)
   leak: {'into': 'Converted to paid', 'conversion': 0.2}
   outlook P(Converted to paid) = 0.0625
-    cause source=referral with=0.2500 without=0.0000 mi=0.0328
+    cause source=referral with=0.2000 without=0.0000 mi=0.0211
+    cause device=desktop with=0.1111 without=0.0000 mi=0.0124
     cause landing_page=/pricing with=0.1111 without=0.0000 mi=0.0124
-    cause device=desktop with=0.1000 without=0.0000 mi=0.0112
-    lever source: referral=0.3326, direct=0.2489, social=0.1245, organic=0.0905, paid_search=0.0905
+    lever source: referral=0.2851, direct=0.1991, social=0.1422, paid_search=0.0996, organic=0.0905
 
 # Sales funnel, tiny dataset
 
@@ -41,10 +41,13 @@ _recommend: {"from": "contacts", "goal": {"ever_meeting": true}, "limit": 8, "re
 ## Derived
 
   Contacts: 10  rate_of_top=1.0000
-  Touched: 5  rate_of_top=0.5000  (0.5000 from prev)
-  Reached: 5  rate_of_top=0.5000  (1.0000 from prev)
-  Conversation: 3  rate_of_top=0.3000  (0.6000 from prev)
-  Meeting booked: 0  rate_of_top=0.0000  (0.0000 from prev)
-  leak: {'into': 'Meeting booked', 'conversion': 0.0}
-  outlook P(Meeting booked) = 0.0833
-    lever source: referral=0.2196, trigger=0.2196, warm=0.1317, cold=0.0941
+  Touched: 7  rate_of_top=0.7000  (0.7000 from prev)
+  Reached: 5  rate_of_top=0.5000  (0.7143 from prev)
+  Conversation: 4  rate_of_top=0.4000  (0.8000 from prev)
+  Meeting booked: 3  rate_of_top=0.3000  (0.7500 from prev)
+  leak: {'into': 'Touched', 'conversion': 0.7}
+  outlook P(Meeting booked) = 0.3333
+    cause ai_lifecycle=operating with=1.0000 without=0.2222 mi=0.0409
+    cause country=Germany with=1.0000 without=0.2222 mi=0.0409
+    cause role=Finance Manager with=1.0000 without=0.2222 mi=0.0409
+    lever source: trigger=0.6630, cold=0.3978, referral=0.3315, warm=0.2473

@@ -10,4 +10,4 @@ imported: +2 new, 0 replaced
 
 # the imported daily note shows up in the diary surface
 
-  diary now: ['Daily note — Genco pilot kickoff', 'Genco sync']
+  diary now: ['Daily note — Genco pilot kickoff', 'Genco sync', 'Mooby Ab — technical evaluation', 'Nimbus OÜ — quarterly review', 'Pymt Oy — renewal risk', 'Slate OÜ — discovery call']

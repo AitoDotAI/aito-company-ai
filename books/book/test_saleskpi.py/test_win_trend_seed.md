@@ -1,11 +1,11 @@
 # overall
 
-win rate = 0.246  (16/65 closed)  avg cycle = 205d
+win rate = 0.254  (61/240 closed)  avg cycle = 149d
 
 # win rate by quarter (most recent 6 with closed deals)
 
-  Q2·25: 1/8 won  ->  win_rate 0.125
-  Q3·25: 3/14 won  ->  win_rate 0.214
-  Q4·25: 5/15 won  ->  win_rate 0.333
-  Q1·26: 6/16 won  ->  win_rate 0.375
-  Q2·26: 1/12 won  ->  win_rate 0.083
+  Q2·25: 11/38 won  ->  win_rate 0.289
+  Q3·25: 14/48 won  ->  win_rate 0.292
+  Q4·25: 14/73 won  ->  win_rate 0.192
+  Q1·26: 15/49 won  ->  win_rate 0.306
+  Q2·26: 7/32 won  ->  win_rate 0.219

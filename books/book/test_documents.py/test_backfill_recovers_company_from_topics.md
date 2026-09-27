@@ -1,12 +1,12 @@
 # dry run: plans the resolvable doc, writes nothing
 
-resolved=1 ambiguous=1 left_null=8
-planned (ours): [('Abstergo Oy', 'Backfill target (jnA)')]
+resolved=1 ambiguous=1 left_null=9
+planned (ours): [('Acme OÜ', 'Backfill target (jnA)')]
 doc A company after dry run: None
 
 # apply: the resolvable doc gets company + a resolving company_id link
 
-doc A -> company='Abstergo Oy' company_id='abstergo-oy' link='Abstergo Oy'
+doc A -> company='Acme OÜ' company_id='acme-o' link='Acme OÜ'
 
 # browsable by account: the by-company feed now finds it
 

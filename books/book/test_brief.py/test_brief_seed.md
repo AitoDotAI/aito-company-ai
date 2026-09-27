@@ -1,40 +1,40 @@
 # brief --no-llm, seed, window 0800
 
 DO NEXT (today, all areas)
-  P1 Draft the customer-proof narrative  (overdue)  ⚠ slip 58%
-  P2 Send pricing context to Mooby Ab  (overdue)  ⚠ slip 51%
-  P1 Ship the customer-proof post  (due 2026-06-12)  ⚠ slip 58%
-  P1 Follow-up call with Oscorp OÜ  (due 2026-06-16)
-  P1 Propagate the agent-inference demo  (due 2026-06-18)  ⚠ slip 58%
+  P1 Call Delos Ab before the window closes  (overdue)
+  P3 Follow-up call with Lumon Oy  (overdue)  ⚠ slip 73%
+  P3 Repurpose customer-proof for LinkedIn  (overdue)
+  P1 Follow-up call with Pied Oy  (due 2026-06-15)
+  P1 Ship the customer-proof post  (due 2026-06-16)
 
 FOLLOW-UPS (due)
-  Victor Vale, Encom OÜ  send pricing summary  due 2026-04-23
-  Victor Snow, Tessier Ab  send one-pager  due 2026-04-25
-  Judy Pike, Onyx Oy  call back  due 2026-05-09
-  Frank Banks, Globex Oy  call back  due 2026-06-01
-  Judy Lake, Pied BV  send pricing summary  due 2026-06-05
-  Peggy Lake, Widmore Oy  send one-pager  due 2026-06-07
-  Peggy Fields, Duff BV  send one-pager  due 2026-06-08
-  Niaj Lake, Rekall BV  prepare demo  due 2026-06-09
-  ... and 5 more
+  Frank Knight, Rekall BV  send one-pager  due 2026-04-17
+  Grace Ford, Pendant Oy  send pricing summary  due 2026-04-21
+  Grace Lane, Nakatomi OÜ  send one-pager  due 2026-05-01
+  Mallory Wells, Sirius Oy  prepare demo  due 2026-05-08
+  Zara Day, Vance BV  send pricing summary  due 2026-05-12
+  Alice Hill, Tyrell Oy  send one-pager  due 2026-05-28
+  Zara Cross, Vertex GmbH  send one-pager  due 2026-05-29
+  Yvonne Knight, Delos Ab  send one-pager  due 2026-06-01
+  ... and 10 more
 
 CALL QUEUE  0800  fri
   (Friday — conversation day)
-  1. Eve Fields, Sterling BV   $p=0.38   why: analytics A operating, 8-21d since touch
-     opener evidence: conversation: "good chat, asked about pricing"
-  2. Victor Vale, Encom OÜ   $p=0.34   why: ecommerce C operating, 22+d since touch
-     opener evidence: meeting_booked: "demo booked"
-  3. Carol Gray, Omni Oy   $p=0.30   why: ecommerce C announced, 8-21d since touch
-     opener evidence: meeting_booked: "demo booked"
-  4. Mona Hill, Bluth Oy   $p=0.28   why: other C shipped, 8-21d since touch
+  1. Zara Day, Vance BV   $p=0.31   why: consultancy B operating, 22+d since touch
+     opener evidence: none yet (cold segment)
+  2. Zara Pike, Wayne OÜ   $p=0.28   why: ecommerce B none, never touched
      opener evidence: conversation: "interested but needs the board"
-  5. Judy Lake, Pied BV   $p=0.27   why: erp A announced, 8-21d since touch
-     opener evidence: meeting_booked: "demo booked"
+  3. Grace Lane, Nakatomi OÜ   $p=0.26   why: erp A operating, 22+d since touch
+     opener evidence: meeting_booked: "agreed to a 30min walkthrough"
+  4. Grace Marsh, Wonka Oy   $p=0.23   why: analytics B operating, 22+d since touch
+     opener evidence: none yet (cold segment)
+  5. Carol Vale, Nakatomi OÜ   $p=0.22   why: erp C operating, 22+d since touch
+     opener evidence: meeting_booked: "agreed to a 30min walkthrough"
 
-SEGMENT READ  conversion vs pipeline 20%
-  analytics    20% ↓   best window 1600
-  ecommerce    24% ↑   best window 0800
-  other        22% ↑   best window 0800
-  erp          25% ↑   best window 1600
+SEGMENT READ  conversion vs pipeline 14%
+  consultancy  24% ↑   best window 1600
+  ecommerce    14% ↓   best window 1600
+  erp          22% ↑   best window 1600
+  analytics    10% ↓   best window 0800
 
 (36 lines <= 40)

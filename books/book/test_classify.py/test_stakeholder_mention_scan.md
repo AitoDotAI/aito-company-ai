@@ -1,4 +1,4 @@
 # a contact's company in the title surfaces them as a stakeholder
 
-title: Call Genco Oy about renewal
-candidates: [('Carol Lane', ['genco'])]
+title: Call Tyrell Oy about renewal
+candidates: [('Alice Hill', ['tyrell'])]

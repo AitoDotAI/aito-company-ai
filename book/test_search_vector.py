@@ -43,12 +43,31 @@ def test_crosslingual_query_flips_from_empty_to_semantic(t: bt.TestCaseRun) -> N
 
     fr = "quels prospects contacter au sujet des prix"   # 'which prospects to contact about pricing'
     t.h1(f"a French query over English documents: '{fr}'")
-    text_hits = [h["title"] for h in search.search(client, fr, kind="doc").derived["hits"]]
-    blended = search.ranked(client, fr, kind="doc", embed=embedder).derived
+
+    # Print the REQUESTS as well as the hits. This snapshot is the artifact the
+    # capability is shown with, and "a French query returns English documents"
+    # is only convincing next to the query that did it.
+    text_res = search.search(client, fr, kind="doc")
+    for label, request, response in text_res.calls:
+        t.tln(f"  {label} request:  {request}")
+        t.tln(f"  {label} returned: {len(response.get('hits', []))} hits")
+    text_hits = [h["title"] for h in text_res.derived["hits"]]
+
+    blend_res = search.ranked(client, fr, kind="doc", embed=embedder)
+    blended = blend_res.derived
+    for label, request, response in blend_res.calls:
+        t.tln(f"  {label} request:  {request}")
     sem_hits = [h["title"] for h in blended["hits"]]
+    t.tln("")
     t.tln(f"text-match ($match):   {len(text_hits)} hits  {text_hits}")
-    t.tln(f"blended (+ $nearest):  {len(sem_hits)} hits, semantic={blended['semantic']}")
-    for h in blended["hits"]:
+    # The exact hit COUNT is deliberately not snapshotted. An embedding service
+    # is not bit-deterministic, so the tail of a $nearest result set moves
+    # between runs — two runs here returned 6 and 7 hits, identical for the
+    # first six. Pinning the whole list would make this test flap for a reason
+    # that says nothing about the capability; the flip and the leading hits are
+    # the claim, so those are what the snapshot holds.
+    t.tln(f"blended (+ $nearest):  semantic={blended['semantic']}, top 5:")
+    for h in blended["hits"][:5]:
         t.tln(f"   [{h['kind']}] {h['title']}")
 
     # the flip: text-match finds nothing (no shared tokens); the vector blend does
