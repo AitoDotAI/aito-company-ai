@@ -149,12 +149,20 @@ The go/no-go on an event (live Aito). status: go / no_go / attended (or
 
 ## update_todo
 
-params: ['changes', 'todo_id']
-required: ['changes', 'todo_id']
+params: ['append_detail', 'changes', 'todo_id']
+required: ['todo_id']
 Edit an existing todo (live Aito). `changes` maps field→value for any of
     area, title, action_type, status, priority, due_date, window, linked_id,
-    linked_type, stakeholder_id, prep_status, detail. Each is validated; the
-    calendar/pipeline due-date invariant is re-checked.
+    linked_type, stakeholder_id, prep_status, detail, role, owner. Each is
+    validated; the calendar/pipeline due-date invariant is re-checked.
+
+    `changes["detail"]` REPLACES the whole detail. To add a section without
+    rewriting it, pass `append_detail` instead: it is appended after a blank
+    line, and concurrent appends from several agents all land.
+
+    Safe to call from several agents at once: only the changed fields of this
+    one row are written, version-checked, so concurrent edits compose. Returns
+    the todo as read back after the write; an error means it did not persist.
 
 ## classify_todo
 

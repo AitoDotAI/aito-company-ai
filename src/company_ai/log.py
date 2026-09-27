@@ -261,6 +261,9 @@ class TodoConflict(RuntimeError):
     """Kept losing the race to concurrent writers of the same todo."""
 
 
+#: the version of a row that has never been updated (a new or loaded todo)
+INITIAL_REV = "rv-0"
+
 _READ_BACK_ATTEMPTS = 4
 _READ_BACK_BACKOFF_S = 0.2
 _WRITE_ATTEMPTS = 5
@@ -309,7 +312,8 @@ def _read_back(client: AitoClient, todo_id: str, expected: dict,
             diff = {k: (v, hits[0].get(k)) for k, v in expected.items()
                     if not _same(hits[0].get(k), v)}
             if not diff:
-                return hits[0]
+                # the engine omits null fields; return every column, as callers expect
+                return {**{c: None for c in schema.TODOS["columns"]}, **hits[0]}
             last = f"the persisted row differs (want, have): {diff}"
         else:
             last = ("the row is absent" if client.count("todos")
@@ -335,6 +339,15 @@ def _write_todo(client: AitoClient, todo_id: str, build, attempts: int = _WRITE_
         hits = _todo_rows(client, todo_id)
         assert hits, f"unknown todo_id {todo_id!r}"
         before = hits[0]
+        if before.get("rev") is None:
+            # A row from before versioning. `where rev = null` matches nothing
+            # (measured on aito-core 2.10), so give it the initial version with
+            # a plain row-addressed write first. Two writers doing this at once
+            # both write the same value, so the version check below still
+            # decides between them.
+            client.update_entries("todos", {"todo_id": todo_id}, {"rev": INITIAL_REV})
+            _read_back(client, todo_id, {"rev": INITIAL_REV}, sleep=sleep)  # raises if it did not land
+            continue
         fields = build(dict(before))
         rev = f"rv-{uuid.uuid4().hex}"
         client.update_entries("todos", {"todo_id": todo_id, "rev": before.get("rev")},
@@ -455,6 +468,8 @@ def add_todo(
 
     contact_ids, deal_ids = _todo_link_ids(client)
     row = parse_todo_row(raw, contact_ids, deal_ids)
+    _ensure_rev_column(client)
+    row["rev"] = INITIAL_REV
     client.upload_batch("todos", [row])
     changelog.record(client, "todo", row["todo_id"], "created", f"todo: {title} ({area})")
     return row

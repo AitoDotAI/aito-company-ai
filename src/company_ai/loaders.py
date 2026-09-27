@@ -586,7 +586,7 @@ def parse_todo_row(row: dict, contact_ids: set[str] | None = None,
         "window": row["window"] or None,
         "slot": row["slot"] or None,
         "sort_order": None,  # unset until dragged
-        "rev": None,  # set by the first row write
+        "rev": "rv-0",  # the initial version (log.INITIAL_REV); bumped by every row write
         "linked_id": row["linked_id"] or None,
         "linked_type": row["linked_type"] or None,
         "stakeholder_id": row["stakeholder_id"] or None,

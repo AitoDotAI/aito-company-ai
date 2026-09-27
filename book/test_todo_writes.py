@@ -19,7 +19,7 @@ import threading
 from datetime import date
 
 import booktest as bt
-from company_ai import envkit, loaders, log
+from company_ai import loaders, log
 from company_ai.aito import AitoClient
 from company_ai.config import SEED_DIR, Config
 
@@ -37,7 +37,8 @@ def _todo(todo_id: str, **over) -> dict:
 
 class FakeAito:
     """The engine surface the todo writes use, with `_modify` semantics: an
-    update touches exactly the rows whose fields EQUAL the where (null included).
+    update touches exactly the rows whose fields EQUAL the where; a null in the
+    where matches nothing (measured on aito-core 2.10).
     Hooks let a test pause a writer or make reads stale; `table_absent_reads`
     counts reads that found the todos table empty, which must stay 0."""
 
@@ -85,7 +86,9 @@ class FakeAito:
             if self.drop_updates:
                 return {}
             for r in self.tables[table]:
-                if all(r.get(k) == v for k, v in where.items()):
+                # as measured on aito-core 2.10: a `where` naming a null value
+                # matches nothing (it is not "field is unset")
+                if all(v is not None and r.get(k) == v for k, v in where.items()):
                     r.update(set_fields)
             return {}
 
@@ -199,7 +202,7 @@ def test_a_claim_race_has_one_winner(t: bt.TestCaseRun) -> None:
 
 def test_success_is_the_persisted_row_not_an_echo(t: bt.TestCaseRun) -> None:
     t.h1("the engine accepts the write but applies nothing")
-    fake = _board()
+    fake = FakeAito([_todo("td-1", rev=log.INITIAL_REV)])   # an already-versioned row
     fake.drop_updates = True
     try:
         log.update_todo(fake, "td-1", {"detail": "a 10 KB handoff"})
@@ -266,37 +269,35 @@ def test_reads_never_see_an_empty_table_during_concurrent_writes(t: bt.TestCaseR
 
 # --- against a real engine ------------------------------------------------------
 
-def test_live_concurrent_writes_in_a_throwaway_env(t: bt.TestCaseRun) -> None:
-    """The same guarantees against a real Aito, in an env branched off master.
-    Opt-in: COMPANY_AI_ENV_TESTS=1 and never the shared instance (see
-    test_envkit._env_tests_ok)."""
-    url = Config.from_env().instance_url
-    if os.environ.get("COMPANY_AI_ENV_TESTS") != "1" or "shared.aito.ai" in url:
+def test_live_concurrent_writes_on_a_real_engine(t: bt.TestCaseRun) -> None:
+    """The same guarantees against a real Aito, in the suite's own dedicated,
+    disposable test env (which every test reseeds). Opt-in:
+    COMPANY_AI_ENV_TESTS=1, and never the shared instance."""
+    config = Config.from_env()
+    if os.environ.get("COMPANY_AI_ENV_TESTS") != "1" or "shared.aito.ai" in config.instance_url:
         t.tln("SKIPPED — needs COMPANY_AI_ENV_TESTS=1 and a disposable instance")
         return
-    config = Config.from_env()
-    client = AitoClient(config.instance_url, config.api_key)
-    loaders.create_schema(client)
-    loaders.load_todos(client, SEED_DIR)
-    with envkit.isolated_env(client) as env:
-        ids = [r["todo_id"] for r in env.query({"from": "todos", "where": {"area": "operations"},
-                                                 "limit": 4})["hits"]]
-        before = env.count("todos")
-        t.h1("two updates on different rows + an add_todo, concurrently")
-        errors = _run(lambda: log.update_todo(env, ids[0], {"priority": 1}),
-                      lambda: log.complete_todo(env, ids[1], as_of=date(2026, 9, 27)),
-                      lambda: log.add_todo(env, area="operations", title="live add", priority=3))
-        t.tln(f"errors: {errors}")
-        t.tln(f"row count: before + 1 = {env.count('todos') == before + 1}")
-        t.h1("two concurrent appends to one todo")
-        errors = _run(lambda: log.update_todo(env, ids[2], {}, append_detail="=== lane A ==="),
-                      lambda: log.update_todo(env, ids[2], {}, append_detail="=== lane B ==="))
-        detail = log._todo_rows(env, ids[2])[0]["detail"] or ""
-        t.tln(f"errors: {errors}  both kept: {'lane A' in detail and 'lane B' in detail}")
-        t.h1("two agents claim the same todo")
-        errors = _run(lambda: log.claim_todo(env, ids[3], "agent-a"),
-                      lambda: log.claim_todo(env, ids[3], "agent-b"))
-        owner = log._todo_rows(env, ids[3])[0]["owner"]
-        t.tln(f"one owner: {owner in ('agent-a', 'agent-b')}  losers: {len(errors)}")
-        all_ids = {r["todo_id"] for r in env.query({"from": "todos", "limit": 100000})["hits"]}
-        t.tln(f"no duplicate ids: {len(all_ids) == env.count('todos')}")
+    env = AitoClient(config.instance_url, config.api_key)
+    loaders.create_schema(env)
+    loaders.load_todos(env, SEED_DIR)
+    ids = [r["todo_id"] for r in env.query({"from": "todos", "where": {"area": "operations"},
+                                             "limit": 4})["hits"]]
+    before = env.count("todos")
+    t.h1("two updates on different rows + an add_todo, concurrently")
+    errors = _run(lambda: log.update_todo(env, ids[0], {"priority": 1}),
+                  lambda: log.complete_todo(env, ids[1], as_of=date(2026, 9, 27)),
+                  lambda: log.add_todo(env, area="operations", title="live add", priority=3))
+    t.tln(f"errors: {errors}")
+    t.tln(f"row count: before + 1 = {env.count('todos') == before + 1}")
+    t.h1("two concurrent appends to one todo")
+    errors = _run(lambda: log.update_todo(env, ids[2], {}, append_detail="=== lane A ==="),
+                  lambda: log.update_todo(env, ids[2], {}, append_detail="=== lane B ==="))
+    detail = log._todo_rows(env, ids[2])[0].get("detail") or ""
+    t.tln(f"errors: {errors}  both kept: {'lane A' in detail and 'lane B' in detail}")
+    t.h1("two agents claim the same todo")
+    errors = _run(lambda: log.claim_todo(env, ids[3], "agent-a"),
+                  lambda: log.claim_todo(env, ids[3], "agent-b"))
+    owner = log._todo_rows(env, ids[3])[0].get("owner")
+    t.tln(f"one owner: {owner in ('agent-a', 'agent-b')}  losers: {len(errors)}")
+    all_ids = {r["todo_id"] for r in env.query({"from": "todos", "limit": 100000})["hits"]}
+    t.tln(f"no duplicate ids: {len(all_ids) == env.count('todos')}")
