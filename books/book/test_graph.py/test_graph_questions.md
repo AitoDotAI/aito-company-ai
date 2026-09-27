@@ -1,6 +1,6 @@
 # Each question is one Aito query — request, then what came back
 
-  9/9 queries answered; failed: none
+  8/8 queries answered; failed: none
 
 ## What kind of company is this, judged only by who works there?
 
@@ -9,15 +9,6 @@
     {'$p': 0.45180876109960416, '$value': 'accounting'}
     {'$p': 0.18676738303391519, '$value': 'erp'}
     {'$p': 0.15975007808127015, '$value': 'ecommerce'}
-
-## Does knowing a CTO there actually move the odds — and by how much?
-
-  request:  {'from': 'deals', 'where': {'company_id.technical_contact': True, 'blocker': 'none'}, 'predict': 'won', 'select': ['$value', '$p', '$why']}
-  total:    2
-    {'$p': 0.5764969484660526, '$value': True}
-    {'$p': 0.4235030515339474, '$value': False}
-    why: blocker=none                               x1.75
-    why: company_id.technical_contact=True          x1.40
 
 ## An accounting account, a champion on board, nothing blocking — what are the odds?
 
@@ -31,10 +22,11 @@
 
 ## At an account where we know a CTO, how likely is a deal to close?
 
-  request:  {'from': 'deals', 'where': {'company_id.$refs.contacts.company_id': {'$exists': {'role': 'CTO'}}}, 'predict': 'won', 'select': ['$value', '$p']}
+  request:  {'from': 'deals', 'where': {'company_id.$refs.contacts.company_id': {'$exists': {'role': 'CTO'}}}, 'predict': 'won', 'select': ['$value', '$p', '$why']}
   total:    2
     {'$p': 0.6428139846976368, '$value': False}
     {'$p': 0.3571860153023632, '$value': True}
+    why: company_id.$refs.contacts.company_id has role=CTO x1.38
 
 ## Who are the people at accounts that pay us?
 
