@@ -100,15 +100,15 @@ response: {"ai_made": "ai-assisted", "channel_id": "sk02", "format": "text", "la
 ## Sample rows: todos
 
 request:  {"from": "todos", "limit": 1, "where": {"todo_id": "sd022"}}
-response: {"action_type": "research", "area": "experiments", "linked_type": "workstream", "prep_status": "prep_needed", "priority": 2, "status": "blocked", "title": "Decide go/kill on positioning", "todo_id": "sd022"}
+response: {"action_type": "research", "area": "experiments", "linked_type": "workstream", "prep_status": "prep_needed", "priority": 2, "rev": "rv-0", "status": "blocked", "title": "Decide go/kill on positioning", "todo_id": "sd022"}
 request:  {"from": "todos", "limit": 1, "where": {"todo_id": "sd016"}}
-response: {"action_type": "research", "area": "experiments", "linked_type": "workstream", "prep_status": "prep_needed", "priority": 3, "status": "ready", "title": "Analyze the agent-inference test results", "todo_id": "sd016"}
+response: {"action_type": "research", "area": "experiments", "linked_type": "workstream", "prep_status": "prep_needed", "priority": 3, "rev": "rv-0", "status": "ready", "title": "Analyze the agent-inference test results", "todo_id": "sd016"}
 request:  {"from": "todos", "limit": 1, "where": {"todo_id": "sd011"}}
-response: {"action_type": "post", "area": "marketing", "due_date": "2026-06-16", "linked_type": "asset", "prep_status": "ready", "priority": 1, "slot": "14:30", "status": "prog", "title": "Ship the customer-proof post", "todo_id": "sd011", "window": "fri_1430"}
+response: {"action_type": "post", "area": "marketing", "due_date": "2026-06-16", "linked_type": "asset", "prep_status": "ready", "priority": 1, "rev": "rv-0", "slot": "14:30", "status": "prog", "title": "Ship the customer-proof post", "todo_id": "sd011", "window": "fri_1430"}
 request:  {"from": "todos", "limit": 1, "where": {"todo_id": "sd003"}}
-response: {"action_type": "post", "area": "marketing", "due_date": "2026-06-22", "linked_type": "asset", "prep_status": "in_progress", "priority": 2, "slot": "10:30", "status": "ready", "title": "Draft the product narrative", "todo_id": "sd003", "window": "mon_0800"}
+response: {"action_type": "post", "area": "marketing", "due_date": "2026-06-22", "linked_type": "asset", "prep_status": "in_progress", "priority": 2, "rev": "rv-0", "slot": "10:30", "status": "ready", "title": "Draft the product narrative", "todo_id": "sd003", "window": "mon_0800"}
 request:  {"from": "todos", "limit": 1, "where": {"todo_id": "sd014"}}
-response: {"action_type": "post", "area": "marketing", "due_date": "2026-06-15", "linked_type": "asset", "prep_status": "in_progress", "priority": 2, "slot": "14:30", "status": "prog", "title": "Draft the agent-inference narrative", "todo_id": "sd014", "window": "fri_eve"}
+response: {"action_type": "post", "area": "marketing", "due_date": "2026-06-15", "linked_type": "asset", "prep_status": "in_progress", "priority": 2, "rev": "rv-0", "slot": "14:30", "status": "prog", "title": "Draft the agent-inference narrative", "todo_id": "sd014", "window": "fri_eve"}
 
 ## Sample rows: deals
 

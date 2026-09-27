@@ -100,15 +100,15 @@ response: {"ai_made": "manual", "channel_id": "yk01", "format": "show-hn", "lane
 ## Sample rows: todos
 
 request:  {"from": "todos", "limit": 1, "where": {"todo_id": "yd001"}}
-response: {"action_type": "post", "area": "marketing", "due_date": "2026-06-16", "linked_type": "asset", "prep_status": "ready", "priority": 1, "slot": "09:00", "status": "prog", "title": "Repurpose customer-proof for LinkedIn", "todo_id": "yd001", "window": "mon_0800"}
+response: {"action_type": "post", "area": "marketing", "due_date": "2026-06-16", "linked_type": "asset", "prep_status": "ready", "priority": 1, "rev": "rv-0", "slot": "09:00", "status": "prog", "title": "Repurpose customer-proof for LinkedIn", "todo_id": "yd001", "window": "mon_0800"}
 request:  {"from": "todos", "limit": 1, "where": {"todo_id": "yd002"}}
-response: {"action_type": "research", "area": "rnd", "linked_type": "workstream", "prep_status": "in_progress", "priority": 2, "status": "prog", "title": "Schema migration tooling", "todo_id": "yd002"}
+response: {"action_type": "research", "area": "rnd", "linked_type": "workstream", "prep_status": "in_progress", "priority": 2, "rev": "rv-0", "status": "prog", "title": "Schema migration tooling", "todo_id": "yd002"}
 request:  {"from": "todos", "limit": 1, "where": {"todo_id": "yd006"}}
-response: {"action_type": "research", "area": "rnd", "linked_type": "workstream", "prep_status": "in_progress", "priority": 2, "status": "prog", "title": "Rep2 stabilization", "todo_id": "yd006"}
+response: {"action_type": "research", "area": "rnd", "linked_type": "workstream", "prep_status": "in_progress", "priority": 2, "rev": "rv-0", "status": "prog", "title": "Rep2 stabilization", "todo_id": "yd006"}
 request:  {"from": "todos", "limit": 1, "where": {"todo_id": "yd004"}}
-response: {"action_type": "research", "area": "rnd", "linked_type": "workstream", "prep_status": "in_progress", "priority": 3, "status": "blocked", "title": "pg_infer extension", "todo_id": "yd004"}
+response: {"action_type": "research", "area": "rnd", "linked_type": "workstream", "prep_status": "in_progress", "priority": 3, "rev": "rv-0", "status": "blocked", "title": "pg_infer extension", "todo_id": "yd004"}
 request:  {"from": "todos", "limit": 1, "where": {"todo_id": "yd005"}}
-response: {"action_type": "email", "area": "sales", "due_date": "2026-06-11", "linked_id": "ye001", "linked_type": "deal", "prep_status": "ready", "priority": 2, "slot": "14:30", "stakeholder_id": "yc010", "status": "ready", "title": "Send pricing context to Nimbus GmbH", "todo_id": "yd005", "window": "fri_1530"}
+response: {"action_type": "email", "area": "sales", "due_date": "2026-06-11", "linked_id": "ye001", "linked_type": "deal", "prep_status": "ready", "priority": 2, "rev": "rv-0", "slot": "14:30", "stakeholder_id": "yc010", "status": "ready", "title": "Send pricing context to Nimbus GmbH", "todo_id": "yd005", "window": "fri_1530"}
 
 ## Sample rows: deals
 
