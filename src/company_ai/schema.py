@@ -291,6 +291,11 @@ TODOS = {
         # nothing, which the read-back sees, so the loser rebuilds on the fresh
         # row instead of overwriting it. Null until a row's first update.
         "rev": {"type": "String", "nullable": True},
+        # the last few revs this row has had, space-separated, newest last. A
+        # writer whose read-back sees a *different* rev checks here whether its
+        # own write landed and was then built upon (success) or never landed
+        # (a lost race: rebuild), so a landed write is never applied twice.
+        "revs": {"type": "String", "nullable": True},
     },
 }
 

@@ -30,7 +30,7 @@ def _todo(todo_id: str, **over) -> dict:
            "due_date": None, "window": None, "slot": None, "sort_order": None,
            "linked_id": None, "linked_type": None, "stakeholder_id": None,
            "prep_status": "ready", "slipped": None, "role": "lane", "owner": None,
-           "rev": None}
+           "rev": log.INITIAL_REV, "revs": log.INITIAL_REV}
     row.update(over)
     return row
 
@@ -48,6 +48,7 @@ class FakeAito:
         self.tables = {"todos": copy.deepcopy(rows), "changelog": [], "contacts": [], "deals": []}
         self.lock = threading.Lock()
         self.before_update = None        # hook(where, set) -> None
+        self.after_update = None         # hook() run once, right after a write landed
         self.drop_updates = False        # the engine accepts a write but applies nothing
         self.stale_reads = 0             # the next N todo reads return the pre-write row
         self._stale = None
@@ -90,7 +91,17 @@ class FakeAito:
                 # matches nothing (it is not "field is unset")
                 if all(v is not None and r.get(k) == v for k, v in where.items()):
                     r.update(set_fields)
-            return {}
+        hook, self.after_update = self.after_update, None
+        if hook:
+            hook()
+        return {}
+
+    def optimize(self, table):
+        return {}
+
+    def _request(self, method, path, body):
+        assert path == "/api/v2/data/_modify", path
+        return self.update_entries(body["update"], body["where"], body["set"])
 
     def upload_batch(self, table, rows):
         with self.lock:
@@ -202,7 +213,7 @@ def test_a_claim_race_has_one_winner(t: bt.TestCaseRun) -> None:
 
 def test_success_is_the_persisted_row_not_an_echo(t: bt.TestCaseRun) -> None:
     t.h1("the engine accepts the write but applies nothing")
-    fake = FakeAito([_todo("td-1", rev=log.INITIAL_REV)])   # an already-versioned row
+    fake = FakeAito([_todo("td-1")])
     fake.drop_updates = True
     try:
         log.update_todo(fake, "td-1", {"detail": "a 10 KB handoff"})
@@ -218,9 +229,35 @@ def test_success_is_the_persisted_row_not_an_echo(t: bt.TestCaseRun) -> None:
     t.tln(f"returned priority={row['priority']} rev set={bool(row['rev'])}")
 
 
+def test_unversioned_rows_need_the_one_time_migration(t: bt.TestCaseRun) -> None:
+    fake = FakeAito([_todo(f"td-{i}", rev=None, revs=None) for i in range(1, 4)])
+    t.h1("a write to an unversioned row refuses (no unconditional init on the fly)")
+    try:
+        log.update_todo(fake, "td-1", {"priority": 1})
+        t.tln("written (WRONG)")
+    except log.TodoNotVersioned as e:
+        t.tln(f"TodoNotVersioned, names the command: {'migrate-todo-revs' in str(e)}")
+    t.h1("migrate_todo_revs versions every row, each with its own rev")
+    t.tln(f"report: {log.migrate_todo_revs(fake)}")
+    revs = [r["rev"] for r in fake.tables["todos"]]
+    t.tln(f"all versioned: {all(revs)}  unique: {len(set(revs)) == len(revs)}")
+    t.tln(f"re-run is a no-op: {log.migrate_todo_revs(fake)}")
+    t.tln(f"now writable: priority={log.update_todo(fake, 'td-1', {'priority': 1})['priority']}")
+
+
+def test_a_write_built_upon_before_its_read_back_is_applied_once(t: bt.TestCaseRun) -> None:
+    t.h1("A's append lands, then B edits the same row before A reads back")
+    fake = FakeAito([_todo("td-1", detail="base")])
+    fake.after_update = lambda: log.update_todo(fake, "td-1", {"priority": 1})   # B
+    log.update_todo(fake, "td-1", {}, append_detail="=== A ===")                  # A
+    row = _row(fake, "td-1")
+    t.tln(f"A appended exactly once: {row['detail'].count('=== A ===') == 1}")
+    t.tln(f"B's edit kept: {row['priority'] == 1}")
+
+
 def test_a_landed_write_behind_slow_reads_is_not_applied_twice(t: bt.TestCaseRun) -> None:
     t.h1("the append lands, but every read-back retry sees the old row")
-    fake = FakeAito([_todo("td-1", detail="base", rev=log.INITIAL_REV)])
+    fake = FakeAito([_todo("td-1", detail="base")])
     fake.stale_reads = log._READ_BACK_ATTEMPTS
     row = log.update_todo(fake, "td-1", {}, append_detail="=== once ===")
     stored = _row(fake, "td-1")["detail"]

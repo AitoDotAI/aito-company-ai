@@ -264,24 +264,59 @@ class TodoConflict(RuntimeError):
 #: the version of a row that has never been updated (a new or loaded todo)
 INITIAL_REV = "rv-0"
 
+#: how many recent revs a row remembers (see schema.TODOS["revs"])
+_REV_HISTORY = 8
+
 _READ_BACK_ATTEMPTS = 4
 _READ_BACK_BACKOFF_S = 0.2
 _WRITE_ATTEMPTS = 5
 
 
-_rev_ready: set = set()   # instances whose todos table is known to have `rev`
+_rev_ready: set = set()   # instances whose todos table is known to have rev + revs
+
+
+class TodoNotVersioned(RuntimeError):
+    """A todo has no `rev`: run `company-ai migrate-todo-revs` once (see there)."""
 
 
 def _ensure_rev_column(client: AitoClient) -> None:
-    """Add the `rev` column to a todos table created before it existed: a
-    non-destructive column add (existing rows read null), never a rewrite.
-    Checked once per instance per process."""
+    """Add the `rev` / `revs` columns to a todos table created before they
+    existed: non-destructive column adds (existing rows read null), never a
+    rewrite. Checked once per instance per process."""
     if client.base_url in _rev_ready:
         return
     columns = client.get_schema()["schema"]["todos"]["columns"]
-    if "rev" not in columns:
-        client.add_column("todos", "rev", schema.TODOS["columns"]["rev"])
+    for column in ("rev", "revs"):
+        if column not in columns:
+            client.add_column("todos", column, schema.TODOS["columns"][column])
     _rev_ready.add(client.base_url)
+
+
+def migrate_todo_revs(client: AitoClient) -> dict:
+    """One-time deploy step: give every unversioned todo a unique `rev`.
+
+    Run it ONCE, while no other writer is active (the board frozen), before
+    the version-checked writes go live. It cannot be done safely on the fly:
+    the engine's `where rev = null` matches nothing, so an initialisation is
+    an unconditional write, and one that lands after another writer's
+    versioned write would roll its rev back (an ABA that loses updates).
+    Idempotent: versioned rows are left alone. Returns counts; raises if any
+    row is still unversioned afterwards."""
+    _ensure_rev_column(client)
+    rows = client.query({"from": "todos", "limit": 100000})["hits"]
+    todo = [r["todo_id"] for r in rows if not r.get("rev")]
+    for todo_id in todo:
+        rev = f"rv-{uuid.uuid4().hex}"
+        client._request("POST", "/api/v2/data/_modify",
+                        {"update": "todos", "where": {"todo_id": todo_id},
+                         "set": {"rev": rev, "revs": rev}})
+    if todo:
+        client.optimize("todos")
+    left = [r["todo_id"] for r in client.query({"from": "todos", "limit": 100000})["hits"]
+            if not r.get("rev")]
+    if left:
+        raise TodoWriteNotPersisted(f"still unversioned after migration: {left[:10]}")
+    return {"todos": len(rows), "versioned": len(todo)}
 
 
 def _todo_rows(client: AitoClient, todo_id: str) -> list[dict]:
@@ -339,28 +374,25 @@ def _write_todo(client: AitoClient, todo_id: str, build, attempts: int = _WRITE_
         hits = _todo_rows(client, todo_id)
         assert hits, f"unknown todo_id {todo_id!r}"
         before = hits[0]
-        if before.get("rev") is None:
-            # A row from before versioning. `where rev = null` matches nothing
-            # (measured on aito-core 2.10), so give it the initial version with
-            # a plain row-addressed write first. Two writers doing this at once
-            # both write the same value, so the version check below still
-            # decides between them.
-            client.update_entries("todos", {"todo_id": todo_id}, {"rev": INITIAL_REV})
-            _read_back(client, todo_id, {"rev": INITIAL_REV}, sleep=sleep)  # raises if it did not land
-            continue
+        if not before.get("rev"):
+            raise TodoNotVersioned(
+                f"{todo_id} has no rev: run `company-ai migrate-todo-revs` once, with "
+                f"writers stopped, before version-checked writes (log.migrate_todo_revs)")
         fields = build(dict(before))
         rev = f"rv-{uuid.uuid4().hex}"
-        client.update_entries("todos", {"todo_id": todo_id, "rev": before.get("rev")},
-                              {**fields, "rev": rev})           # _modify + flush
+        history = ((before.get("revs") or before["rev"]).split() + [rev])[-_REV_HISTORY:]
+        client.update_entries("todos", {"todo_id": todo_id, "rev": before["rev"]},
+                              {**fields, "rev": rev, "revs": " ".join(history)})  # _modify + flush
         try:
             return before, _read_back(client, todo_id, {**fields, "rev": rev}, sleep=sleep)
         except TodoWriteNotPersisted:
             now = _todo_rows(client, todo_id)
-            if now and now[0].get("rev") == rev:
-                # OUR write landed; the read-back was only slow. Never rebuild
-                # on our own write (an append would be applied twice).
+            if now and rev in (now[0].get("revs") or now[0].get("rev") or "").split():
+                # OUR write landed (and may since have been built upon); the
+                # read-back just did not catch it. Never rebuild on our own
+                # write: an append would be applied twice.
                 return before, {**{c: None for c in schema.TODOS["columns"]}, **now[0]}
-            if now and now[0].get("rev") != before.get("rev"):
+            if now and now[0].get("rev") != before["rev"]:
                 continue          # a concurrent write landed first: rebuild on it
             raise
     raise TodoConflict(f"{todo_id}: still conflicting after {attempts} attempts")
@@ -473,7 +505,7 @@ def add_todo(
     contact_ids, deal_ids = _todo_link_ids(client)
     row = parse_todo_row(raw, contact_ids, deal_ids)
     _ensure_rev_column(client)
-    row["rev"] = INITIAL_REV
+    row["rev"] = row["revs"] = f"rv-{uuid.uuid4().hex}"   # unique: no rev value is ever reused
     client.upload_batch("todos", [row])
     changelog.record(client, "todo", row["todo_id"], "created", f"todo: {title} ({area})")
     return row

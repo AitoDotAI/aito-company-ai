@@ -523,7 +523,7 @@ def load_posts(client: AitoClient, data_dir: Path) -> int:
 
 # set only by the app, never from CSV: sort_order by drag-reorder, rev by
 # every row write (log._write_todo)
-DERIVED_TODO_COLUMNS = {"sort_order", "rev"}
+DERIVED_TODO_COLUMNS = {"sort_order", "rev", "revs"}
 
 
 def parse_todo_row(row: dict, contact_ids: set[str] | None = None,
@@ -587,6 +587,7 @@ def parse_todo_row(row: dict, contact_ids: set[str] | None = None,
         "slot": row["slot"] or None,
         "sort_order": None,  # unset until dragged
         "rev": "rv-0",  # the initial version (log.INITIAL_REV); bumped by every row write
+        "revs": "rv-0",
         "linked_id": row["linked_id"] or None,
         "linked_type": row["linked_type"] or None,
         "stakeholder_id": row["stakeholder_id"] or None,
