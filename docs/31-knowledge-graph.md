@@ -95,11 +95,13 @@ same helper the deal close-likelihood already uses — and the view draws each
 factor as a bar either side of a midline, since lift is multiplicative and ×2
 and ×0.5 are the same size of effect in opposite directions.
 
-**Explaining a reverse-link fact: harvest it onto the node.** Because the
-filtered `$exists` form cannot be explained, the "do we know a CTO there?"
-fact is also materialised as `companies.technical_contact` at load time, by
-walking `companies <- contacts`. As a column it is an ordinary forward path,
-so a prediction conditioned on it comes back with its reasons:
+**The same fact, harvested onto the node.** `companies.technical_contact` is
+"do we know a CTO there?" computed at load time by walking
+`companies <- contacts`. It predates Aito 2.10.3, when a filtered `$refs`
+could not be explained and materialising the fact was the only way to get a
+reason out of it. The live form explains itself now, so the column is no
+longer a workaround — it is just a fact worth having on the node, because
+filtering and browsing by it needs no traversal at all:
 
 ```json
 { "from": "deals",
@@ -155,33 +157,41 @@ same sentence.
 
 ## Sharp edges
 
-This is a **young corner of Aito**, and the limits are worth knowing before you
-extend it. They are not bugs in this repo:
+Link support is young, and it moves. Everything below was re-probed against
+**Aito 2.10.3** (built 2026-09-27); the list shrank sharply from the day before,
+so re-check rather than trusting it.
 
-- **An unresolvable dotted field matches nothing, silently.** `company_id.NOPE`
-  returns `total: 0` rather than raising, so an empty graph result is ambiguous
-  between "no such rows" and "no such field". Decompose a surprising zero before
-  believing it.
-- **`$refs` needs the FK**: `$refs.contacts.company_id`, never `$refs.contacts`.
-- **Inside `$exists: {…}` only equality works.** Range and match operators have
-  to sit on a forward dotted path in the outer `where`.
-- **Don't `$and` two `$refs` `$exists` conditions** — that combination is known
-  broken upstream. One `$exists: {…}` object with several keys is fine.
-- **Two-hop `$exists: {"link.attr": v}` assumes the target key is named `id`.**
-  Ours are `company_id` / `contact_id`, so that form does not work here.
-- **`$refs` is materialised eagerly** over the whole table regardless of
-  `limit` — fine at this size, not a plan for millions of rows.
-- **A reload leaves link resolution stale, in both directions, silently.**
-  Drop-and-recreate the target and forward paths return zero; reload a referrer
-  and the target's `$refs` index returns zero. The rows are fine; the answer is
-  just wrong, and looks like "nothing matches". `loaders._reload` now flushes
-  both ends of every link it declares, which is why you will not hit this
-  through the loaders — but a hand-rolled upload can still walk into it.
-- **`$why` cannot explain a `$refs` proposition** — the query 400s in the
-  explanation formatter. Predict from a reverse link, or explain a prediction,
-  but not both in one query.
+**Fixed in 2.10.3** — these were real and are not any more:
+
+- An unresolvable linked path now **raises**, naming the field and listing the
+  valid ones, instead of silently matching nothing. This was the dangerous one:
+  a typo'd path returned `total: 0`, indistinguishable from "no rows match", so
+  a confident, correct-looking zero could reach a dashboard or an agent answer.
+- `$why` **explains a filtered `$refs`** proposition. Before, a reverse-link
+  prediction could have the number or the reasons, never both — which is why
+  `technical_contact` is also harvested onto the node.
+- The two-hop `$exists: {"link.attr": v}` form works with a link target whose
+  key is not named `id` (ours are `company_id`, `contact_id`).
+- `$and` over two `$refs` `$exists` conditions returns a result.
+
+**Still true:**
+
+- **`recommend` over a linked path 500s** (`"internal": "None.get"`), so "which
+  account property most drives a win" has no direct spelling; condition a
+  `predict` on the neighbourhood instead.
+- **Inside `$exists: {…}` conditions are equality only** — now a named
+  restriction rather than a crash. Range and match operators belong on a
+  forward dotted path in the outer `where`.
 - **`orderBy` cannot name a `$refs` path directly**; alias a `$length` in
   `select` and order by the alias.
+- **`$refs` is materialised eagerly** over the whole table regardless of
+  `limit` — fine at this size, not a plan for millions of rows.
+- **Link resolution goes stale after a reload, in both directions, silently.**
+  `loaders._reload` flushes both ends of every link it declares, which is why
+  you will not hit this through the loaders; a hand-rolled upload still can.
+- **Cross-table priors want a rep2 collection.** Our tables are declared
+  `type: "table"`; filtering works regardless, and how much predictive signal a
+  rep1 target contributes is still unconfirmed.
 
 ## Where this goes
 

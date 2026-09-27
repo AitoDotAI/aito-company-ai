@@ -79,6 +79,15 @@ def _why_label(prop: dict) -> str:
     if key == "$and":
         return " & ".join(_why_label(p) for p in prop[key])
     inner = prop[key]
+    if isinstance(inner, dict) and "$exists" in inner:
+        # A reverse-link proposition ($refs ... $exists) carries no plain value,
+        # so the generic `key=value` rendered it as "...company_id=None". Name
+        # what the set was filtered on instead — that is the fact a reader is
+        # being told moved the number.
+        filt = inner["$exists"]
+        if isinstance(filt, dict) and filt:
+            return f"{key} has " + ", ".join(f"{k}={v}" for k, v in sorted(filt.items()))
+        return f"{key} exists"
     value = inner.get("$has") if isinstance(inner, dict) else inner
     return f"{key}={value}"
 

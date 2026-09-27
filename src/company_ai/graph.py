@@ -41,19 +41,6 @@ QUESTIONS: list[tuple[str, str, dict]] = [
          "predict": "industry", "select": ["$value", "$p"], "limit": 5},
     ),
     (
-        "cto-odds-explained",
-        "Does knowing a CTO there actually move the odds — and by how much?",
-        # The same reverse-link fact as the card below, but HARVESTED onto the
-        # company at load time (companies <- contacts), which turns it into a
-        # forward path. That matters for one reason: Aito cannot explain a
-        # filtered $refs proposition, so asked live the question can have a
-        # number or reasons, not both. Materialised, it gets both — and the
-        # lift on company_id.technical_contact is the answer to "by how much".
-        {"from": "deals",
-         "where": {"company_id.technical_contact": True, "blocker": "none"},
-         "predict": "won", "select": ["$value", "$p", "$why"]},
-    ),
-    (
         "explained-odds",
         "An accounting account, a champion on board, nothing blocking — what are the odds?",
         # Several facts at once, one of them reached across the link: the
@@ -78,7 +65,7 @@ QUESTIONS: list[tuple[str, str, dict]] = [
         {"from": "deals",
          "where": {"company_id.$refs.contacts.company_id":
                    {"$exists": {"role": "CTO"}}},
-         "predict": "won", "select": ["$value", "$p"]},
+         "predict": "won", "select": ["$value", "$p", "$why"]},
     ),
     (
         "people-at-customers",
