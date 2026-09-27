@@ -285,6 +285,17 @@ TODOS = {
         # `_modify`-staleness in log.update_todo's docstring. null = the role's
         # shared queue, which only one agent per role may work.
         "owner": {"type": "String", "nullable": True},
+        # row version for optimistic writes (log._write_todo): every update is
+        # a `_modify` WHERE todo_id AND rev = <the rev it read>, setting a new
+        # rev. A concurrent writer that landed first makes the where match
+        # nothing, which the read-back sees, so the loser rebuilds on the fresh
+        # row instead of overwriting it. Null until a row's first update.
+        "rev": {"type": "String", "nullable": True},
+        # the last few revs this row has had, space-separated, newest last. A
+        # writer whose read-back sees a *different* rev checks here whether its
+        # own write landed and was then built upon (success) or never landed
+        # (a lost race: rebuild), so a landed write is never applied twice.
+        "revs": {"type": "String", "nullable": True},
     },
 }
 

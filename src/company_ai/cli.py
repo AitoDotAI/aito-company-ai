@@ -94,6 +94,9 @@ def main() -> None:
                         help="one-time import of a markdown dir into the documents store (docs/25)")
     di.add_argument("--dir", help="source dir of .md files; defaults to COMPANY_AI_LIBRARY_DIR")
 
+    sub.add_parser("migrate-todo-revs",
+                   help="one-time deploy step: version every todo (run with writers stopped)")
+
     sub.add_parser("migrate-journal",
                    help="one-time: fold journal entries into documents (Phase 2d, .ai/tasks/15)")
 
@@ -158,7 +161,8 @@ def main() -> None:
     WRITE_CMDS = {"create-schema", "load-companies", "load-rolodex", "load-touches", "load-sessions",
                   "load-materials", "load-channels", "load-posts", "load-todos",
                   "load-deals", "load-decisions", "load-experiments", "load-events",
-                  "load-documents", "documents-import", "migrate-journal", "trilium-import",
+                  "load-documents", "documents-import", "migrate-journal", "migrate-todo-revs",
+                  "trilium-import",
                   "load-all", "clear", "export", "export-all", "board-run",
                   "reindex-search",
                   "routines-run", "log", "complete", "archive", "backup", "restore"}
@@ -259,6 +263,10 @@ def main() -> None:
         print(f"documents-import from {source}: "
               f"+{report['added']} new, {report['replaced']} replaced, "
               f"{report['total']} total")
+    elif args.command == "migrate-todo-revs":
+        report = logbook.migrate_todo_revs(client)
+        print(f"migrate-todo-revs: {report['versioned']} of {report['todos']} todos versioned; "
+              f"all todos now carry a rev")
     elif args.command == "migrate-journal":
         report = logbook.migrate_journal(client)
         print(f"migrate-journal: +{report['migrated']} migrated, "
