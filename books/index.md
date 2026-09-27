@@ -84,6 +84,7 @@
      * [test_migrate.py::test_doctor_clean_after_load](book/test_migrate.py::test_doctor_clean_after_load.md)
      * [test_migrate.py::test_doctor_flags_analyzer_drift](book/test_migrate.py::test_doctor_flags_analyzer_drift.md)
      * [test_migrate.py::test_export_all_load_all_round_trip](book/test_migrate.py::test_export_all_load_all_round_trip.md)
+     * [test_modify_visibility.py::test_modify_update_is_visible_to_the_next_read](book/test_modify_visibility.py::test_modify_update_is_visible_to_the_next_read.md)
      * [test_note_entities.py::test_add_company_idempotent_and_links](book/test_note_entities.py::test_add_company_idempotent_and_links.md)
      * [test_note_entities.py::test_contact_endpoint_ensures_company](book/test_note_entities.py::test_contact_endpoint_ensures_company.md)
      * [test_privacy.py::test_no_contact_data_in_tracked_files](book/test_privacy.py::test_no_contact_data_in_tracked_files.md)

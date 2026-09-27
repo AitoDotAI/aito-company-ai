@@ -107,9 +107,20 @@ def test_llm_provider_seam(t: bt.TestCaseRun) -> None:
     except LLMError as e:
         t.tln(str(e))
 
-    t.h1("default provider resolves to an OpenAI-compatible client")
-    built = make_client(config)
-    t.tln(f"provider={config.llm_provider} -> {type(built).__name__} model={built.model}")
+    t.h1("the provider selects the client — both ways, from explicit config")
+    # NOT from the ambient environment. This printed whatever the developer
+    # happened to have configured, so it read "openai" only while nobody had
+    # Azure credentials in their test dotenv — and flipped to "azure" the day
+    # someone did, with no code change. The seam is what is under test, so give
+    # it both inputs explicitly.
+    from dataclasses import replace
+    as_openai = replace(config, llm_provider="openai", llm_azure_endpoint="")
+    as_azure = replace(config, llm_provider="azure",
+                       llm_azure_endpoint="https://example.api.cognitive.microsoft.com",
+                       llm_azure_deployment="gpt-5-mini")
+    for cfg in (as_openai, as_azure):
+        built = make_client(cfg)
+        t.tln(f"provider={cfg.llm_provider} -> {type(built).__name__} model={built.model}")
 
     t.h1("Azure OpenAI: deployment URL, api-key auth, missing key raises")
     azure = AzureOpenAIClient(
