@@ -5,6 +5,8 @@ immediately queryable, which the round-trip booktest proves.
 """
 
 import re
+import time
+import uuid
 from datetime import date, datetime, timezone
 
 from . import changelog, schema, search
@@ -242,6 +244,111 @@ def log_deal_update(
     return row
 
 
+# --- todo writes -------------------------------------------------------------
+#
+# Every edit of an existing todo goes through `_write_todo`: a row-addressed
+# `_modify` keyed on todo_id, never a whole-table rewrite. The rewrite this
+# replaces (read all -> DROP -> CREATE -> re-upload) made two overlapping
+# writes double the table, lost rows, and let readers see an empty or missing
+# table mid-write (board incident 2026-09-26, td-20260926165345475422).
+
+
+class TodoWriteNotPersisted(RuntimeError):
+    """A todo write returned, but the row read back does not show it."""
+
+
+class TodoConflict(RuntimeError):
+    """Kept losing the race to concurrent writers of the same todo."""
+
+
+_READ_BACK_ATTEMPTS = 4
+_READ_BACK_BACKOFF_S = 0.2
+_WRITE_ATTEMPTS = 5
+
+
+_rev_ready: set = set()   # instances whose todos table is known to have `rev`
+
+
+def _ensure_rev_column(client: AitoClient) -> None:
+    """Add the `rev` column to a todos table created before it existed: a
+    non-destructive column add (existing rows read null), never a rewrite.
+    Checked once per instance per process."""
+    if client.base_url in _rev_ready:
+        return
+    columns = client.get_schema()["schema"]["todos"]["columns"]
+    if "rev" not in columns:
+        client.add_column("todos", "rev", schema.TODOS["columns"]["rev"])
+    _rev_ready.add(client.base_url)
+
+
+def _todo_rows(client: AitoClient, todo_id: str) -> list[dict]:
+    return client.query({"from": "todos", "where": {"todo_id": todo_id}, "limit": 2})["hits"]
+
+
+def _same(a, b) -> bool:
+    """Field equality as the engine stores it: '' and None are both 'unset'."""
+    return (a if a != "" else None) == (b if b != "" else None)
+
+
+def _read_back(client: AitoClient, todo_id: str, expected: dict,
+               attempts: int = _READ_BACK_ATTEMPTS, sleep=time.sleep) -> dict:
+    """The todo as persisted, once it shows every field in `expected`.
+
+    Reads can be transiently behind a write, so this retries with a short
+    backoff before concluding. It also tells two failures apart that look the
+    same from a single read: the row is absent (the table has rows), versus the
+    read returned nothing at all (a table that is missing or mid-rewrite).
+    A success is therefore proof the write persisted, not an echo of the
+    intended row. Raises `TodoWriteNotPersisted` with the last observation."""
+    last = "no read"
+    for i in range(attempts):
+        hits = _todo_rows(client, todo_id)
+        if len(hits) > 1:
+            raise TodoWriteNotPersisted(f"{todo_id}: {len(hits)} rows share this todo_id")
+        if hits:
+            diff = {k: (v, hits[0].get(k)) for k, v in expected.items()
+                    if not _same(hits[0].get(k), v)}
+            if not diff:
+                return hits[0]
+            last = f"the persisted row differs (want, have): {diff}"
+        else:
+            last = ("the row is absent" if client.count("todos")
+                    else "the read returned no rows at all (table missing or mid-rewrite)")
+        if i < attempts - 1:
+            sleep(_READ_BACK_BACKOFF_S * 2 ** i)
+    raise TodoWriteNotPersisted(f"{todo_id}: {last}")
+
+
+def _write_todo(client: AitoClient, todo_id: str, build, attempts: int = _WRITE_ATTEMPTS,
+                sleep=time.sleep) -> tuple[dict, dict]:
+    """Optimistically update one todo; returns (row before, row read back).
+
+    `build(row)` gets the current row and returns the fields to set (it may
+    raise to reject the edit). The write is a `_modify` WHERE todo_id AND rev =
+    the rev that was read, setting a fresh rev. If another writer landed first,
+    the where matches nothing and the read-back shows *their* rev, so this
+    rebuilds from the fresh row and tries again: concurrent edits of the same
+    todo compose instead of overwriting each other, and edits of different
+    todos never touch each other at all."""
+    _ensure_rev_column(client)
+    for _ in range(attempts):
+        hits = _todo_rows(client, todo_id)
+        assert hits, f"unknown todo_id {todo_id!r}"
+        before = hits[0]
+        fields = build(dict(before))
+        rev = f"rv-{uuid.uuid4().hex}"
+        client.update_entries("todos", {"todo_id": todo_id, "rev": before.get("rev")},
+                              {**fields, "rev": rev})           # _modify + flush
+        try:
+            return before, _read_back(client, todo_id, {**fields, "rev": rev}, sleep=sleep)
+        except TodoWriteNotPersisted:
+            now = _todo_rows(client, todo_id)
+            if now and now[0].get("rev") != before.get("rev"):
+                continue          # a concurrent write landed first: rebuild on it
+            raise
+    raise TodoConflict(f"{todo_id}: still conflicting after {attempts} attempts")
+
+
 def complete_todo(
     client: AitoClient,
     todo_id: str,
@@ -258,20 +365,12 @@ def complete_todo(
     the completion implies; omit them to just close the todo. Returns the
     updated todo and the updated deal (if any).
 
-    Todos, like deals, are rewritten wholesale (Aito exposes no row id);
-    the lenses already exclude status=done, so the completed todo drops out.
+    One row-addressed write (`_write_todo`); the lenses already exclude
+    status=done, so the completed todo drops out. The returned todo is the
+    row as read back after the write.
     """
     as_of = as_of or date.today()
-    all_todos = client.query({"from": "todos", "limit": 10000})["hits"]
-    match = [t for t in all_todos if t["todo_id"] == todo_id]
-    assert match, f"unknown todo_id {todo_id!r}"
-    todo = dict(match[0])
-    todo["status"] = "done"
-    rewritten = [t for t in all_todos if t["todo_id"] != todo_id] + [todo]
-    client.delete_table("todos")
-    client.create_table("todos", schema.TODOS)
-    client.upload_batch("todos", rewritten)
-    assert client.count("todos") == len(rewritten), "todo rewrite row-count mismatch"
+    _, todo = _write_todo(client, todo_id, lambda row: {"status": "done"})
 
     deal = None
     deal_change = any(v is not None for v in
@@ -288,36 +387,24 @@ def archive_todo(client: AitoClient, todo_id: str) -> dict:
     """Archive (abandon) a todo — a terminal state distinct from done. Unlike
     complete_todo it advances nothing (no deal move, no outcome logged); it
     just drops the action from the open lenses, which already exclude terminal
-    statuses. One full-table rewrite (Aito exposes no row id). Unknown id
-    raises (rule 3). Returns the updated todo."""
-    all_todos = client.query({"from": "todos", "limit": 10000})["hits"]
-    match = [t for t in all_todos if t["todo_id"] == todo_id]
-    assert match, f"unknown todo_id {todo_id!r}"
-    todo = dict(match[0])
-    todo["status"] = "archived"
-    rewritten = [t for t in all_todos if t["todo_id"] != todo_id] + [todo]
-    client.delete_table("todos")
-    client.create_table("todos", schema.TODOS)
-    client.upload_batch("todos", rewritten)
-    assert client.count("todos") == len(rewritten), "todo rewrite row-count mismatch"
+    statuses. One row-addressed write (`_write_todo`). Unknown id raises
+    (rule 3). Returns the todo as read back after the write."""
+    _, todo = _write_todo(client, todo_id, lambda row: {"status": "archived"})
     changelog.record(client, "todo", todo_id, "archived", f"archived: {todo['title']}")
     return {"todo": todo}
 
 
 def reorder_todos(client: AitoClient, ordered_ids: list[str]) -> int:
     """Persist a drag-reorder: set sort_order = position for each id in
-    `ordered_ids` (the visible list, top → bottom). One full-table rewrite, so
-    a drag costs a single write, not N. Unknown ids raise (rule 3)."""
-    all_todos = client.query({"from": "todos", "limit": 10000})["hits"]
-    by_id = {t["todo_id"]: t for t in all_todos}
+    `ordered_ids` (the visible list, top → bottom). One row-addressed write per
+    todo whose position actually changed (a drag moves a few), never a
+    whole-table rewrite. Unknown ids raise (rule 3)."""
+    by_id = {t["todo_id"]: t for t in client.query({"from": "todos", "limit": 10000})["hits"]}
     unknown = [i for i in ordered_ids if i not in by_id]
     assert not unknown, f"unknown todo_id(s) {unknown}"
     for position, tid in enumerate(ordered_ids):
-        by_id[tid]["sort_order"] = position
-    client.delete_table("todos")
-    client.create_table("todos", schema.TODOS)
-    client.upload_batch("todos", list(by_id.values()))
-    assert client.count("todos") == len(by_id), "todo rewrite row-count mismatch"
+        if by_id[tid].get("sort_order") != position:
+            _write_todo(client, tid, lambda row, position=position: {"sort_order": position})
     return len(ordered_ids)
 
 
@@ -381,73 +468,86 @@ EDITABLE_TODO_FIELDS = {"area", "title", "action_type", "status", "priority",
 
 
 def update_todo(client: AitoClient, todo_id: str, changes: dict,
-                as_of: date | None = None) -> dict:
-    """Edit a todo (the dashboard's edit form). Validates each changed field
-    against its enum/format, re-checks the calendar/pipeline due-date
-    invariant, and rewrites the table (Aito exposes no row id). Unknown fields
-    or values raise — no silent coercion (rule 3)."""
+                as_of: date | None = None, append_detail: str | None = None) -> dict:
+    """Edit a todo (the dashboard's edit form, the MCP tool). Validates each
+    changed field against its enum/format and re-checks the calendar/pipeline
+    due-date invariant, then writes ONLY the changed fields to that one row
+    (`_write_todo`: a row-addressed, version-checked `_modify`). Unknown fields
+    or values raise, with no silent coercion (rule 3).
+
+    `append_detail` adds a section to the end of `detail` instead of replacing
+    it. `changes["detail"]` still REPLACES; appending is the safe way for
+    several lanes to add notes, because the version check makes two
+    concurrent appends compose instead of one overwriting the other.
+
+    Returns the todo as read back after the write: a success is proof the
+    change persisted, not an echo of what was asked for."""
+    changes = dict(changes)
     unknown = set(changes) - EDITABLE_TODO_FIELDS
     assert not unknown, f"not editable: {sorted(unknown)}; allowed {sorted(EDITABLE_TODO_FIELDS)}"
-    all_todos = client.query({"from": "todos", "limit": 10000})["hits"]
-    match = [t for t in all_todos if t["todo_id"] == todo_id]
-    assert match, f"unknown todo_id {todo_id!r}"
-    row = dict(match[0])
-    current_owner = row.get("owner") or ""   # read before the loop overwrites it
-
+    assert not (append_detail and "detail" in changes), \
+        "pass either changes['detail'] (replace) or append_detail, not both"
+    assert changes or append_detail, "nothing to change"
     contact_ids, deal_ids = _todo_link_ids(client)
-    for field, value in changes.items():
-        if field == "area":
-            assert value in schema.TODO_AREAS, f"unknown area {value!r}"
-        elif field == "status":
-            assert value in schema.TODO_STATUS, f"unknown status {value!r}"
-        elif field == "prep_status":
-            assert value in schema.PREP_STATUS, f"unknown prep_status {value!r}"
-        elif field == "action_type" and value:
-            assert value in schema.ACTION_TYPES, f"unknown action_type {value!r}"
-        elif field == "linked_type" and value:
-            assert value in schema.LINKED_TYPES, f"unknown linked_type {value!r}"
-        elif field == "priority":
-            value = int(value)
-            assert value >= 1, f"priority must be >= 1, got {value}"
-        elif field == "stakeholder_id" and value:
-            assert value in contact_ids, f"unknown stakeholder_id {value!r}"
-        elif field == "role" and value:
-            assert re.fullmatch(schema.SLUG_PATTERN, value), \
-                f"role must be a lowercase slug, got {value!r}"
-        elif field == "owner" and value:
-            assert re.fullmatch(schema.SLUG_PATTERN, value), \
-                f"owner must be a lowercase slug, got {value!r}"
-            # owner is editable, but claiming is claim_todo's job: overwriting a
-            # *different* live holder here would silently steal the claim the
-            # ClaimTaken guard exists to protect (td-20260905163943977824).
-            # Allowed: first claim (unowned), idempotent re-write (same owner),
-            # and clearing (value "" -> None below, an operator freeing a claim).
-            if current_owner and value != current_owner:
-                raise ClaimTaken(
-                    f"{todo_id} is owned by {current_owner!r}; use claim_todo "
-                    f"(the guarded path) or clear the owner first")
-        row[field] = value if value != "" else None
 
-    problem = schema.handoff_problem(row["area"], row["status"], row.get("detail"))
-    assert not problem, f"todo {todo_id}: {problem}"
+    def build(row: dict) -> dict:
+        current_owner = row.get("owner") or ""
+        fields = {}
+        for field, value in changes.items():
+            if field == "area":
+                assert value in schema.TODO_AREAS, f"unknown area {value!r}"
+            elif field == "status":
+                assert value in schema.TODO_STATUS, f"unknown status {value!r}"
+            elif field == "prep_status":
+                assert value in schema.PREP_STATUS, f"unknown prep_status {value!r}"
+            elif field == "action_type" and value:
+                assert value in schema.ACTION_TYPES, f"unknown action_type {value!r}"
+            elif field == "linked_type" and value:
+                assert value in schema.LINKED_TYPES, f"unknown linked_type {value!r}"
+            elif field == "priority":
+                value = int(value)
+                assert value >= 1, f"priority must be >= 1, got {value}"
+            elif field == "stakeholder_id" and value:
+                assert value in contact_ids, f"unknown stakeholder_id {value!r}"
+            elif field == "role" and value:
+                assert re.fullmatch(schema.SLUG_PATTERN, value), \
+                    f"role must be a lowercase slug, got {value!r}"
+            elif field == "owner" and value:
+                assert re.fullmatch(schema.SLUG_PATTERN, value), \
+                    f"owner must be a lowercase slug, got {value!r}"
+                # owner is editable, but claiming is claim_todo's job: overwriting a
+                # *different* live holder here would silently steal the claim the
+                # ClaimTaken guard exists to protect (td-20260905163943977824).
+                # Allowed: first claim (unowned), idempotent re-write (same owner),
+                # and clearing (value "" -> None below, an operator freeing a claim).
+                if current_owner and value != current_owner:
+                    raise ClaimTaken(
+                        f"{todo_id} is owned by {current_owner!r}; use claim_todo "
+                        f"(the guarded path) or clear the owner first")
+            fields[field] = value if value != "" else None
+        if append_detail:
+            base = row.get("detail") or ""
+            fields["detail"] = f"{base}\n\n{append_detail}" if base else append_detail
+        row.update(fields)
 
-    if row.get("linked_type") == "deal" and row.get("linked_id"):
-        assert row["linked_id"] in deal_ids, f"unknown deal linked_id {row['linked_id']!r}"
-    # the lens invariant on the open worklist (mirrors parse_todo_row); terminal
-    # todos (done/archived) are exempt — they're off the worklist
-    if row["status"] not in schema.TERMINAL_STATUSES:
-        if row["area"] in schema.CALENDAR_AREAS:
-            assert row.get("due_date"), f"open {row['area']} todo needs a due_date"
-        elif row["area"] not in schema.DEADLINE_AREAS:
-            assert not row.get("due_date"), f"open {row['area']} todo must not have a due_date"
+        problem = schema.handoff_problem(row["area"], row["status"], row.get("detail"))
+        assert not problem, f"todo {todo_id}: {problem}"
+        if row.get("linked_type") == "deal" and row.get("linked_id"):
+            assert row["linked_id"] in deal_ids, f"unknown deal linked_id {row['linked_id']!r}"
+        # the lens invariant on the open worklist (mirrors parse_todo_row); terminal
+        # todos (done/archived) are exempt — they're off the worklist
+        if row["status"] not in schema.TERMINAL_STATUSES:
+            if row["area"] in schema.CALENDAR_AREAS:
+                assert row.get("due_date"), f"open {row['area']} todo needs a due_date"
+            elif row["area"] not in schema.DEADLINE_AREAS:
+                assert not row.get("due_date"), f"open {row['area']} todo must not have a due_date"
+        return fields
 
-    rewritten = [t for t in all_todos if t["todo_id"] != todo_id] + [row]
-    client.delete_table("todos")
-    client.create_table("todos", schema.TODOS)
-    client.upload_batch("todos", rewritten)
-    assert client.count("todos") == len(rewritten), "todo rewrite row-count mismatch"
+    _, row = _write_todo(client, todo_id, build)
+    edited = sorted(changes) + (["detail (appended)"] if append_detail else [])
     changelog.record(client, "todo", todo_id, "updated",
-                     f"updated: {row['title']} ({', '.join(sorted(changes))})", detail=changes)
+                     f"updated: {row['title']} ({', '.join(edited)})",
+                     detail={**changes, **({"append_detail": append_detail} if append_detail else {})})
     return row
 
 
@@ -466,27 +566,25 @@ def claim_todo(client: AitoClient, todo_id: str, agent: str) -> dict:
     another agent already owns it.** Idempotent if you already own it. Sets only
     `owner` — it does not start, complete, or move the work.
 
-    Best-effort, NOT a hardware compare-and-set (Aito exposes none — docs/12,
-    wishlist #7): a read-check rejects a todo already owned by someone else (no
-    stealing — the common case), then a single-field `update_entries` sets `owner`
-    (it flushes, read-your-writes), and a read-BACK reports the holder. This
-    narrows the race to the ~millisecond window between one claimant's read-check
-    and its write commit: two agents that BOTH read the same *free* todo as
-    unclaimed in that window can still both proceed (each can read back its own id
-    before the other overwrites). That is rare — agents pull different top items —
-    and the `review` gate + a human close catch a double-worked ticket. A hard
-    guarantee needs engine-level atomic CAS / rows-affected (wishlist)."""
+    A conditional claim: the write goes through `_write_todo`, whose `_modify`
+    only matches the row version this call read. Two agents that both read the
+    same free todo cannot both win: the second write matches nothing, its
+    read-back shows the first claimant's version, and the retry sees the new
+    owner and raises `ClaimTaken`."""
     assert agent and re.fullmatch(schema.SLUG_PATTERN, agent), \
         f"agent must be a lowercase slug (an owner id), got {agent!r}"
-    current = (_todo(client, todo_id).get("owner") or "")
-    if current and current != agent:
-        raise ClaimTaken(f"{todo_id} is already owned by {current!r}")
-    if current == agent:
+    already = {"mine": False}
+
+    def build(row: dict) -> dict:
+        current = row.get("owner") or ""
+        if current and current != agent:
+            raise ClaimTaken(f"{todo_id} is already owned by {current!r}")
+        already["mine"] = current == agent
+        return {"owner": agent}
+
+    _write_todo(client, todo_id, build)       # version-checked: a conditional claim
+    if already["mine"]:
         return {"todo_id": todo_id, "owner": agent, "claimed": True, "already_mine": True}
-    client.update_entries("todos", {"todo_id": todo_id}, {"owner": agent})  # flushes
-    holder = (_todo(client, todo_id).get("owner") or "")
-    if holder != agent:                       # lost a simultaneous race
-        raise ClaimTaken(f"{todo_id} was claimed by {holder!r} first")
     changelog.record(client, "todo", todo_id, "claimed", f"claimed by {agent}")
     return {"todo_id": todo_id, "owner": agent, "claimed": True}
 
