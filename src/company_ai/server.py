@@ -231,6 +231,11 @@ def update_todo(todo_id: str, changes: dict | None = None,
     rewriting it, pass `append_detail` instead: it is appended after a blank
     line, and concurrent appends from several agents all land.
 
+    `owner`: `{"owner": ""}` RELEASES a claim (frees a todo a stuck or finished
+    agent still holds); another agent can then claim_todo it. Setting a
+    DIFFERENT owner over a live claim raises ClaimTaken: take over by releasing
+    first, then claiming, so a steal is always two deliberate steps.
+
     Safe to call from several agents at once: only the changed fields of this
     one row are written, version-checked, so concurrent edits compose. Returns
     the todo as read back after the write; an error means it did not persist."""
@@ -375,7 +380,10 @@ def claim_todo(todo_id: str, agent: str) -> dict:
     claim the top one with this, and on a failure try the next — no polling, no
     coordinating. Claiming only sets the owner; it does not start or finish the
     work. When you finish, set status='review' (a human closes it with
-    complete_todo — agents don't self-certify)."""
+    complete_todo — agents don't self-certify).
+
+    To give a todo up, or to free one a stuck agent holds, release it with
+    update_todo(todo_id, {"owner": ""}); it is then claimable again."""
     return logbook.claim_todo(_client(), todo_id, agent)
 
 
