@@ -231,10 +231,12 @@ def update_todo(todo_id: str, changes: dict | None = None,
     rewriting it, pass `append_detail` instead: it is appended after a blank
     line, and concurrent appends from several agents all land.
 
-    `owner`: `{"owner": ""}` RELEASES a claim (frees a todo a stuck or finished
-    agent still holds); another agent can then claim_todo it. Setting a
-    DIFFERENT owner over a live claim raises ClaimTaken: take over by releasing
-    first, then claiming, so a steal is always two deliberate steps.
+    `owner`: `{"owner": ""}` RELEASES a claim; another agent can then
+    claim_todo it. Release is NOT guarded: it clears whoever holds the todo.
+    So release only your own claim, or one confirmed abandoned (its agent is
+    gone, or a human said so); releasing a live agent's claim lets two agents
+    work the same todo. Setting a DIFFERENT owner over a live claim raises
+    ClaimTaken: a takeover is release-then-claim, two deliberate steps.
 
     Safe to call from several agents at once: only the changed fields of this
     one row are written, version-checked, so concurrent edits compose. Returns
@@ -382,8 +384,9 @@ def claim_todo(todo_id: str, agent: str) -> dict:
     work. When you finish, set status='review' (a human closes it with
     complete_todo — agents don't self-certify).
 
-    To give a todo up, or to free one a stuck agent holds, release it with
-    update_todo(todo_id, {"owner": ""}); it is then claimable again."""
+    To give a todo up, release it with update_todo(todo_id, {"owner": ""}); it
+    is then claimable again. Freeing ANOTHER agent's claim the same way is for
+    a claim confirmed abandoned, not a busy one (see update_todo)."""
     return logbook.claim_todo(_client(), todo_id, agent)
 
 
