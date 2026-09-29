@@ -1,0 +1,3 @@
+# a public demo pointed at the internal ops instance does not start
+
+refused: COMPANY_AI_PUBLIC_DEMO is set but AITO_INSTANCE_URL points at 'internal.aito.ai'...
