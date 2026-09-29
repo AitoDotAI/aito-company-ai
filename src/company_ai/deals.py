@@ -20,6 +20,22 @@ from . import aitowhy, schema
 from .aito import AitoClient
 
 STALL_DAYS = 14  # no touch in this many days flags a stalled deal
+# Fewer closed deals than this share a profile, and its P(won) is a guess: the
+# answer falls back to the base rate over all closed deals, and says so.
+MIN_PROFILE_EVIDENCE = 8
+_CLOSED = {"stage": {"$or": sorted(schema.DEAL_CLOSED_STAGES)}}
+
+
+def _as_bool(value) -> bool:
+    """champion_present as the Boolean the column holds. The dashboard sends it
+    through a query string ('true'/'false'); a string in a Boolean where-clause
+    matches nothing, and Aito silently drops evidence it cannot match, so every
+    profile read the same number (the 45% of td-20260928211407945642)."""
+    if isinstance(value, bool):
+        return value
+    text = str(value).strip().lower()
+    assert text in ("true", "false"), f"champion_present must be true/false, got {value!r}"
+    return text == "true"
 
 
 @dataclass
@@ -41,15 +57,33 @@ def _fetch_open(client: AitoClient, result: Result) -> list[dict]:
 
 
 def close_likelihood(client: AitoClient, stage: str, blocker: str,
-                     champion_present: str, result: Result | None = None) -> dict:
-    """Aito's P(won) + $why for a deal's profile. Conditions ONLY on
-    (stage, blocker, champion_present) — the pre-outcome features the closed
-    history carries — so many open deals share one answer. Keyed on exactly
-    those, it is the unit the dashboard resolves lazily and caches (one HTTP
-    call per distinct profile, GET /api/pwin)."""
+                     champion_present, result: Result | None = None) -> dict:
+    """Aito's P(won) + $why for a deal's profile, learned from CLOSED deals
+    with the same blocker and champion. Keyed on (stage, blocker,
+    champion_present), it is the unit the dashboard resolves lazily and caches
+    (one HTTP call per profile, GET /api/pwin).
+
+    `stage` is NOT evidence, deliberately: a closed deal's stage is
+    closed_won/closed_lost, so no closed row carries an open stage and the
+    history holds nothing about how, say, a pilot converts. Putting it in the
+    where only looked like conditioning: Aito dropped it, and deals at five
+    stages read one number. Stage-aware odds need the stage a deal closed from,
+    which the pipeline does not record (see the ticket's follow-up).
+
+    Returns `n` (closed deals sharing the profile) and `basis`: 'profile', or
+    'base_rate' when fewer than MIN_PROFILE_EVIDENCE share it, in which case
+    `p_win` is the win rate over all closed deals and the UI says so."""
+    champion = _as_bool(champion_present)
+    profile = {"blocker": blocker, "champion_present": champion}
+    count_request = {"from": "deals", "where": {"$and": [_CLOSED, profile]}, "limit": 0}
+    count = client.query(count_request)
+    if result is not None:
+        result.calls.append(("_query", count_request, count))
+    n = int(count.get("total", 0))
+    basis = "profile" if n >= MIN_PROFILE_EVIDENCE else "base_rate"
     request = {
         "from": "deals",
-        "where": {"stage": stage, "blocker": blocker, "champion_present": champion_present},
+        "where": {"$and": [_CLOSED, profile]} if basis == "profile" else _CLOSED,
         "predict": "won",
         "select": ["$p", "$value", "$why"],
     }
@@ -58,20 +92,42 @@ def close_likelihood(client: AitoClient, stage: str, blocker: str,
         result.calls.append(("_predict", request, response))
     hit = next((h for h in response["hits"] if h["$value"] is True), None)
     if hit is None:
-        return {"p_win": None, "why": []}
-    why = [
-        {"label": _why_label(f["proposition"]), "lift": f["value"]}
-        for f in aitowhy.lift_factors(hit)
-    ]
+        return {"p_win": None, "why": [], "n": n, "basis": basis}
+    why = []
+    for f in aitowhy.lift_factors(hit):
+        prop = _without_closed_filter(f["proposition"])
+        if prop is not None:
+            why.append({"label": _why_label(prop), "lift": f["value"]})
     why.sort(key=lambda w: -abs(w["lift"] - 1.0))
-    return {"p_win": hit["$p"], "why": why}
+    return {"p_win": hit["$p"], "why": why, "n": n, "basis": basis}
+
+
+def _is_closed_filter(prop: dict) -> bool:
+    (key,) = prop.keys()
+    if key == "stage":
+        return True
+    return key == "$or" and all(_is_closed_filter(p) for p in prop[key])
+
+
+def _without_closed_filter(prop: dict) -> dict | None:
+    """a $why proposition minus the closed-deals filter, which selects the
+    history rather than saying anything about the deal; None if nothing is left"""
+    if _is_closed_filter(prop):
+        return None
+    if "$and" in prop:
+        parts = [p for p in prop["$and"] if not _is_closed_filter(p)]
+        if not parts:
+            return None
+        return parts[0] if len(parts) == 1 else {"$and": parts}
+    return prop
 
 
 def _close_likelihood(client: AitoClient, result: Result, deal: dict, as_of: date) -> dict:
     days = (as_of - date.fromisoformat(deal["last_touch_date"])).days
     cl = close_likelihood(client, deal["stage"], deal["blocker"],
                           deal["champion_present"], result)
-    return {"p_win": cl["p_win"], "why": cl["why"], "days_since_touch": days}
+    return {"p_win": cl["p_win"], "why": cl["why"], "n": cl["n"], "basis": cl["basis"],
+            "days_since_touch": days}
 
 
 def _why_label(prop: dict) -> str:
@@ -130,7 +186,8 @@ def who_to_reach(client: AitoClient, as_of: date | None = None, top_n: int = 10,
                   for c in contacts if c.get("company_id") == slug]
         rows.append({"company": d["company"], "deal_id": d["deal_id"], "stage": d["stage"],
                      "blocker": d["blocker"], "champion_present": d["champion_present"],
-                     "p_win": d["p_win"], "days_since_touch": d["days_since_touch"],
+                     "p_win": d["p_win"], "n": d["n"], "basis": d["basis"],
+                     "days_since_touch": d["days_since_touch"],
                      "contacts": people})
     result.derived = {"as_of": pipe.derived["as_of"], "count": len(rows), "rows": rows}
     return result
@@ -159,11 +216,12 @@ def pipeline(client: AitoClient, as_of: date | None = None, predict: bool = True
             "probability": d["probability"], "weighted_value": round(weighted),
             "champion_present": d["champion_present"], "blocker": d["blocker"],
             "days_since_touch": days, "stalled": days > STALL_DAYS,
-            "p_win": None, "why": [],
+            "p_win": None, "why": [], "n": None, "basis": None,
         }
         if predict:
             cl = _close_likelihood(client, result, d, as_of)
             row["p_win"], row["why"] = cl["p_win"], cl["why"][:3]
+            row["n"], row["basis"] = cl["n"], cl["basis"]
         ranked.append(row)
     ranked.sort(key=lambda d: -d["weighted_value"])
 

@@ -120,3 +120,38 @@ def test_who_to_reach_traverses_the_company_graph(t: bt.TestCaseRun) -> None:
               f"quiet={r['days_since_touch']}d -> {who}")
     assert res["count"] >= 1
     assert all(r["contacts"] for r in res["rows"]), "each stalled company reachable via the link"
+
+
+def test_close_likelihood_conditions_on_the_profile(t: bt.TestCaseRun) -> None:
+    """td-20260928211407945642: "Who to reach now" read P(won) 45% for eight
+    stalled deals at five stages. The dashboard sends champion_present through a
+    query string, a string in a Boolean where-clause matched nothing, and Aito
+    dropped the evidence; stage was dropped too, because no closed deal carries
+    an open stage. Pins: the string and the Boolean give one answer, the
+    champion moves it, stage does not (and is not claimed to), every answer
+    carries n, and a profile too thin to trust falls back to the base rate."""
+    client = _client()
+    _load(client, SEED_DIR)
+
+    t.h1("champion_present: the query-string spelling equals the Boolean")
+    as_bool = deals.close_likelihood(client, "demo", "none", True)
+    as_text = deals.close_likelihood(client, "demo", "none", "true")
+    t.tln(f"True -> {as_bool['p_win']:.3f} (n={as_bool['n']});  'true' -> {as_text['p_win']:.3f}")
+    assert as_bool["p_win"] == as_text["p_win"]
+
+    t.h1("the champion moves the answer")
+    without = deals.close_likelihood(client, "demo", "none", "false")
+    t.tln(f"champion -> {as_bool['p_win']:.3f};  no champion -> {without['p_win']:.3f} (n={without['n']})")
+    assert as_bool["p_win"] > without["p_win"] + 0.1
+
+    t.h1("stage is not evidence: the closed history holds no open stage")
+    by_stage = {s: deals.close_likelihood(client, s, "none", True)["p_win"]
+                for s in ("lead", "qualified", "demo", "pilot", "negotiation")}
+    t.tln("  " + "  ".join(f"{s}={p:.3f}" for s, p in by_stage.items()))
+    assert len(set(by_stage.values())) == 1
+
+    t.h1("a profile no closed deal shares falls back to the base rate, and says so")
+    thin = deals.close_likelihood(client, "demo", "no_such_blocker", True)
+    t.tln(f"n={thin['n']} basis={thin['basis']} p_win={thin['p_win']:.3f}")
+    assert thin["n"] < deals.MIN_PROFILE_EVIDENCE and thin["basis"] == "base_rate"
+    assert as_bool["basis"] == "profile"

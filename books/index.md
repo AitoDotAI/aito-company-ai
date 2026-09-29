@@ -40,6 +40,7 @@
      * [test_companies.py::test_company_detail_is_the_graph_drill_in](book/test_companies.py::test_company_detail_is_the_graph_drill_in.md)
      * [test_companies.py::test_roster_counts_contacts](book/test_companies.py::test_roster_counts_contacts.md)
      * [test_companies.py::test_roster_seed](book/test_companies.py::test_roster_seed.md)
+     * [test_deals.py::test_close_likelihood_conditions_on_the_profile](book/test_deals.py::test_close_likelihood_conditions_on_the_profile.md)
      * [test_deals.py::test_deal_update_round_trip](book/test_deals.py::test_deal_update_round_trip.md)
      * [test_deals.py::test_pipeline_seed](book/test_deals.py::test_pipeline_seed.md)
      * [test_deals.py::test_pipeline_seed_tiny](book/test_deals.py::test_pipeline_seed_tiny.md)

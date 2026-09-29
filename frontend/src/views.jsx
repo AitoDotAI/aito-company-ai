@@ -2308,7 +2308,7 @@ function usePwin(deals) {
   return (deals || []).map((d) => {
     if (d.p_win != null) return d;
     const c = pwinCache.get(pwinKey(d));
-    return c ? { ...d, p_win: c.p_win, why: c.why } : d;
+    return c ? { ...d, p_win: c.p_win, why: c.why, n: c.n, basis: c.basis } : d;
   });
 }
 
@@ -2332,7 +2332,9 @@ function WhoToReach() {
             </div>
             <div className="co-deals">
               <span className={"co-eur " + (pw != null && pw >= 50 ? "up" : "")}>{pw != null ? pw + "%" : "–"}</span>
-              <span className="co-dsub">P(won)</span>
+              <span className="co-dsub" title="Learned from closed deals with the same blocker and champion. Stage is not in the closed history.">
+                {row.basis === "base_rate" ? `P(won) · base rate (${row.n} like it)` : row.n != null ? `P(won) · ${row.n} like it` : "P(won)"}
+              </span>
             </div>
           </div>
         );

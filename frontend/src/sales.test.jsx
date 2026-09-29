@@ -106,8 +106,10 @@ describe("Sales analytics view", () => {
     });
     api.whoToReach.mockResolvedValue({
       as_of: "2026-09-16", count: 1,
-      rows: [{ company: "Oscorp OÜ", deal_id: "d9", stage: "pilot", p_win: 0.72,
-               days_since_touch: 18, contacts: [{ contact_id: "c1", name: "Dana Fox", role: "CTO" }] }],
+      rows: [{ company: "Oscorp OÜ", deal_id: "d9", stage: "pilot", p_win: 0.72, n: 25, basis: "profile",
+               days_since_touch: 18, contacts: [{ contact_id: "c1", name: "Dana Fox", role: "CTO" }] },
+             { company: "Hooli Oy", deal_id: "d10", stage: "lead", p_win: 0.25, n: 3, basis: "base_rate",
+               days_since_touch: 30, contacts: [] }],
     });
     api.salesTrend.mockResolvedValue({
       win_rate: 0.25, avg_cycle_days: 46, won: 16, closed: 65,
@@ -139,6 +141,9 @@ describe("Sales analytics view", () => {
     await waitFor(() => expect(screen.getByText("Oscorp OÜ")).toBeInTheDocument());
     expect(screen.getByText(/Dana Fox/)).toBeInTheDocument();
     expect(screen.getByText("72%")).toBeInTheDocument();
+    // the evidence behind each number is on the row, and a thin profile says it fell back
+    expect(screen.getByText("P(won) · 25 like it")).toBeInTheDocument();
+    expect(screen.getByText("P(won) · base rate (3 like it)")).toBeInTheDocument();
     // the sales funnel lever (the parity gap this view closes)
     await waitFor(() => expect(screen.getByText(/Lever: source/)).toBeInTheDocument());
   });
