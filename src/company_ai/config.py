@@ -33,6 +33,45 @@ def is_local_instance(instance_url: str) -> bool:
     return urlparse(instance_url).hostname in _LOCAL_HOSTS
 
 
+#: Hosts a public demo must never read: the internal ops instance holds the real
+#: CRM. The demo reads a shared-demo database with synthetic data only.
+PUBLIC_DEMO_DENIED_HOSTS = {"internal.aito.ai"}
+
+
+def assert_public_demo_target(instance_url: str) -> None:
+    """Refuse to serve a public demo from a denied host (docs/32-public-demo.md).
+    A mis-pointed secret must stop the app loudly, not publish the real CRM."""
+    host = urlparse(instance_url).hostname or ""
+    assert host not in PUBLIC_DEMO_DENIED_HOSTS, (
+        f"COMPANY_AI_PUBLIC_DEMO is set but AITO_INSTANCE_URL points at {host!r}, "
+        "the internal ops instance. A public demo reads the shared-demo database only.")
+
+
+def _public_demo_posture(config: "Config") -> "Config":
+    """A public demo's billable and outbound features are OFF unless opted in.
+
+    Clearing env vars cannot do this: _env_first skips empty values and falls
+    back to the next name, and the unified demos container hands EVERY program
+    every secret (the grocery demo's REACT_APP_OPENAI_* included). So a public
+    demo would inherit a live, billable LLM key it never asked for. Instead the
+    posture is decided here: no LLM, no embeddings, no web search or fetch, no
+    MCP, whatever the environment carries. COMPANY_AI_PUBLIC_DEMO_LLM=1 turns
+    the LLM back on deliberately (docs/32-public-demo.md lists what that needs).
+    """
+    if not config.public_demo:
+        return config
+    llm_opt_in = _env_first("COMPANY_AI_PUBLIC_DEMO_LLM").strip().lower() in ("1", "true", "yes")
+    import dataclasses
+    return dataclasses.replace(
+        config,
+        llm_api_key=config.llm_api_key if llm_opt_in else "",
+        embed_api_key="",
+        search_api_key="",
+        fetch_enabled=False,
+        mcp_token="",
+    )
+
+
 def instance_host(instance_url: str) -> str:
     """A short, legible label for an instance — host[/db] — to echo before
     any write so the target is never silent."""
@@ -100,6 +139,10 @@ class Config:
     embed_api_version: str
     embed_api_key: str
     embed_model: str = ""
+    # COMPANY_AI_PUBLIC_DEMO: anonymous visitors on a public host. Read-only
+    # (every non-GET /api/* is refused), no write side effects on reads, and the
+    # internal host is refused at startup. See docs/32-public-demo.md.
+    public_demo: bool = False
 
     @property
     def embed_target(self) -> str:
@@ -165,7 +208,7 @@ class Config:
         # endpoint and port travel together (e.g. .env.aito). The CLI --port
         # flag still overrides it.
         port = os.environ.get("COMPANY_AI_PORT", "")
-        return Config(
+        config = Config(
             instance_url=url,
             api_key=os.environ.get("AITO_API_KEY", ""),
             data_dir=Path(data_dir) if data_dir else None,
@@ -229,7 +272,9 @@ class Config:
             # accepting it saves a rename — but it is only ever a KEY. It never
             # switches embeddings on by itself; a model or deployment still has
             # to be named explicitly (see embed_enabled).
+            public_demo=_env_first("COMPANY_AI_PUBLIC_DEMO").strip().lower() in ("1", "true", "yes"),
             embed_api_key=_env_first("COMPANY_AI_EMBED_API_KEY", "COMPANY_AI_LLM_API_KEY",
                                      "REACT_APP_OPENAI_MODEL_API_KEY", "OPENAI_API_KEY",
                                      "AZURE_OPENAI_API_KEY", "AZURE_OPENAI_KEY"),
         )
+        return _public_demo_posture(config)

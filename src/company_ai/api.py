@@ -66,6 +66,9 @@ def _guarded(fn):
 
 def create_app(config: Config | None = None) -> FastAPI:
     config = config or Config.from_env()
+    if config.public_demo:
+        from .config import assert_public_demo_target
+        assert_public_demo_target(config.instance_url)
 
     # Remote MCP (docs/26): mounted at /mcp for cloud Claude, but only when the
     # env master token is configured — otherwise it isn't mounted at all (fail
@@ -267,7 +270,28 @@ def create_app(config: Config | None = None) -> FastAPI:
 
     @app.get("/api/me")
     def me_route(request: Request):
-        return _guarded(lambda: current_user(request) or {"role": "guest", "name": "Guest"})
+        def me():
+            user = current_user(request) or {"role": "guest", "name": "Guest"}
+            return {**user, "public_demo": config.public_demo}
+        return _guarded(me)
+
+    # Public demo (docs/32-public-demo.md): anonymous visitors read, never write.
+    # The runtime key is also the database's READ-ONLY key, so this is the
+    # second of two locks; it exists to give the visitor a clear 403 instead of
+    # Aito's 401 surfacing as a 500. The assistant is a POST but only reads
+    # (its tools are read-only), so it is allowed through; it answers 503 with
+    # a message when no model is configured (see assistant_chat).
+    _PUBLIC_DEMO_READ_POSTS = {"/api/assistant/chat"}
+
+    @app.middleware("http")
+    async def public_demo_guard(request: Request, call_next):
+        if config.public_demo and request.url.path.startswith("/api/"):
+            if (request.method not in ("GET", "HEAD", "OPTIONS")
+                    and request.url.path not in _PUBLIC_DEMO_READ_POSTS):
+                return JSONResponse(
+                    {"error": "read-only public demo: changes are disabled here",
+                     "public_demo": True}, status_code=403)
+        return await call_next(request)
 
     # Role enforcement (docs/27 Phase 2): an SDR gets read + safe writes; the
     # operator-only operations are destructive (delete/remove) and admin (users,
@@ -432,9 +456,11 @@ def create_app(config: Config | None = None) -> FastAPI:
     @app.get("/api/search")
     def search_route(q: str, kind: str | None = None, top_n: int = 10):
         from . import search, embed
+        # A public demo serves the prebuilt index and logs no impressions: a
+        # read must not write, and the demo's key is read-only anyway.
         return _guarded(lambda: search.serve(
             client(), q, kind=kind, top_n=top_n, source="dashboard",
-            embed=embed.embedder(config)))
+            log=not config.public_demo, embed=embed.embedder(config)))
 
     @app.get("/api/quickfind")
     def quickfind_route(q: str):
@@ -467,6 +493,11 @@ def create_app(config: Config | None = None) -> FastAPI:
     @app.get("/api/chats")
     def chats_list():
         from . import chats
+        if config.public_demo:
+            # chats are global (not per-user) and listing them creates the
+            # table; a public visitor must see neither other visitors' threads
+            # nor a write
+            return {"conversations": []}
         return _guarded(lambda: {"conversations": chats.list_chats(client())})
 
     @app.put("/api/chats/{cid}")
@@ -494,8 +525,22 @@ def create_app(config: Config | None = None) -> FastAPI:
         body = await request.json()
         history = body.get("messages", [])
 
+        import requests
+        from .llm import LLMError
+
         def go():
-            turn = assistant.run_turn(history, client=client())
+            try:
+                turn = assistant.run_turn(history, client=client())
+            except (LLMError, requests.RequestException) as exc:
+                # No model, or the provider is down (Azure OpenAI had a regional
+                # outage on 2026-09-29): a message the UI can render, not a 500.
+                # The predictions elsewhere never depend on the model.
+                message = ("The assistant is off in this public demo. Every number on the "
+                           "other views comes from Aito, not a language model."
+                           if config.public_demo else
+                           f"The assistant is unavailable right now ({exc}). Aito's "
+                           "predictions on the other views are unaffected.")
+                return JSONResponse({"error": message, "llm_unavailable": True}, status_code=503)
             return {"reply": turn.reply, "trace": turn.trace, "rounds": turn.rounds}
         return _guarded(go)
 
