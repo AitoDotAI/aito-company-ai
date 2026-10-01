@@ -54,3 +54,37 @@ def test_a_thin_feature_is_listed_not_used(t: bt.TestCaseRun) -> None:
     assert thin["thin"] == [{"feature": "segment", "value": "robotics", "n": 0}], thin
     assert "segment" not in thin["evidence"]
     assert thin["p_win"] == without["p_win"]
+
+
+def test_a_feature_below_the_threshold_is_dropped_not_used(t: bt.TestCaseRun) -> None:
+    """n=0 proves little (Aito has nothing to learn from it anyway). Here a few
+    closed deals share the value, all won, so used as evidence it WOULD move
+    P(won); the gate must leave it out and name it."""
+    client = _client()
+    loaders.create_schema(client)
+    loaders.load_deals(client, SEED_DIR)
+    rows = client.query({"from": "deals", "where": {"stage": "closed_won"}, "limit": 3})["hits"]
+    client.upload_batch("deals", [{**r, "deal_id": f"{r['deal_id']}-robotics", "segment": "robotics"}
+                                  for r in rows])
+    n = len(rows)
+    assert 0 < n < deals.MIN_PROFILE_EVIDENCE
+    t.h1(f"A segment {n} closed deals share (threshold {deals.MIN_PROFILE_EVIDENCE})")
+    without = deals.close_likelihood(client, "pilot", "none", True)
+    gated = deals.close_likelihood(client, "pilot", "none", True, segment="robotics")
+    t.tln(f"  no segment:      p_win={without['p_win']:.4f}")
+    t.tln(f"  robotics, gated: p_win={gated['p_win']:.4f} evidence={gated['evidence']} "
+          f"basis={gated['basis']} thin={gated['thin']}")
+    assert gated["thin"] == [{"feature": "segment", "value": "robotics", "n": n}], gated
+    assert "segment" not in gated["evidence"] and gated["basis"] == "partial"
+    assert gated["p_win"] == without["p_win"]
+
+    # the control: with the gate off, the same value does move the answer
+    threshold = deals.MIN_PROFILE_EVIDENCE
+    deals.MIN_PROFILE_EVIDENCE = 0
+    try:
+        ungated = deals.close_likelihood(client, "pilot", "none", True, segment="robotics")
+    finally:
+        deals.MIN_PROFILE_EVIDENCE = threshold
+    t.tln(f"  robotics, gate off: p_win={ungated['p_win']:.4f} evidence={ungated['evidence']}")
+    assert "segment" in ungated["evidence"]
+    assert abs(ungated["p_win"] - without["p_win"]) > 0.01, "the control shows no effect"
