@@ -132,7 +132,10 @@ describe("Sales analytics view", () => {
     });
 
     render(VIEWS.salesanalytics.render());
-    expect(await screen.findByText("weighted pipeline")).toBeInTheDocument();
+    // the weighted pipeline is the operator's own probabilities, not Aito's P(won): it says so
+    expect(await screen.findByText("weighted pipeline (own %)")).toBeInTheDocument();
+    expect(screen.getByText("Σ value × your probability, not Aito's")).toBeInTheDocument();
+    expect(screen.queryByText("P(won) · value")).not.toBeInTheDocument();
     expect(screen.getByText("open value")).toBeInTheDocument();
     // the quarter trend chart arrives with the trend fetch (block renders only then)
     await waitFor(() => expect(screen.getByText(/Win rate by quarter/)).toBeInTheDocument());

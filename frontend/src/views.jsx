@@ -651,7 +651,7 @@ function Deals() {
   return (
     <>
       <KpiRow items={[
-        { label: "weighted pipeline", value: eur(kpis.weighted_pipeline) },
+        { label: "weighted pipeline (own %)", value: eur(kpis.weighted_pipeline), sub: "Σ value × your probability, not Aito's" },
         { label: "open value", value: eur(kpis.open_value), sub: `${kpis.open_deals} deals` },
         { label: "stalled", value: kpis.stalled, sub: "no touch > 14d" },
       ]} />
@@ -2366,7 +2366,7 @@ function SalesAnalytics() {
     <>
       <KpiRow items={[
         { label: "win rate", value: t ? pct(t.win_rate) : "…", sub: t ? `${t.won}/${t.closed} closed` : "" },
-        { label: "weighted pipeline", value: eur(kpis.weighted_pipeline), sub: "P(won) · value" },
+        { label: "weighted pipeline (own %)", value: eur(kpis.weighted_pipeline), sub: "Σ value × your probability, not Aito's" },
         { label: "open value", value: eur(kpis.open_value), sub: `${kpis.open_deals} open` },
         { label: "avg cycle", value: t ? t.avg_cycle_days + "d" : "…", sub: "won deals" },
         { label: "stalled", value: kpis.stalled, sub: "no touch > 14d" },
@@ -2410,7 +2410,7 @@ function Overview() {
   return (
     <>
       <KpiRow items={[
-        { label: "weighted pipeline", value: eur(kpis.weighted_pipeline), sub: "P(won) · value" },
+        { label: "weighted pipeline (own %)", value: eur(kpis.weighted_pipeline), sub: "Σ value × your probability, not Aito's" },
         { label: "win rate", value: t ? pct(t.win_rate) : "…", sub: t ? `${t.won}/${t.closed} closed` : "" },
         { label: "open deals", value: kpis.open_deals, sub: eur(kpis.open_value) },
         { label: "avg cycle", value: t ? t.avg_cycle_days + "d" : "…", sub: "won deals" },
