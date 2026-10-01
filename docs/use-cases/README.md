@@ -188,7 +188,7 @@ who-to-reach, and the post scorer:
 }
 ```
 
-`$p` is the calibrated probability; `$why` is the breakdown of which features
+`$p` is Aito's probability; `$why` is the breakdown of which features
 pushed it up or down, which is what lets the UI explain a number instead of
 merely printing it.
 

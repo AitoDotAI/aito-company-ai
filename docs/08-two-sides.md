@@ -1,6 +1,6 @@
 # Two sides of the same brain
 
-One Aito instance holds the intuition — the ranking, the calibrated
+One Aito instance holds the intuition — the ranking, the
 probabilities, the causes and levers learned from outcome history. It is
 exposed two ways, to two kinds of user:
 
@@ -143,7 +143,7 @@ Slices are shareable by URL, e.g. `/?segment=erp&tier=A`.
 The dashboard's **Funnels** tab visualizes two predictive funnels: the
 website/acquisition funnel (visitor → signup → trial → paid, over
 `sessions`) and the sales funnel (contact → … → meeting). Each shows the
-funnel shape, the biggest-drop leak, Aito's calibrated outlook for the
+funnel shape, the biggest-drop leak, Aito's outlook for the
 deepest stage, why the slice leaks, and the lever that moves it. Spec in
 `docs/09-funnels.md`.
 

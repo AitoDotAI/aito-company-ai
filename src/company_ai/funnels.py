@@ -5,7 +5,7 @@ For any slice the layer reports, all from Aito:
 
   - stage counts and step conversion  -> _query totals (descriptive; Python
     only divides counts into percentages, which is formatting, not inference)
-  - the calibrated outlook             -> _predict the deepest stage + $why
+  - the outlook                        -> _predict the deepest stage + $why
   - where the slice leaks worst        -> the min-conversion step
   - why it leaks                       -> _relate {$on: [reached_deepest, slice]}
   - the lever that moves it            -> _recommend {goal: reached_deepest}

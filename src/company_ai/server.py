@@ -37,7 +37,7 @@ def _embedder():
 @mcp.tool()
 def who_to_call(window: str, top_n: int = 5) -> list:
     """Today's call queue for a window (0800, 1215, 1600), ranked by Aito's
-    calibrated probability of a good outcome. Weak $p on small data is
+    probability of a good outcome. Weak $p on small data is
     expected and shown as-is."""
     return queries.who_to_call(_client(), window, top_n=top_n, as_of=date.today()).derived
 
@@ -247,7 +247,7 @@ def update_todo(todo_id: str, changes: dict | None = None,
 @mcp.tool()
 def classify_todo(title: str, given: dict | None = None) -> dict:
     """Suggest a new todo's blank fields from its title: Aito predicts `area`
-    and `action_type` (with calibrated $p) from the title's words, and a
+    and `action_type` (with its $p) from the title's words, and a
     literal scan offers candidate stakeholders (contacts named/companied in
     the title). Advisory — confirm before add_todo; weak on thin data."""
     from . import classify
@@ -334,7 +334,7 @@ def log_touch(
 def deal_pipeline() -> dict:
     """The open sales pipeline ranked by weighted value (value × the
     operator's probability), with KPIs (weighted pipeline, open value,
-    stalled count) and, per deal, Aito's calibrated close-likelihood
+    stalled count) and, per deal, Aito's close-likelihood
     (P(won) learned from closed-deal history) with its $why, plus a
     stalled flag. Where Aito's p_win diverges from the operator's own
     probability is the signal to look at."""
@@ -484,7 +484,7 @@ def funnel(name: str, slice: dict | None = None) -> dict:
     conversation → meeting). `slice` filters by the funnel's dimensions
     (website: source/campaign/device/country/landing_page; sales: segment/
     tier/ai_lifecycle/source). Returns stage counts and step conversion, the
-    biggest-drop leak, Aito's calibrated outlook for the deepest stage, the
+    biggest-drop leak, Aito's outlook for the deepest stage, the
     causes of the leak (_relate), and the lever that moves it (_recommend)."""
     return funnels.funnel(_client(), name, slice or {}).derived
 

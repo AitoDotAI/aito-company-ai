@@ -2,7 +2,7 @@
 
 When the operator types a todo title, Aito predicts the blank *classifying*
 fields — `area` and `action_type` — from the title's words (`_predict` with a
-`$match` on the analyzed title). These are suggestions with their calibrated
+`$match` on the analyzed title). These are suggestions with their
 $p; the operator confirms or overrides before saving. Honest cold start: on
 thin todo history the $p is low and the top pick may be wrong — shown as-is,
 never auto-applied.

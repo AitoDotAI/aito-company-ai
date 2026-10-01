@@ -205,7 +205,7 @@ SYSTEM = (
     "facts, then answer concisely and honestly. Every figure you state must "
     "come from a tool result; if the data is thin or weak, say so plainly "
     "rather than embellishing. Prefer one or two well-chosen tool calls. The "
-    "calibrated probabilities Aito returns are the truth, even when low."
+    "probabilities Aito returns are reported as they are, even when low."
 )
 
 

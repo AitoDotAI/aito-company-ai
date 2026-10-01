@@ -525,7 +525,7 @@ function FunnelBody({ name, slice }) {
         <div className="gauge">
           <div className={"p " + (d.outlook.p >= 0.5 ? "win" : d.outlook.p >= 0.2 ? "mid" : "low")}>
             {pct(d.outlook.p)}</div>
-          <div className="lbl">calibrated P({d.deepest_label}) for this slice</div>
+          <div className="lbl">Aito's P({d.deepest_label}) for this slice</div>
         </div>
         <div className="section-title">Why it leaks</div>
         <WhyList items={d.causes} />

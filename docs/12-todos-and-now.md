@@ -132,7 +132,7 @@ As you type a title (in the quick-add bar, or the full editor's Suggest
 button), Aito fills the blank classifying fields **~half a second after you
 stop typing**: `area` and `action_type` are an Aito `_predict` from the
 title's words (the title is an analyzed Text column), returned with their
-calibrated $p; and a literal scan offers a stakeholder when a known contact's
+$p; and a literal scan offers a stakeholder when a known contact's
 name or company token appears in the title. The suggestions populate the
 visible fields but are **never auto-saved** — you press Enter to confirm, and
 can override any field first (the chosen suggest-then-confirm UX). Honest cold start: distinctive titles classify

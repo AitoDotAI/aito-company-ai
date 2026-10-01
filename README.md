@@ -65,7 +65,7 @@ cp .env.example .env                             # point at it
 The rest of this file is for people who want to run or change it.
 
 Claude does the reasoning; [Aito](https://aito.ai) — a predictive database —
-does the ranking, retrieval and the calibrated probabilities; this repository
+does the ranking, retrieval and the probabilities; this repository
 is the thin layer between them. It holds schema, loaders, an MCP server, a
 morning-brief prompt, a read-only dashboard, and the tests. It runs a real
 pipeline daily.
@@ -82,7 +82,7 @@ aito-company-ai MCP server           thin tool layer, zero logic
         |  HTTP
         v
 Aito instance (docker)               intuition: ranking, similarity,
-        ^                            calibrated confidence, learning
+        ^                            probabilities, learning
         |
    loaders (CLI)                     rolodex + outcome log -> Aito tables
 ```
@@ -170,7 +170,7 @@ actions across every area, action-first.
 Each Work view opens with its action block (Sales/Marketing by date,
 Operations/R&D by priority), then its analytics. Spec:
 [`docs/12-todos-and-now.md`](docs/12-todos-and-now.md). **Sales** also shows
-the pipeline: each open deal's weighted value with Aito's calibrated
+the pipeline: each open deal's weighted value with Aito's
 close-likelihood next to the operator's own probability — where they diverge
 is the deal to look at ([`docs/13-deals.md`](docs/13-deals.md)).
 
@@ -189,7 +189,7 @@ source); each KPI shows the rate, the root causes (`_relate`), and the lever
 ![Analytics — Segment 360](docs/assets/dashboard-analytics.png)
 
 **Marketing** combines the website/acquisition funnel (visitor → signup →
-trial → paid, with the biggest-drop leak and Aito's calibrated outlook) and
+trial → paid, with the biggest-drop leak and Aito's outlook) and
 the **post scorer** — the messaging formula that predicts a draft's win
 probability on its channel (LinkedIn reach / HN views, never upvotes) and the
 lever to switch.
