@@ -38,7 +38,7 @@ def finished(table: str) -> dict:
     return {"from": table, "where": TERMINAL[table]}
 
 
-def _is_empty_population(error: AitoError) -> bool:
+def is_empty_population(error: AitoError) -> bool:
     text = str(error)
     return "-> 400" in text and "matched no rows" in text
 
@@ -48,7 +48,7 @@ def predict(client: AitoClient, request: dict) -> dict | None:
     try:
         return client.predict(request)
     except AitoError as error:
-        if _is_empty_population(error):
+        if is_empty_population(error):
             return None
         raise
 
@@ -58,7 +58,7 @@ def recommend(client: AitoClient, request: dict) -> dict | None:
     try:
         return client.recommend(request)
     except AitoError as error:
-        if _is_empty_population(error):
+        if is_empty_population(error):
             return None
         raise
 

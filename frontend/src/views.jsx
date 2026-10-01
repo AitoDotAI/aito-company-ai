@@ -2003,6 +2003,7 @@ function GraphAnswer({ a }) {
   return (
     <div className="gq-card">
       <div className="gq-q">{a.question}</div>
+      {a.endpoint && <div className="gq-endpoint">POST {a.endpoint}</div>}
       <pre className="gq-query">{JSON.stringify(a.request, null, 1)}</pre>
       {a.why && a.why.length > 0 && (
         <div className="gq-why">
@@ -2033,6 +2034,9 @@ function GraphAnswer({ a }) {
       )}
       {a.error ? (
         <div className="gq-err">{a.error}</div>
+      ) : a.no_history ? (
+        <div className="gq-empty">Not enough history: no deal has closed yet, so there is no
+          outcome to learn from.</div>
       ) : (
         <>
           <div className="gq-meta">
@@ -2079,7 +2083,7 @@ export function GraphView() {
             And the neighbourhood can condition a <b>prediction</b>: a deal at an
             account where we know a CTO closes at{" "}
             <b>{Math.round(r.data.conditioned_p * 100)}%</b>, against a{" "}
-            {Math.round(r.data.baseline_p * 100)}% base rate across all deals.
+            {Math.round(r.data.baseline_p * 100)}% base rate across closed deals.
             Whether a CTO is on file exists nowhere on the deal — only across the
             link. Both figures come from the queries on this page.
           </div>

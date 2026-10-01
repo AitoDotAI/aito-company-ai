@@ -808,6 +808,7 @@ select:focus { outline:none; border-color:var(--purple); }
 .gq-card { background: var(--card); border: 1px solid var(--line); border-radius: 12px;
            padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
 .gq-q { font-weight: 600; font-size: 15px; color: var(--ink); line-height: 1.35; }
+.gq-endpoint { font-family: 'JetBrains Mono',monospace; font-size: 11px; color: var(--ink-faint); }
 .gq-query { font-family: 'JetBrains Mono',monospace; font-size: 11px; line-height: 1.45; margin: 0;
             background: var(--indigo); color: #cfd3ff; padding: 10px 12px;
             border-radius: 8px; overflow-x: auto; white-space: pre; }

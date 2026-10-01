@@ -16,7 +16,7 @@ from datetime import date
 
 import booktest as bt
 
-from company_ai import decisions, deals, experiments, history, loaders, scorer, todos
+from company_ai import decisions, deals, experiments, graph, history, loaders, scorer, todos
 from company_ai.aito import AitoClient
 from company_ai.config import SEED_DIR, Config
 
@@ -26,7 +26,11 @@ SLIP_KEY = ("sales", "high", "prep_needed")
 # with two features (here area & prep_status) part of the joint statistic is
 # still counted over the whole table, so rows outside the population move P a
 # little (0.5630 -> 0.5662 on the seed). Reported to core; listed, not hidden.
-ENGINE_LEAK = {f"todos slip {'/'.join(SLIP_KEY)}"}
+# The graph's two link questions cannot use a nested `from` on v2.11.1 at all (a
+# link path inside one is a 400, graph.LINK_IN_NESTED_FROM), so they still learn
+# from every deal, and an open deal read as False moves them.
+ENGINE_LEAK = {f"todos slip {'/'.join(SLIP_KEY)}",
+               "graph conditioned_p (CTO on file)", "graph explained-odds p"}
 
 
 def _client() -> AitoClient:
@@ -57,6 +61,12 @@ def _predictions(client: AitoClient) -> dict:
         out[f"experiments aito_p {b['effort']}"] = b["aito_p"]
     for c in decisions.scorecard(client).derived["calibration"]:
         out[f"decisions aito_p {c['bucket']}"] = c["aito_p"]
+    g = graph.board(client)
+    assert not g["failed"], g["failed"]
+    out["graph baseline_p"] = g["baseline_p"]
+    out["graph conditioned_p (CTO on file)"] = g["conditioned_p"]
+    odds = next(a for a in g["answers"] if a["id"] == "explained-odds")
+    out["graph explained-odds p"] = odds.get("p")
     return out
 
 
