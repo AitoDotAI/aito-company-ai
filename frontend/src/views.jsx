@@ -617,6 +617,12 @@ function ScorerRead({ platform, feat }) {
   if (r.loading) return <Block title="Aito read" ptype="predict"><Loading /></Block>;
   if (r.err) return <Block title="Aito read" ptype="predict"><ErrorBox msg={r.err} /></Block>;
   const d = r.data;
+  if (d.p_win == null) return (
+    <Block title={"Aito read — " + d.platform} ptype="predict">
+      <div className="empty">Not enough history: no post has been measured yet, so there is
+        no outcome to learn P(win) from. Log a post result to start.</div>
+    </Block>
+  );
   return (
     <Block title={"Aito read — " + d.platform} ptype="predict">
       <div className="gauge">
@@ -663,6 +669,7 @@ function Deals() {
                 <div className="amm">
                   <span>own {d.probability}%</span>
                   {pw != null && <span> · Aito {pw}%{why ? " (" + why + ")" : ""}</span>}
+                  {d.basis === "no_history" && <span> · Aito: no closed deals yet</span>}
                   {d.stalled && <span className="area"> · stalled {d.days_since_touch}d</span>}
                   {d.blocker !== "none" && <span> · {d.blocker.replace(/_/g, " ")}</span>}
                 </div>
@@ -2333,7 +2340,9 @@ function WhoToReach() {
             <div className="co-deals">
               <span className={"co-eur " + (pw != null && pw >= 50 ? "up" : "")}>{pw != null ? pw + "%" : "–"}</span>
               <span className="co-dsub" title="Learned from closed deals with the same blocker and champion. Stage is not in the closed history.">
-                {row.basis === "base_rate" ? `P(won) · base rate (${row.n} like it)` : row.n != null ? `P(won) · ${row.n} like it` : "P(won)"}
+                {row.basis === "no_history" ? "P(won) · no closed deals yet"
+                  : row.basis === "base_rate" ? `P(won) · base rate (${row.n} like it)`
+                  : row.n != null ? `P(won) · ${row.n} like it` : "P(won)"}
               </span>
             </div>
           </div>

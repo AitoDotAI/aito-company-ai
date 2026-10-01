@@ -17,7 +17,7 @@ requests and orders Aito's returned numbers; it computes no score itself.
 
 from dataclasses import dataclass, field
 
-from . import aitowhy
+from . import aitowhy, history
 from .aito import AitoClient
 
 # the draft features the scorer conditions on (besides channel)
@@ -49,13 +49,17 @@ def _proposition_label(prop: dict) -> str:
 
 
 def _p_won(client: AitoClient, result: Result, where: dict, with_why: bool) -> dict:
-    request = {"from": "posts", "where": where, "predict": "won",
+    # learned from measured posts only (history.finished): an unmeasured post's
+    # `won` is no outcome. None, not 0.0, when nothing has been measured yet.
+    request = {"from": history.finished("posts"), "where": where, "predict": "won",
                "select": ["$p", "$value", "$why"] if with_why else ["$p", "$value"]}
-    response = client.predict(request)
+    response = history.predict(client, request)
+    if response is None:
+        return {"p": None, "why": []}
     result.calls.append(("_predict", request, response))
     hit = next((h for h in response["hits"] if h["$value"] is True), None)
     if hit is None:
-        return {"p": 0.0, "why": []}
+        return {"p": None, "why": []}
     why = [
         {"label": _proposition_label(f["proposition"]), "lift": f["value"]}
         for f in aitowhy.lift_factors(hit)
@@ -79,9 +83,11 @@ def _feasible_values(client: AitoClient, result: Result, platform: str) -> dict[
 
 def _lever(client: AitoClient, result: Result, lever: str, where: dict,
            feasible: set) -> dict:
-    request = {"from": "posts", "where": where, "recommend": lever,
+    request = {"from": history.finished("posts"), "where": where, "recommend": lever,
                "goal": {"won": True}, "limit": 8}
-    response = client.recommend(request)
+    response = history.recommend(client, request)
+    if response is None:
+        return {"field": lever, "options": []}
     result.calls.append(("_recommend", request, response))
     options = [{"value": h["$value"], "p": h["$p"]}
                for h in response.get("hits", []) if h["$value"] in feasible]

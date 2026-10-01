@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 from datetime import date
 
 from . import schema
-from . import aitowhy
+from . import aitowhy, history
 from .aito import AitoClient
 
 # the open worklist excludes terminal todos: done (completed) and archived
@@ -111,8 +111,10 @@ def _slip_key(todo: dict) -> tuple:
 
 def _slip_request(key: tuple) -> dict:
     area, priority, prep_status = key
+    # learned from done todos only (history.finished): an open todo has not
+    # slipped or kept its date yet, whatever its `slipped` column reads
     return {
-        "from": "todos",
+        "from": history.finished("todos"),
         "where": {"area": area, "priority": priority, "prep_status": prep_status},
         "predict": "slipped",
         "select": ["$p", "$value", "$why"],
@@ -147,10 +149,8 @@ def _annotate_slip_risk(client: AitoClient, result: Result, todos: list[dict]) -
         return
 
     def fetch(key: tuple):
-        try:
-            return key, client.predict(_slip_request(key))
-        except Exception:
-            return key, None
+        # None only for an empty history (no todo done yet); any other error raises
+        return key, history.predict(client, _slip_request(key))
 
     with ThreadPoolExecutor(max_workers=len(keys)) as pool:
         fetched = dict(pool.map(fetch, keys))

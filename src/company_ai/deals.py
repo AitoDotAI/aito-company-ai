@@ -16,14 +16,13 @@ two can be compared — where they diverge is the interesting signal.
 from dataclasses import dataclass, field
 from datetime import date
 
-from . import aitowhy, schema
+from . import aitowhy, history, schema
 from .aito import AitoClient
 
 STALL_DAYS = 14  # no touch in this many days flags a stalled deal
 # Fewer closed deals than this share a profile, and its P(won) is a guess: the
 # answer falls back to the base rate over all closed deals, and says so.
 MIN_PROFILE_EVIDENCE = 8
-_CLOSED = {"stage": {"$or": sorted(schema.DEAL_CLOSED_STAGES)}}
 
 
 def _as_bool(value) -> bool:
@@ -72,54 +71,34 @@ def close_likelihood(client: AitoClient, stage: str, blocker: str,
 
     Returns `n` (closed deals sharing the profile) and `basis`: 'profile', or
     'base_rate' when fewer than MIN_PROFILE_EVIDENCE share it, in which case
-    `p_win` is the win rate over all closed deals and the UI says so."""
+    `p_win` is the win rate over all closed deals and the UI says so, or
+    'no_history' when no deal has closed yet (no `p_win` at all).
+
+    The history is a nested `from` over closed deals (history.finished): an
+    open deal never trains the model, even one whose `won` reads False."""
     champion = _as_bool(champion_present)
     profile = {"blocker": blocker, "champion_present": champion}
-    count_request = {"from": "deals", "where": {"$and": [_CLOSED, profile]}, "limit": 0}
-    count = client.query(count_request)
+    count_request, count = history.count(client, "deals", profile)
     if result is not None:
         result.calls.append(("_query", count_request, count))
     n = int(count.get("total", 0))
     basis = "profile" if n >= MIN_PROFILE_EVIDENCE else "base_rate"
-    request = {
-        "from": "deals",
-        "where": {"$and": [_CLOSED, profile]} if basis == "profile" else _CLOSED,
-        "predict": "won",
-        "select": ["$p", "$value", "$why"],
-    }
-    response = client.predict(request)
+    request = {"from": history.finished("deals"), "predict": "won",
+               "select": ["$p", "$value", "$why"]}
+    if basis == "profile":
+        request["where"] = profile
+    response = history.predict(client, request)
+    if response is None:
+        return {"p_win": None, "why": [], "n": 0, "basis": history.NO_HISTORY}
     if result is not None:
         result.calls.append(("_predict", request, response))
     hit = next((h for h in response["hits"] if h["$value"] is True), None)
     if hit is None:
         return {"p_win": None, "why": [], "n": n, "basis": basis}
-    why = []
-    for f in aitowhy.lift_factors(hit):
-        prop = _without_closed_filter(f["proposition"])
-        if prop is not None:
-            why.append({"label": _why_label(prop), "lift": f["value"]})
+    why = [{"label": _why_label(f["proposition"]), "lift": f["value"]}
+           for f in aitowhy.lift_factors(hit)]
     why.sort(key=lambda w: -abs(w["lift"] - 1.0))
     return {"p_win": hit["$p"], "why": why, "n": n, "basis": basis}
-
-
-def _is_closed_filter(prop: dict) -> bool:
-    (key,) = prop.keys()
-    if key == "stage":
-        return True
-    return key == "$or" and all(_is_closed_filter(p) for p in prop[key])
-
-
-def _without_closed_filter(prop: dict) -> dict | None:
-    """a $why proposition minus the closed-deals filter, which selects the
-    history rather than saying anything about the deal; None if nothing is left"""
-    if _is_closed_filter(prop):
-        return None
-    if "$and" in prop:
-        parts = [p for p in prop["$and"] if not _is_closed_filter(p)]
-        if not parts:
-            return None
-        return parts[0] if len(parts) == 1 else {"$and": parts}
-    return prop
 
 
 def _close_likelihood(client: AitoClient, result: Result, deal: dict, as_of: date) -> dict:
@@ -148,6 +127,11 @@ def _why_label(prop: dict) -> str:
     return f"{key}={value}"
 
 
+def _by_p_win(deal: dict) -> tuple:
+    """highest P(won) first; deals with no P(won) (no closed history) last"""
+    return (deal["p_win"] is None, -(deal["p_win"] or 0.0))
+
+
 def who_to_reach(client: AitoClient, as_of: date | None = None, top_n: int = 10,
                  predict: bool = True) -> Result:
     """The marquee entity-graph query (.ai/tasks/15): the contacts to reach at
@@ -168,7 +152,7 @@ def who_to_reach(client: AitoClient, as_of: date | None = None, top_n: int = 10,
     pipe = pipeline(client, as_of, predict=predict)
     result.calls.extend(pipe.calls)
     stalled = [d for d in pipe.derived["deals"] if d["stalled"]]
-    stalled = (sorted(stalled, key=lambda d: -d["p_win"])[:top_n] if predict
+    stalled = (sorted(stalled, key=_by_p_win)[:top_n] if predict
                else sorted(stalled, key=lambda d: -d["days_since_touch"]))
     by_slug = {company_slug(d["company"]): d for d in stalled}
     contacts: list[dict] = []
@@ -178,7 +162,7 @@ def who_to_reach(client: AitoClient, as_of: date | None = None, top_n: int = 10,
         response = client.query(request)
         result.calls.append(("_query", request, response))
         contacts = response["hits"]
-    ordered = (sorted(by_slug.items(), key=lambda kv: -kv[1]["p_win"]) if predict
+    ordered = (sorted(by_slug.items(), key=lambda kv: _by_p_win(kv[1])) if predict
                else sorted(by_slug.items(), key=lambda kv: -kv[1]["days_since_touch"]))
     rows = []
     for slug, d in ordered:
