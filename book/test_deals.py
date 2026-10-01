@@ -129,7 +129,9 @@ def test_close_likelihood_conditions_on_the_profile(t: bt.TestCaseRun) -> None:
     dropped the evidence; stage was dropped too, because no closed deal carries
     an open stage. Pins: the string and the Boolean give one answer, the
     champion moves it, stage does not (and is not claimed to), every answer
-    carries n, and a profile too thin to trust falls back to the base rate."""
+    carries n, and a feature value too thin to trust is left out and named
+    (item 2 of td-20260930191344950920: the gate is per feature, not per exact
+    profile, so a deal needs no exact look-alikes)."""
     client = _client()
     _load(client, SEED_DIR)
 
@@ -150,8 +152,9 @@ def test_close_likelihood_conditions_on_the_profile(t: bt.TestCaseRun) -> None:
     t.tln("  " + "  ".join(f"{s}={p:.3f}" for s, p in by_stage.items()))
     assert len(set(by_stage.values())) == 1
 
-    t.h1("a profile no closed deal shares falls back to the base rate, and says so")
+    t.h1("a blocker no closed deal has is left out, and says so")
     thin = deals.close_likelihood(client, "demo", "no_such_blocker", True)
-    t.tln(f"n={thin['n']} basis={thin['basis']} p_win={thin['p_win']:.3f}")
-    assert thin["n"] < deals.MIN_PROFILE_EVIDENCE and thin["basis"] == "base_rate"
+    t.tln(f"n={thin['n']} basis={thin['basis']} thin={thin['thin']} p_win={thin['p_win']:.3f}")
+    assert thin["basis"] == "partial" and thin["evidence"] == ["champion_present"]
+    assert thin["thin"] == [{"feature": "blocker", "value": "no_such_blocker", "n": 0}]
     assert as_bool["basis"] == "profile"

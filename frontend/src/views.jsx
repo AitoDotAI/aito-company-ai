@@ -2295,7 +2295,7 @@ function stageBreakdown(deals) {
 // via /api/pwin and fills in. Cached in a module Map, so it's instant on
 // re-navigation within the session; the graph shares the same cache.
 const pwinCache = new Map();
-const pwinKey = (d) => `${d.stage}|${d.blocker}|${d.champion_present}`;
+const pwinKey = (d) => `${d.stage}|${d.blocker}|${d.champion_present}|${d.segment}`;
 function usePwin(deals) {
   const [, bump] = useState(0);
   useEffect(() => {
@@ -2306,7 +2306,7 @@ function usePwin(deals) {
       const k = pwinKey(d);
       if (pwinCache.has(k) || pending.has(k)) continue;
       pending.add(k);
-      api.pwin(d.stage, d.blocker, d.champion_present)
+      api.pwin(d.stage, d.blocker, d.champion_present, d.segment)
         .then((r) => { if (alive) { pwinCache.set(k, r); bump((n) => n + 1); } })
         .catch(() => {});
     }
@@ -2315,7 +2315,7 @@ function usePwin(deals) {
   return (deals || []).map((d) => {
     if (d.p_win != null) return d;
     const c = pwinCache.get(pwinKey(d));
-    return c ? { ...d, p_win: c.p_win, why: c.why, n: c.n, basis: c.basis } : d;
+    return c ? { ...d, p_win: c.p_win, why: c.why, n: c.n, basis: c.basis, thin: c.thin } : d;
   });
 }
 
@@ -2341,7 +2341,8 @@ function WhoToReach() {
               <span className={"co-eur " + (pw != null && pw >= 50 ? "up" : "")}>{pw != null ? pw + "%" : "–"}</span>
               <span className="co-dsub" title="Learned from closed deals with the same blocker and champion. Stage is not in the closed history.">
                 {row.basis === "no_history" ? "P(won) · no closed deals yet"
-                  : row.basis === "base_rate" ? `P(won) · base rate (${row.n} like it)`
+                  : row.basis === "base_rate" ? "P(won) · base rate (too few like it)"
+                  : row.basis === "partial" ? `P(won) · ${row.n} like it · thin: ${row.thin.map((x) => x.feature).join(", ")}`
                   : row.n != null ? `P(won) · ${row.n} like it` : "P(won)"}
               </span>
             </div>
