@@ -33,6 +33,12 @@ a time, in pictures.
   the most, and how a draft is likely to do before you publish it.
 - **What do we already know about this account?** Notes and meetings filed
   against the company and the people, not in a folder someone has to find.
+- **What kind of company is this, judged only by who works there?** Accounts,
+  people, deals and notes are linked, so a question can be answered from an
+  account's *neighbourhood* rather than from its own record.
+- **Where did we discuss pricing?** — asked in Finnish, over notes written in
+  English. Search matches on meaning as well as words, so a result need share
+  no term with the question.
 
 It is honest when it does not know. Early on, with little history, the
 probabilities are weak and look weak. A confident number from four data
@@ -152,6 +158,7 @@ The `./do` script manages it (run `./do help` for all commands):
 ./do status             # is it up? which instance, which build
 ./do restart            # rebuild + restart    ./do stop    ./do logs
 ./do dev                # vite hot-reload (:5173) + backend (:8770), for UI work
+./do reindex            # rebuild the search index (+ embeddings, if configured)
 ```
 
 `./do` targets the Aito instance in `COMPANY_AI_ENV` (defaulting to
@@ -181,6 +188,31 @@ operator's strategy, plans, and notes as a first-class Aito collection, tagged
 by kind and area, linked to companies and people, edited in place, and searchable
 ([`docs/25-documents.md`](docs/25-documents.md)). Import an existing markdown
 dir once with `company-ai documents-import <dir>`.
+
+![Documents — notes linked to the accounts and people they concern](docs/assets/dashboard-documents.png)
+
+The **Knowledge graph** view is the newest surface. Contacts, deals and
+documents all link to the company, and Aito walks those links in both
+directions — forward to the account (`company_id.industry`), and back to its
+people (`$refs.contacts.company_id`). Each card is a single query, shown next
+to its answer, because the claim being made is that the question and the query
+are nearly the same sentence.
+
+[![Knowledge graph — each question beside the query that answered it](docs/assets/dashboard-graph-hero.png)](docs/31-knowledge-graph.md)
+
+Two of those cards do something a relational database cannot: infer an
+account's industry from the people linked to it, and predict a deal's outcome
+from a fact that exists nowhere on the deal — returning `$why`, so the answer
+arrives with what moved it and by how much. Design, and the sharp edges found
+building it, in [`docs/31-knowledge-graph.md`](docs/31-knowledge-graph.md).
+
+**Search** ranks documents, contacts and deals together, and learns: results
+that get clicked for a query rise for similar queries later. With an
+embeddings deployment configured it also matches on meaning, which is what
+lets a French or Finnish question find an English note
+([`docs/23-search.md`](docs/23-search.md)).
+
+![Search — a French query returning English documents](docs/assets/dashboard-search-semantic.png)
 
 **Analytics — Segment 360.** Pick a slice (segment · tier · ai_lifecycle ·
 source); each KPI shows the rate, the root causes (`_relate`), and the lever

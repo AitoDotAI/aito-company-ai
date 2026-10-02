@@ -133,7 +133,41 @@ contacts and deals together by relevance, and it learns: results that get
 clicked for a given query rise for similar queries later, so the ranking
 sharpens with use instead of staying frozen.
 
-## 7 · "What do I do every week?"
+## 7 · "What kind of company is this, judged by who works there?"
+
+[![Knowledge graph](../assets/dashboard-graph-hero.png)](../31-knowledge-graph.md)
+
+*The Knowledge graph — each question beside the single query that answered it.*
+
+Accounts, people, deals and notes are linked, and those links can be walked in
+both directions: forward from a deal to its account, and backwards from an
+account to its people. That turns questions that would otherwise need a join
+into one query — "who works at the accounts that pay us", "which accounts have
+a CTO on file", "what is in play across an industry".
+
+Two of the cards do something a relational database cannot. One infers an
+account's **industry from the people linked to it**, never reading the
+account's own industry at all. The other predicts whether a deal will be won
+from a fact that exists nowhere on the deal — whether a CTO is on file at that
+account — and returns **what each fact did to the number**, as a multiplier.
+The answer arrives with its reasons rather than as a bare probability.
+
+## 8 · "Where did we discuss pricing?" — asked in the wrong language
+
+![Search](../assets/dashboard-search-semantic.png)
+
+*A French query returning English documents, none sharing a word with it.*
+
+Search ranks documents, contacts and deals together, and it learns: a result
+clicked for one query rises for similar queries later. With embeddings
+configured it also matches on **meaning**, so a question asked in Finnish or
+French finds a note written in English — which matters when the notes are
+written in whichever language the meeting happened in.
+
+Without embeddings it degrades to plain text matching rather than breaking;
+the semantic layer is additive, not required.
+
+## 9 · "What do I do every week?"
 
 ![Routines](../assets/dashboard-routines.png)
 
@@ -145,7 +179,7 @@ the part worth looking at: it assembles the candidates from the data and hands
 over a filled-in prompt, so the weekly task starts from a ranked shortlist
 rather than a blank page.
 
-## 8 · "Is this event worth going to?"
+## 10 · "Is this event worth going to?"
 
 ![Events](../assets/dashboard-events.png)
 
@@ -156,7 +190,7 @@ and a go or skip recorded against it — so the question gets answered
 deliberately once, and the answer is still there next year when the same
 event comes round.
 
-## 9 · "Did that experiment pay off?"
+## 11 · "Did that experiment pay off?"
 
 ![Learning](../assets/dashboard-learning.png)
 
@@ -213,6 +247,17 @@ Segment 360 and the funnel:
   "goal": { "reached_deepest": true },
   "limit": 8
 }
+```
+
+**`$refs` — walk the link backwards.** Everything above reads *from* a row
+towards what it points at. `$refs` goes the other way: on a company,
+`$refs.contacts.company_id` is the set of contacts pointing at it, which is how
+"which accounts have a CTO on file" is one query:
+
+```json
+{ "from": "companies",
+  "where": { "$refs.contacts.company_id": { "$exists": { "role": "CTO" } } },
+  "select": ["name", "industry", "relationship"] }
 ```
 
 **`$match` + `orderBy` — smart search.** The query is tokenised and OR'd so an
