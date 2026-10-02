@@ -2,9 +2,10 @@
 
 What this actually does, one screen at a time.
 
-Company AI runs a small company end to end: what to do today, which deals will
-close, where the funnel leaks, what to post, which experiments paid off, what
-was decided and why — and the notes and accounts underneath all of it. The
+Company AI runs a small company end to end: what to do today, what is in the
+pipeline and what has gone quiet, where the funnel leaks, what to post, which
+experiments paid off, what was decided and why — and the notes and accounts
+underneath all of it. The
 thing that makes it different from a CRM is that **every
 rate, ranking and likelihood on these screens is a prediction from the
 company's own history** — not a rule someone wrote, not a weight someone
@@ -12,6 +13,12 @@ tuned. When the history changes, the numbers change by themselves.
 
 You don't need to know how that works to read this tour. The last two
 chapters are there if you want to change it.
+
+One thing the screenshots cannot show: **these screens are the operator's half
+of it.** The agent lanes that work this data daily never open the dashboard —
+they go through MCP from a Claude session, calling the same functions these
+views render. So read each screen as a question with two front doors, one you
+look at and one you ask.
 
 > Every screenshot is the public demo — synthetic companies, synthetic
 > people, synthetic deals, all of it in [`data/seed`](../../data/seed). No
@@ -52,6 +59,11 @@ The point is that nothing here is a static list: a deal going cold, an
 experiment coming due, or a todo aging past its window changes what floats to
 the top, without anyone re-prioritising by hand.
 
+**The honest limit:** sorting does not close anything. In real use the sales
+area has carried months-old todos still marked ready, and nothing on this
+screen forces the issue. As the CRO lane puts it, *"the board is only as
+current as the agents that close tickets."*
+
 ## 2 · "Where does the business stand?"
 
 ![Overview](../assets/dashboard-overview.png)
@@ -75,10 +87,16 @@ long each has been cold. That ranking is the shortlist for the day.
 *Sales analytics — the pipeline, the win-rate trend, and each deal's
 predicted close likelihood.*
 
-Every open deal carries two probabilities: the operator's own gut number, and
-Aito's, computed from what happened to similar deals before. **Where the two
-diverge is the interesting part** — a deal you are confident about that the
-history says is weak, or the reverse, is the one to look at this week.
+Every open deal carries two probabilities: the operator's own number, and one
+computed from what happened to similar deals before.
+
+**Be honest about the second one.** On a real pipeline of about twenty deals it
+has not earned its keep — the CRO lane reports it as sparse-data noise (a
+strong prior plus an over-lift for having a champion) and defers to the
+operator's own probability. It is carried here as an experiment that gets
+better as the closed history grows, not as a number to act on. The view it
+earns its place by is the plain one: what is open, how big, and how long since
+anyone touched it.
 
 The prediction conditions on the things you know *before* the outcome — stage,
 what is blocking it, whether there is a champion — so it is honest about deals
@@ -134,6 +152,18 @@ contacts and deals together by relevance, and it learns: results that get
 clicked for a given query rise for similar queries later, so the ranking
 sharpens with use instead of staying frozen.
 
+This chapter is the one that gets used most. Asked how the agent lanes actually
+use the system, the CRO lane put this first:
+
+> *"'Everything we have on `<person> <company>`' before a meeting: one semantic
+> search, then `document_read` on the 2–4 hits. This is THE load-bearing use."*
+
+It is worth being clear about what that means for the rest of the tour: the
+predictive screens are the interesting part, but **recall across one linked
+store is the part that earns its keep every day.** The same lane's second
+most-asked question is of the same shape — *"what did we last say or promise to
+this company, and what's still open?"* — search, then read.
+
 ## 7 · "What kind of company is this, judged by who works there?"
 
 [![Knowledge graph](../assets/dashboard-graph-hero.png)](../31-knowledge-graph.md)
@@ -180,6 +210,12 @@ the part worth looking at: it assembles the candidates from the data and hands
 over a filled-in prompt, so the weekly task starts from a ranked shortlist
 rather than a blank page.
 
+**In practice this one has not landed.** The lane that should be using it
+reports the board *"has been decorative (every routine overdue)"* — because
+routines are only ticked when someone remembers to tick them, and the prepared
+prompt does not help if the cadence itself is fiction. The design holds; the
+habit did not. It is written down here rather than quietly dropped.
+
 ## 10 · "Is this event worth going to?"
 
 ![Events](../assets/dashboard-events.png)
@@ -203,6 +239,54 @@ outcome is exactly what changes tomorrow's predictions, so recording a result
 is not bookkeeping, it is how the system gets better at its job.
 
 ---
+
+## 12 · "What is R&D actually working on?" — the ticket as a lab notebook
+
+The same todos table carries the product side, and it is used in a shape the
+sales side never touches. R&D work arrives ranked by priority instead of laid
+out by date, and a ticket is not a line item to be checked off — it is the
+running record of the work:
+
+> *"Mine is 'append this finding to the ticket that owns it' — the ticket as a
+> running lab notebook. Reads are almost always a single todo by id, not
+> search."*
+> — the CPO lane
+
+Appends are dated and additive, so a claim that turns out to be wrong is
+**corrected in place by a later entry rather than edited away**. That is the
+property that makes the history worth keeping:
+
+> *"One ERP-accuracy regression ticket carried a week of history across four
+> sessions — found by one lane, released in writing, picked up by a second,
+> measured by a third, corrected by me — and any of us could reconstruct where
+> it stood cold, including which earlier claims were retracted and why."*
+> — the CPO lane
+
+**The review gate.** Moving R&D work to `review` requires a handoff block —
+`CLAIM`, `VERIFY`, `SCOPE`, `RISK`, `PUSHED` — and the requirement is checked,
+not merely written down somewhere. Agent-completed work therefore cannot
+self-certify as done; it waits for a human:
+
+> *"The validator rejected a review I tried to set without it, and the forced
+> CLAIM line twice exposed that the work wasn't finished."*
+> — the CPO lane
+
+**Where it falls short**, from the same notes, because this is the chapter most
+at risk of sounding tidier than it is:
+
+- A handoff block cannot tell a verification from a relayed claim. When one
+  lane's MCP is down and another writes the handoff for it, `VERIFY` records
+  what it was told, and the format looks identical.
+- Tickets grow into logs — many thousands of words of appends, with no
+  structured field for *current status* or *next step*, so the latest state is
+  hard to find in the history that makes the ticket valuable.
+- `owner` and `role` are free text, so one lane appears under several spellings.
+  The same silent-drift class as a mismatched area name, and still open.
+- There is no "what needs a decision from a human" view across tickets, and no
+  structured *current status* field — so the R&D lanes keep a separate,
+  human-facing decisions list outside the board. That is a missing feature
+  rather than a preference: a board that answers "what is waiting on me across
+  twenty lanes" in fifteen minutes would replace it.
 
 ## How it works: the Aito calls
 

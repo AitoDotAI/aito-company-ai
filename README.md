@@ -16,9 +16,16 @@ deal went quiet, that the experiment meant to unblock it was decided last
 week, and that the note explaining why sits on the account — without anyone
 wiring those three things together.
 
-It reads widely and writes narrowly. Logging an outcome is the only write, and
-a human asks for it; nothing goes outbound. An agent that can see everything
-and send nothing is the deliberate shape here, not a missing feature.
+And agents do not only read it — they **work in it**. They file todos and claim
+them, record decisions, log outcomes and touches, write notes, tick routines
+and add contacts and deals. Twenty-eight of the MCP tools write. That is the
+point of calling it an OS rather than a dashboard: it is the shared workspace
+several agents operate in at once, which is also why there is a claim protocol
+so two of them do not build the same thing twice.
+
+What is gated is the *outside world* — no email, no LinkedIn, no calendar
+writes. An agent with the run of the company's own store and no way to send
+anything from it is the deliberate shape here, not a missing feature.
 
 What makes it different from a CRM or a wiki is where the numbers come from.
 Nobody configures a scoring rule. Every rate, ranking and likelihood is worked
@@ -40,9 +47,11 @@ a time, in pictures.
 
 - **Who should I call today, and what do I say?** Ranked by who is most likely
   to move, with the reason attached.
-- **Which of these deals will actually close?** A probability for every open
-  deal, learned from the ones that closed before — next to your own guess,
-  because where the two disagree is the deal worth looking at.
+- **What is in the pipeline, and what has gone quiet?** Deals by stage and
+  value, with how long each has been cold. There is also a model probability
+  per deal; treat it as an experiment rather than an input — on a pipeline of
+  ~20 deals it is sparse-data noise, and the operator's own number is what
+  gets used.
 - **Where is the funnel leaking, and what should I post?** The stage costing
   the most, and how a draft is likely to do before you publish it.
 
@@ -81,6 +90,94 @@ always be checked rather than trusted.
 
 **As a dashboard.** A set of read-only screens over the same numbers, for
 when you want to look rather than ask.
+
+In practice the split falls along who is asking: the agent lanes work it
+entirely through MCP and never open the dashboard, and the operator mostly
+uses the screens. Same queries either way — neither side is a summary of the
+other.
+
+## How it is actually used
+
+This repository is not a demo with a story attached — it runs Aito's own
+go-to-market and R&D, worked daily by several Claude lanes at once. What
+follows is quoted from those lanes, including the parts that do not flatter the
+software.
+
+**The load-bearing use turned out to be recall, not prediction.**
+
+> *"'Everything we have on `<person> <company>`' before a meeting: one semantic
+> search, then `document_read` on the 2–4 hits. This is THE load-bearing use.
+> Today it found the right contact even though the name was misspelled in the
+> request (one letter off), and pulled the intro email context, the prior call
+> outcome and a misread we had corrected weeks ago."*
+> — the CRO lane
+
+**The R&D lanes use it in a completely different shape.** Where the GtM side
+reads broadly, the product side writes narrowly to one place:
+
+> *"Mine is 'append this finding to the ticket that owns it' — the ticket as a
+> running lab notebook. Reads are almost always a single todo by id, not
+> search."*
+> — the CPO lane
+
+A todo's `detail` is therefore not a description but an append-only log, and
+corrections are appended rather than edited away, so a wrong claim stays
+visible next to the correction that overturned it. Promoting work to `review`
+requires a handoff block (`CLAIM / VERIFY / SCOPE / RISK / PUSHED`), which is
+checked rather than merely conventional:
+
+> *"The validator rejected a review I tried to set without it, and the forced
+> CLAIM line twice exposed that the work wasn't finished."*
+> — the CPO lane
+
+**The strongest property is one nobody designed for: shared memory between
+agents.**
+
+> *"Several Claude sessions (CRO, CPO, demo lanes) write notes and todos, and
+> any of them can reconstruct a relationship's history cold. Without it, a lane
+> re-derives or contradicts another lane's facts. One concrete failure it
+> prevents: an agent 'verifying' a thread as dropped, when the meeting actually
+> happened and was recorded by another lane."*
+> — the CRO lane
+
+The product side reports the same property from the other end:
+
+> *"One ERP-accuracy regression ticket carried a week of history across four
+> sessions — found by one lane, released in writing, picked up by a second,
+> measured by a third, corrected by me — and any of us could reconstruct where
+> it stood cold, including which earlier claims were retracted and why."*
+> — the CPO lane
+
+A note carries the date it is *about* (`noted_on`), and a correction is filed as
+its own dated entry — so "we misread X, here is what it actually meant" is
+retrievable later, which stops the same error being made twice.
+
+**What is not earning its keep.** The same notes, unedited:
+
+- **Close-likelihood (`p_win`) is not acted on.** *"With ~20 deals it's
+  sparse-data noise… We defer to the operator's own probability."* It is kept
+  as an experiment that should improve as the closed history grows.
+- **`score_post` is unused** — LinkedIn copy is graded against a written
+  checklist instead.
+- **The routines board** *"has been decorative (every routine overdue)"*,
+  because routines are not ticked as the work happens.
+- **Todos go stale.** An honest statement of the limit, from the lane that
+  lives with it: *"the board is only as current as the agents that close
+  tickets."*
+- **Active tickets grow into logs.** Thousands of words of dated appends, with
+  no structured field for current status or next step: *"update_todo echoes the
+  full detail back on every call, which is expensive for an agent and makes the
+  current state hard to find."*
+- **`owner` and `role` are unvalidated free text**, so the same lane appears as
+  `core-2`, `aito-core-2` and `core-a`. The same class of silent drift as the
+  area-name bug these notes turned up, and not yet fixed.
+- **Search does not serve R&D well.** It is tuned on documents, contacts and
+  deals; asked for a ticket it returns sales material, and the lane falls back
+  to remembering ids.
+
+Those four are in the repository because removing a feature that is not working
+is a decision, and pretending it works is a defect. Each is a known gap, not a
+surprise.
 
 ## Try it
 
@@ -272,11 +369,19 @@ it at runtime. Details in `docs/06-privacy.md`.
 
 ## Permissions
 
-The agent is internal-facing: it reads the pipeline and drafts text for a
-human to act on. It sends nothing outbound — no email, no LinkedIn, no
-calendar writes; those are gated decisions, not features (see
-`docs/05-phases.md`). Outcome logging is the only write, and it is always
-operator-initiated.
+The agent is internal-facing, and inside that boundary it writes freely: todos,
+decisions, outcomes, touches, notes, routine ticks, contacts, deals,
+experiments, events and posts all have write tools, and agents use them heavily
+— the board is largely agent-written. Several agents work the same store
+concurrently, which is why claiming a todo before starting it is a protocol
+rather than a nicety (`docs/12-todos-and-now.md`).
+
+The boundary is OUTBOUND action: no email, no LinkedIn, no calendar writes.
+Those are gated decisions, not features (see `docs/05-phases.md`). An agent
+may draft the message; a human sends it.
+
+Restoring a backup is also operator-only: MCP can snapshot, never promote
+(`docs/21-backups.md`).
 
 ## Tests
 
