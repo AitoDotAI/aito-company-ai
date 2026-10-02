@@ -1,17 +1,17 @@
 todo_id,area,title,detail,action_type,slot,linked_id,linked_type,stakeholder_id,role,owner,status,priority,due_date,window,prep_status,slipped
-yd001,marketing,Repurpose customer-proof for LinkedIn,,post,09:00,,asset,,,,prog,1,2026-06-16,mon_0800,ready,
-yd002,rnd,Schema migration tooling,,research,,,workstream,,,,prog,2,,,in_progress,
-yd006,rnd,Rep2 stabilization,,research,,,workstream,,,,prog,2,,,in_progress,
-yd004,rnd,pg_infer extension,,research,,,workstream,,,,blocked,3,,,in_progress,
-yd005,sales,Send pricing context to Nimbus GmbH,,email,14:30,ye001,deal,yc010,,,ready,2,2026-06-11,fri_1530,ready,
-yd003,sales,Reference ask with Vertex OÜ,,email,13:00,ye004,deal,yc004,,,prog,3,2026-06-15,fri_1530,in_progress,
-ydh001,sales,Reposition email to Vertex OÜ,,email,,,,,,,done,2,,,in_progress,false
-ydh002,marketing,Ship the oss-tool post,,post,,,,,,,done,2,,,ready,false
-ydh003,rnd,Predictive-DB benchmark,,research,,,,,,,done,2,,,n_a,false
-ydh004,operations,Genco Oy license renewal window,,admin,,,,,,,done,2,,,blocked,true
-ydh005,sales,Send pricing context to Rekall Oy,,email,,,,,,,done,3,,,in_progress,true
-ydh006,rnd,Schema migration tooling,,research,,,,,,,done,3,,,ready,false
-ydh007,marketing,Repurpose agent-inference for LinkedIn,,post,,,,,,,done,2,,,n_a,true
-ydh008,marketing,Ship the customer-proof post,,post,,,,,,,done,1,,,n_a,false
-ydh009,sales,Reposition email to Genco Oy,,email,,,,,,,done,2,,,n_a,false
-ydh010,sales,Call Genco Oy before the window closes,,call,,,,,,,done,3,,,in_progress,false
+yd003,experiments,Set up the customer-proof experiment,,research,,,workstream,,,,blocked,2,,,prep_needed,
+yd001,marketing,Ship the customer-proof post,,post,14:30,,asset,,,,prog,3,2026-06-12,tue_0800,ready,
+yd005,marketing,Propagate the customer-proof demo,,post,09:00,,asset,,,,draft,3,2026-06-17,mon_0800,ready,
+yd006,operations,Nimbus GmbH license renewal window,,admin,16:00,,instance,,,,on_track,3,2026-06-15,,n_a,
+yd004,rnd,Predictive-DB benchmark,,research,,,workstream,,,,blocked,1,,,prep_needed,
+yd002,sales,Reference ask with Nimbus GmbH,,email,13:00,ye001,deal,yc010,,,draft,1,2026-06-16,fri_1530,in_progress,
+ydh001,operations,Vertex OÜ usage anomaly review,,admin,,,,,,,done,3,,,in_progress,true
+ydh002,sales,Follow-up call with Rekall Oy,,email,,,,,,,done,3,,,in_progress,false
+ydh003,operations,Genco Oy license renewal window,,admin,,,,,,,done,2,,,blocked,true
+ydh004,sales,Send pricing context to Rekall Oy,,email,,,,,,,done,3,,,in_progress,true
+ydh005,rnd,Schema migration tooling,,research,,,,,,,done,3,,,ready,false
+ydh006,marketing,Repurpose agent-inference for LinkedIn,,post,,,,,,,done,2,,,n_a,true
+ydh007,marketing,Ship the customer-proof post,,post,,,,,,,done,1,,,n_a,false
+ydh008,sales,Reposition email to Genco Oy,,email,,,,,,,done,2,,,n_a,false
+ydh009,sales,Call Genco Oy before the window closes,,call,,,,,,,done,3,,,in_progress,false
+ydh010,marketing,Draft the customer-proof narrative,,post,,,,,,,done,3,,,prep_needed,true
