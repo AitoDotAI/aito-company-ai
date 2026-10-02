@@ -27,6 +27,7 @@
 #   ./do image                build the deployable container (app + synthetic seed)
 #   ./do smoke [config]       build + boot the image locally, check it serves
 #   ./do reindex [config]     rebuild the search index (+ embeddings if configured)
+#   ./do maintenance <s> [cfg]  run .ai/maintenance/<s>.py against an instance
 #   ./do clean                wipe build artifacts and PID/log files
 #
 # Examples:
@@ -139,6 +140,30 @@ cmd_doctor() { resolve "${1:-}"; uv run company-ai doctor; }
 # rebuild the search index (and its embeddings, when configured)
 cmd_reindex() { resolve "${1:-}"; uv run company-ai reindex-search; }
 
+# Run a one-off operator script against a configured instance:
+#     ./do maintenance apply aito
+# Scripts live in .ai/maintenance/ — untracked, operator-local, and usually
+# one-shot (a data repair, a board write, a probe against a live instance).
+# They are run THROUGH here rather than by hand so the instance is selected the
+# same way every other verb selects it, instead of each script growing its own
+# idea of which dotenv it meant.
+cmd_maintenance() {
+  local name="${1:-}"
+  [ -n "$name" ] || die "usage: ./do maintenance <script> [config]  (available: $(ls .ai/maintenance/*.py 2>/dev/null | xargs -n1 basename 2>/dev/null | sed 's/\.py$//' | tr '\n' ' '))"
+  shift
+  local script=".ai/maintenance/${name%.py}.py"
+  [ -f "$script" ] || die "no such maintenance script: $script"
+  resolve "${1:-}"
+  # `--apply` is how a maintenance script is told to write. Scripts default to a
+  # dry run and check APPLY, so the destructive step is always a separate,
+  # visible word on the command line rather than an env var set out of sight.
+  local apply=""
+  for a in "$@"; do [ "$a" = "--apply" ] && apply=1; done
+  [ -n "$apply" ] && export APPLY=1
+  say "running $script via $(env_label)${apply:+  (APPLY)}"
+  uv run python "$script"
+}
+
 # bring an instance's schema up to the code, non-destructively: diagnose,
 # add any missing tables/columns (create-schema; never drops data), re-check.
 cmd_migrate() {
@@ -242,6 +267,7 @@ case "${1:-help}" in
   migrate)        shift; cmd_migrate "$@" ;;
   doctor)         shift; cmd_doctor "$@" ;;
   reindex)        shift; cmd_reindex "$@" ;;
+  maintenance)    shift; cmd_maintenance "$@" ;;
   start)          shift; cmd_start "$@" ;;
   stop)           shift; cmd_stop "$@" ;;
   restart)        shift; cmd_restart "$@" ;;
