@@ -1,16 +1,30 @@
 # Company AI
 
-**A small company's sales assistant that learns from what actually happened.**
+**An open-source agentic OS for a small company — go-to-market, R&D, and the
+knowledge underneath, in one store an agent can read end to end.**
 
-It keeps track of the things a salesperson otherwise keeps in their head —
-who the customers are, which deals are moving, who was in the last meeting,
-what was said — and answers questions about them.
+"OS" is meant literally rather than as a flourish: the pipeline, the funnel,
+the experiments, the decisions, the events, the recurring work and the notes
+are not separate tools glued together — they are one schema in one database,
+and every surface is a query over it. A Claude session works that data
+directly through MCP. The dashboard is a window on the same queries, for when
+you would rather look than ask. Neither is the system of record; the database
+is, and both read it.
 
-What makes it different from a normal CRM is where the numbers come from.
-Nobody configures a scoring rule. Every rate, ranking and likelihood is
-worked out from **this company's own history**, so when the history changes
-the answers change by themselves. A deal looks promising because deals that
-looked like it were won before.
+What that buys is an agent with the whole company in scope. It can see that a
+deal went quiet, that the experiment meant to unblock it was decided last
+week, and that the note explaining why sits on the account — without anyone
+wiring those three things together.
+
+It reads widely and writes narrowly. Logging an outcome is the only write, and
+a human asks for it; nothing goes outbound. An agent that can see everything
+and send nothing is the deliberate shape here, not a missing feature.
+
+What makes it different from a CRM or a wiki is where the numbers come from.
+Nobody configures a scoring rule. Every rate, ranking and likelihood is worked
+out from **this company's own history**, so when the history changes the
+answers change by themselves. A deal looks promising because deals that looked
+like it were won before.
 
 [![Overview](docs/assets/dashboard-overview.png)](docs/use-cases/README.md)
 
@@ -22,15 +36,27 @@ a time, in pictures.
 
 ## The kind of question it answers
 
-- **Who should I call today, and what do I say?** Ranked by who is most
-  likely to move, with the reason attached.
+**Going to market**
+
+- **Who should I call today, and what do I say?** Ranked by who is most likely
+  to move, with the reason attached.
 - **Which of these deals will actually close?** A probability for every open
   deal, learned from the ones that closed before — next to your own guess,
   because where the two disagree is the deal worth looking at.
-- **Who actually pays us, and what are they worth?** Customers, prospects and
-  lapsed accounts, with what each brings in.
 - **Where is the funnel leaking, and what should I post?** The stage costing
   the most, and how a draft is likely to do before you publish it.
+
+**Building and learning**
+
+- **Did that experiment pay off?** What was tried, what was expected, what
+  happened — so a logged outcome visibly moves the next answer.
+- **What did we decide, and did it hold up?** Decisions recorded with their
+  outcomes, including the ones where the agent was overruled.
+- **What is actually on the R&D list, and what is late?** The same action
+  surface as sales, ranked by priority rather than by date.
+
+**Knowing**
+
 - **What do we already know about this account?** Notes and meetings filed
   against the company and the people, not in a folder someone has to find.
 - **What kind of company is this, judged only by who works there?** Accounts,
@@ -39,6 +65,9 @@ a time, in pictures.
 - **Where did we discuss pricing?** — asked in Finnish, over notes written in
   English. Search matches on meaning as well as words, so a result need share
   no term with the question.
+
+Alongside those: events as a go/no-go board, recurring work as routines that
+prepare themselves, and an append-only log of everything that changed.
 
 It is honest when it does not know. Early on, with little history, the
 probabilities are weak and look weak. A confident number from four data

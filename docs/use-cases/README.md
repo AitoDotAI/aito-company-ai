@@ -2,9 +2,10 @@
 
 What this actually does, one screen at a time.
 
-Company AI runs a one-person company's sales and marketing: what to do today,
-which deals will close, where the funnel leaks, what to post, what to read
-before a call. The thing that makes it different from a CRM is that **every
+Company AI runs a small company end to end: what to do today, which deals will
+close, where the funnel leaks, what to post, which experiments paid off, what
+was decided and why — and the notes and accounts underneath all of it. The
+thing that makes it different from a CRM is that **every
 rate, ranking and likelihood on these screens is a prediction from the
 company's own history** — not a rule someone wrote, not a weight someone
 tuned. When the history changes, the numbers change by themselves.
