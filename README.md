@@ -48,10 +48,9 @@ a time, in pictures.
 - **Who should I call today, and what do I say?** Ranked by who is most likely
   to move, with the reason attached.
 - **What is in the pipeline, and what has gone quiet?** Deals by stage and
-  value, with how long each has been cold. There is also a model probability
-  per deal; treat it as an experiment rather than an input — on a pipeline of
-  ~20 deals it is sparse-data noise, and the operator's own number is what
-  gets used.
+  value, with how long each has been cold, and a close-likelihood learned from
+  the deals that closed before — shown beside the operator's own number, and
+  honest about how much history stands behind it.
 - **Where is the funnel leaking, and what should I post?** The stage costing
   the most, and how a draft is likely to do before you publish it.
 
@@ -91,93 +90,51 @@ always be checked rather than trusted.
 **As a dashboard.** A set of read-only screens over the same numbers, for
 when you want to look rather than ask.
 
-In practice the split falls along who is asking: the agent lanes work it
-entirely through MCP and never open the dashboard, and the operator mostly
-uses the screens. Same queries either way — neither side is a summary of the
-other.
+In practice the split falls along who is asking: agents work it through MCP,
+people use the screens. Same queries either way — neither side is a summary of
+the other.
 
-## How it is actually used
+## What the prediction actually does
 
-This repository is not a demo with a story attached — it runs Aito's own
-go-to-market and R&D, worked daily by several Claude lanes at once. What
-follows is quoted from those lanes, including the parts that do not flatter the
-software.
+This repository runs Aito's own go-to-market and R&D, so the examples below
+are from daily use rather than a demo script.
 
-**The load-bearing use turned out to be recall, not prediction.**
+**The prediction reached for most often is a match, not a forecast.** The
+commonest question is not "what will happen" but "everything we have on this
+person and this company" — a ranking over a learned index rather than a
+keyword lookup.
 
-> *"'Everything we have on `<person> <company>`' before a meeting: one semantic
-> search, then `document_read` on the 2–4 hits. This is THE load-bearing use.
-> Today it found the right contact even though the name was misspelled in the
-> request (one letter off), and pulled the intro email context, the prior call
-> outcome and a misread we had corrected weeks ago."*
-> — the CRO lane
+The difference shows up on a bad day. Asked for a contact whose name was
+misspelled by one letter, it returned the right person anyway, along with the
+intro email context, the outcome of the last call, and a misreading that had
+been corrected weeks earlier. Keyword search finds none of that, and it is the
+same query whether you ask in English or Finnish.
 
-**The R&D lanes use it in a completely different shape.** Where the GtM side
-reads broadly, the product side writes narrowly to one place:
+Two more predictions run without anyone thinking of them as predictions:
 
-> *"Mine is 'append this finding to the ticket that owns it' — the ticket as a
-> running lab notebook. Reads are almost always a single todo by id, not
-> search."*
-> — the CPO lane
+- **Classification.** Every action written by hand gets its area and type
+  predicted from its title, learned from the ones filed before it. Nobody
+  maintains a rule list.
+- **Link traversal.** A question about an account is answered from its
+  *neighbourhood* — the people, deals and notes attached to it — rather than
+  from its own record.
 
-A todo's `detail` is therefore not a description but an append-only log, and
-corrections are appended rather than edited away, so a wrong claim stays
-visible next to the correction that overturned it. Promoting work to `review`
-requires a handoff block (`CLAIM / VERIFY / SCOPE / RISK / PUSHED`), which is
-checked rather than merely conventional:
+**Where prediction is allowed to act** is a deliberate line, and it is what
+makes the rest safe to lean on:
 
-> *"The validator rejected a review I tried to set without it, and the forced
-> CLAIM line twice exposed that the work wasn't finished."*
-> — the CPO lane
+> **Prediction may propose, with its reasons attached. Only a deterministic
+> check or a named human writes state.**
 
-**The strongest property is one nobody designed for: shared memory between
-agents.**
+A ranked list of candidates someone confirms is cheap when it is wrong; a
+field written by a model is not. So approvals, validators, ownership and any
+measured number stay deterministic, and the model's job is to put the right
+three things in front of a person.
 
-> *"Several Claude sessions (CRO, CPO, demo lanes) write notes and todos, and
-> any of them can reconstruct a relationship's history cold. Without it, a lane
-> re-derives or contradicts another lane's facts. One concrete failure it
-> prevents: an agent 'verifying' a thread as dropped, when the meeting actually
-> happened and was recorded by another lane."*
-> — the CRO lane
-
-The product side reports the same property from the other end:
-
-> *"One ERP-accuracy regression ticket carried a week of history across four
-> sessions — found by one lane, released in writing, picked up by a second,
-> measured by a third, corrected by me — and any of us could reconstruct where
-> it stood cold, including which earlier claims were retracted and why."*
-> — the CPO lane
-
-A note carries the date it is *about* (`noted_on`), and a correction is filed as
-its own dated entry — so "we misread X, here is what it actually meant" is
-retrievable later, which stops the same error being made twice.
-
-**What is not earning its keep.** The same notes, unedited:
-
-- **Close-likelihood (`p_win`) is not acted on.** *"With ~20 deals it's
-  sparse-data noise… We defer to the operator's own probability."* It is kept
-  as an experiment that should improve as the closed history grows.
-- **`score_post` is unused** — LinkedIn copy is graded against a written
-  checklist instead.
-- **The routines board** *"has been decorative (every routine overdue)"*,
-  because routines are not ticked as the work happens.
-- **Todos go stale.** An honest statement of the limit, from the lane that
-  lives with it: *"the board is only as current as the agents that close
-  tickets."*
-- **Active tickets grow into logs.** Thousands of words of dated appends, with
-  no structured field for current status or next step: *"update_todo echoes the
-  full detail back on every call, which is expensive for an agent and makes the
-  current state hard to find."*
-- **`owner` and `role` are unvalidated free text**, so the same lane appears as
-  `core-2`, `aito-core-2` and `core-a`. The same class of silent drift as the
-  area-name bug these notes turned up, and not yet fixed.
-- **Search does not serve R&D well.** It is tuned on documents, contacts and
-  deals; asked for a ticket it returns sales material, and the lane falls back
-  to remembering ids.
-
-Those four are in the repository because removing a feature that is not working
-is a decision, and pretending it works is a defect. Each is a known gap, not a
-surprise.
+**What it is honest about.** Predictions that need volume are weak until the
+volume exists, and this repo shows the real number rather than a flattering
+one — a confident probability from twenty examples would be the bug, not the
+feature. Which surfaces are strong today and which are still thin is tracked
+in [`docs/`](docs/), alongside the queries behind each one.
 
 ## Try it
 

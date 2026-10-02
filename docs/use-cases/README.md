@@ -15,7 +15,7 @@ You don't need to know how that works to read this tour. The last two
 chapters are there if you want to change it.
 
 One thing the screenshots cannot show: **these screens are the operator's half
-of it.** The agent lanes that work this data daily never open the dashboard —
+of it.** The agents that work this data daily never open the dashboard —
 they go through MCP from a Claude session, calling the same functions these
 views render. So read each screen as a question with two front doors, one you
 look at and one you ask.
@@ -59,10 +59,8 @@ The point is that nothing here is a static list: a deal going cold, an
 experiment coming due, or a todo aging past its window changes what floats to
 the top, without anyone re-prioritising by hand.
 
-**The honest limit:** sorting does not close anything. In real use the sales
-area has carried months-old todos still marked ready, and nothing on this
-screen forces the issue. As the CRO lane puts it, *"the board is only as
-current as the agents that close tickets."*
+The honest limit: sorting is not closing. A board stays current only as long
+as the work on it gets closed out.
 
 ## 2 · "Where does the business stand?"
 
@@ -90,13 +88,12 @@ predicted close likelihood.*
 Every open deal carries two probabilities: the operator's own number, and one
 computed from what happened to similar deals before.
 
-**Be honest about the second one.** On a real pipeline of about twenty deals it
-has not earned its keep — the CRO lane reports it as sparse-data noise (a
-strong prior plus an over-lift for having a champion) and defers to the
-operator's own probability. It is carried here as an experiment that gets
-better as the closed history grows, not as a number to act on. The view it
-earns its place by is the plain one: what is open, how big, and how long since
-anyone touched it.
+**And be honest about the second one.** Its quality tracks the number of deals
+that have already closed: early on it is a weak signal next to an experienced
+guess, and it sharpens as the history fills in. That is why it is shown beside
+the operator's number rather than in place of it — and why the view earns its
+keep on the plain facts too: what is open, how big, and how long since anyone
+touched it.
 
 The prediction conditions on the things you know *before* the outcome — stage,
 what is blocking it, whether there is a champion — so it is honest about deals
@@ -152,17 +149,17 @@ contacts and deals together by relevance, and it learns: results that get
 clicked for a given query rise for similar queries later, so the ranking
 sharpens with use instead of staying frozen.
 
-This chapter is the one that gets used most. Asked how the agent lanes actually
-use the system, the CRO lane put this first:
+This chapter is the one that gets used most. *Everything we have on this person
+and this company* is asked before every meeting, and answered by a single
+search followed by reading the two to four hits it returns.
 
-> *"'Everything we have on `<person> <company>`' before a meeting: one semantic
-> search, then `document_read` on the 2–4 hits. This is THE load-bearing use."*
-
-It is worth being clear about what that means for the rest of the tour: the
-predictive screens are the interesting part, but **recall across one linked
-store is the part that earns its keep every day.** The same lane's second
-most-asked question is of the same shape — *"what did we last say or promise to
-this company, and what's still open?"* — search, then read.
+It is worth being clear about what that means for the rest of the tour. This
+is not the non-predictive corner of the product — the ranking is Aito's, over
+an index trained by which results people click, which is why it survives a
+misspelled name and a query in the wrong language. **The prediction people
+reach for most is a match, not a forecast.** The next most common question has
+the same shape — *what did we last promise this company, and what is still
+open?* — and is answered the same way: search, then read.
 
 ## 7 · "What kind of company is this, judged by who works there?"
 
@@ -210,11 +207,8 @@ the part worth looking at: it assembles the candidates from the data and hands
 over a filled-in prompt, so the weekly task starts from a ranked shortlist
 rather than a blank page.
 
-**In practice this one has not landed.** The lane that should be using it
-reports the board *"has been decorative (every routine overdue)"* — because
-routines are only ticked when someone remembers to tick them, and the prepared
-prompt does not help if the cadence itself is fiction. The design holds; the
-habit did not. It is written down here rather than quietly dropped.
+The honest part: a cadence only means something if the work is ticked off as
+it happens, and that habit is easier to design than to keep.
 
 ## 10 · "Is this event worth going to?"
 
@@ -247,60 +241,33 @@ sales side never touches. R&D work arrives ranked by priority instead of laid
 out by date, and a ticket is not a line item to be checked off — it is the
 running record of the work:
 
-> *"Mine is 'append this finding to the ticket that owns it' — the ticket as a
-> running lab notebook. Reads are almost always a single todo by id, not
-> search."*
-> — the CPO lane
+> *"The ticket as a running lab notebook — append the finding to the ticket
+> that owns it."*
 
 Appends are dated and additive, so a claim that turns out to be wrong is
 **corrected in place by a later entry rather than edited away**. That is the
 property that makes the history worth keeping:
 
-> *"One ERP-accuracy regression ticket carried a week of history across four
-> sessions — found by one lane, released in writing, picked up by a second,
-> measured by a third, corrected by me — and any of us could reconstruct where
-> it stood cold, including which earlier claims were retracted and why."*
-> — the CPO lane
+One accuracy-regression ticket carried a week of history across four sessions:
+found by one agent, released in writing, picked up by a second, measured by a
+third, corrected by a fourth. Any of them could reconstruct where it stood from
+a cold start, including which earlier claims had been retracted and why.
 
 **The review gate.** Moving R&D work to `review` requires a handoff block —
 `CLAIM`, `VERIFY`, `SCOPE`, `RISK`, `PUSHED` — and the requirement is checked,
 not merely written down somewhere. Agent-completed work therefore cannot
-self-certify as done; it waits for a human:
+self-certify as done; it waits for a human.
 
-> *"The validator rejected a review I tried to set without it, and the forced
-> CLAIM line twice exposed that the work wasn't finished."*
-> — the CPO lane
+In practice the validator earns its keep by refusing: the forced `CLAIM` line
+has more than once revealed that work being handed back was not actually
+finished.
 
-**What the ticket is not.** The lane that *receives* this work draws the line
-in a different place from the lane that files it. Asked whether a ticket is
-enough to pick engineering work back up after losing context, a core dev lane
-said it resumed from the git log and branch, committed design notes, its own
-memory files and its peers' messages — and that *"the ticket wasn't read
-once."* So the claim this chapter makes is the narrow one: a ticket carries
-the brief, the claim and the handoff, which is what coordination needs. The
-resumable state of the engineering itself is the commits, because that is what
-a build and a review actually check.
-
-**Where it falls short**, from the same notes, because this is the chapter most
-at risk of sounding tidier than it is:
-
-- A handoff block cannot tell a verification from a relayed claim. When one
-  lane's MCP is down and another writes the handoff for it, `VERIFY` records
-  what it was told, and the format looks identical.
-- Tickets grow into logs — many thousands of words of appends, with no
-  structured field for *current status* or *next step*, so the latest state is
-  hard to find in the history that makes the ticket valuable.
-- `owner` and `role` are free text, so one lane appears under several spellings.
-  The same silent-drift class as a mismatched area name, and still open.
-- The board is reachable only while MCP is. A core dev lane spent a whole
-  working session unable to connect, and its work arrived as ticket ids pasted
-  into peer messages, with another lane writing the board on its behalf. There
-  is no fallback path to the store when the tool surface is down.
-- There is no "what needs a decision from a human" view across tickets, and no
-  structured *current status* field — so the R&D lanes keep a separate,
-  human-facing decisions list outside the board. That is a missing feature
-  rather than a preference: a board that answers "what is waiting on me across
-  twenty lanes" in fifteen minutes would replace it.
+**What the ticket is not.** An agent that loses its context does not resume
+engineering work from the ticket — it resumes from the git log, the branch, the
+committed design notes and its own records. So the claim here is the narrow
+one: a ticket carries the brief, the claim and the handoff, which is what
+*coordination* needs. The resumable state of the work itself is the commits,
+because that is what a build and a review actually check.
 
 ## How it works: the Aito calls
 
