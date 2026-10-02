@@ -18,7 +18,7 @@ spec) is the single action source. Three lenses read it (`todos.py`):
 
 A todo carries both a `priority` and an optional `due_date` + `window`, so
 the same row serves both lenses. The split is an invariant the loader
-enforces: **calendar areas (sales, distribution) must have a due_date;
+enforces: **calendar areas (sales, marketing) must have a due_date;
 pipeline areas (operations, R&D) must not** — a dated Operations todo or an
 undated Sales todo is a bug, not a quiet default. `linked_id`/`linked_type`
 tie a todo to a contact or asset, so the action surface joins back to the
@@ -136,7 +136,7 @@ $p; and a literal scan offers a stakeholder when a known contact's
 name or company token appears in the title. The suggestions populate the
 visible fields but are **never auto-saved** — you press Enter to confirm, and
 can override any field first (the chosen suggest-then-confirm UX). Honest cold start: distinctive titles classify
-confidently (distribution/operations/rnd ≈ 0.8–0.95 on the seed), thin areas
+confidently (marketing/operations/rnd ≈ 0.8–0.95 on the seed), thin areas
 stay weak (experiments ≈ 0.5) — shown as-is. `classify_todo` is also an MCP
 tool, so the agent fills the same blanks the same way. Prediction stays
 Aito's (rule 2); the stakeholder scan is a labelled literal lookup, not a

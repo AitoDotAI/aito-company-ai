@@ -33,7 +33,8 @@ from dataclasses import asdict, dataclass, field
 from datetime import date
 from typing import Callable
 
-from . import analytics, changelog, deals, decisions, experiments, funnels, queries, scorer, search, todos
+from . import (analytics, changelog, deals, decisions, experiments, funnels, queries,
+               schema, scorer, search, todos)
 from .aito import AitoClient
 from .config import Config
 from .llm import make_client
@@ -163,8 +164,8 @@ TOOLS: list[Tool] = [
          "The action-first Now view: the most urgent committed actions across all areas, with slip-risk.",
          _obj({}), lambda ctx, a: todos.now(ctx.aito, as_of=ctx.as_of).derived),
     Tool("todos_area",
-         "Open todos for one area (sales, distribution, operations, rnd), with slip-risk.",
-         _obj({"area": {"type": "string", "enum": ["sales", "distribution", "operations", "rnd"]}}, ["area"]),
+         "Open todos for one area (" + ", ".join(schema.TODO_AREA_ORDER) + "), with slip-risk.",
+         _obj({"area": {"type": "string", "enum": list(schema.TODO_AREA_ORDER)}}, ["area"]),
          lambda ctx, a: todos.pipeline(ctx.aito, a["area"], as_of=ctx.as_of).derived),
     Tool("recent_changes",
          "The change log — items created and updated across the system (a todo done, "

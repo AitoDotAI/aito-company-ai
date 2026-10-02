@@ -17,7 +17,8 @@ import json
 from datetime import date, timedelta
 from pathlib import Path
 
-from . import analytics, changelog, deals, decisions, experiments, funnels, queries, scorer, todos
+from . import (analytics, changelog, deals, decisions, experiments, funnels, queries,
+               schema, scorer, todos)
 from .aito import AitoClient
 from .config import REPO_ROOT, Config
 from .llm import make_client
@@ -37,9 +38,13 @@ def _who(client, as_of):
             for w in ("0800", "1215", "1600")}
 
 
+# experiments has its own read (experiment_board), so week prep takes the lanes.
+WEEK_PREP_AREAS = tuple(a for a in schema.TODO_AREA_ORDER if a != "experiments")
+
+
 def _todos_area(client, as_of):
     return {area: todos.pipeline(client, area, as_of=as_of).derived
-            for area in ("sales", "distribution", "operations", "rnd")}
+            for area in WEEK_PREP_AREAS}
 
 
 # a read name -> a callable(client, as_of) -> JSON-able Aito facts. The

@@ -206,6 +206,7 @@ def now(client: AitoClient, as_of: date | None = None, top_n: int = 8,
 def pipeline(client: AitoClient, area: str, as_of: date | None = None) -> Result:
     """One area, in the operator's drag order when set, else by priority.
     sort_order (set by reorder) leads; priority stays the importance tag."""
+    assert area in schema.TODO_AREAS, f"unknown area {area!r}"
     as_of = as_of or date.today()
     result = Result()
     names = _company_names(client, result)
@@ -221,6 +222,7 @@ def pipeline(client: AitoClient, area: str, as_of: date | None = None) -> Result
 
 def calendar(client: AitoClient, area: str, as_of: date | None = None) -> Result:
     """One area, laid out by due_date (the time-driven lens)."""
+    assert area in schema.TODO_AREAS, f"unknown area {area!r}"
     as_of = as_of or date.today()
     result = Result()
     names = _company_names(client, result)

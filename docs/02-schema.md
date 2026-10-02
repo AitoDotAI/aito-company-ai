@@ -147,12 +147,12 @@ Full treatment in `docs/12-todos-and-now.md`.
 | field | type | notes |
 |---|---|---|
 | todo_id | string | |
-| area | string | sales, distribution, operations, rnd |
+| area | string | sales, marketing, operations, rnd, experiments |
 | title | string | synthetic in seed (no PII) |
 | detail | text? | |
 | status | string | ready, draft, prog, blocked, done, monitor, on_track |
 | priority | int | 1 = highest |
-| due_date | string? | ISO date; required for sales/distribution, absent for operations/rnd |
+| due_date | string? | ISO date; required for sales/marketing, absent for operations/rnd |
 | window | string? | e.g. fri_1430; paired with due_date |
 | linked_id | string? | a contact_id, deal_id, or asset id |
 | linked_type | string? | contact, deal, asset, instance, workstream |
