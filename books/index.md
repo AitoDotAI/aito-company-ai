@@ -153,6 +153,7 @@
      * [test_todo_writes.py::test_success_is_the_persisted_row_not_an_echo](book/test_todo_writes.py::test_success_is_the_persisted_row_not_an_echo.md)
      * [test_todo_writes.py::test_the_write_path_never_rewrites_the_table](book/test_todo_writes.py::test_the_write_path_never_rewrites_the_table.md)
      * [test_todo_writes.py::test_unversioned_rows_need_the_one_time_migration](book/test_todo_writes.py::test_unversioned_rows_need_the_one_time_migration.md)
+     * [test_todo_writes.py::test_update_returns_a_receipt_not_the_whole_detail](book/test_todo_writes.py::test_update_returns_a_receipt_not_the_whole_detail.md)
      * [test_todos.py::test_archive_todo_abandons_without_advancing](book/test_todos.py::test_archive_todo_abandons_without_advancing.md)
      * [test_todos.py::test_area_lenses_seed](book/test_todos.py::test_area_lenses_seed.md)
      * [test_todos.py::test_claim_todo_is_fail_if_taken](book/test_todos.py::test_claim_todo_is_fail_if_taken.md)

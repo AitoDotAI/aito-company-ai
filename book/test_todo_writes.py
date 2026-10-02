@@ -229,6 +229,52 @@ def test_success_is_the_persisted_row_not_an_echo(t: bt.TestCaseRun) -> None:
     t.tln(f"returned priority={row['priority']} rev set={bool(row['rev'])}")
 
 
+def test_update_returns_a_receipt_not_the_whole_detail(t: bt.TestCaseRun) -> None:
+    """A long ticket's detail runs to thousands of words, and echoing it back on
+    every append cost the agent lanes 3-6k tokens for a response they only read
+    to confirm. The MCP tool projects the persisted row to a receipt; the write
+    path itself is unchanged, so the dashboard still gets the full row."""
+    from company_ai import server
+
+    tool = getattr(server.update_todo, "fn", server.update_todo)
+    long_detail = "a prior finding. " * 500
+    fake = FakeAito([_todo("td-1", detail=long_detail)])
+    original = server._client
+    server._client = lambda: fake
+    try:
+        t.h1("the default return is a receipt")
+        receipt = tool("td-1", append_detail="today: measured the regression")
+        t.tln(f"keys:   {sorted(receipt)}")
+        t.tln(f"status: {receipt['status']}  rev set: {bool(receipt['rev'])}")
+        t.tln(f"carries the detail: {'detail' in receipt}")
+
+        t.h1("but the write landed in full")
+        persisted = _row(fake, "td-1")["detail"]
+        t.tln(f"append is on the stored row:  {persisted.endswith('measured the regression')}")
+        t.tln(f"earlier detail still present: {persisted.startswith('a prior finding.')}")
+        t.tln(f"stored detail is {len(persisted) // 1000}k chars; receipt is "
+              f"{len(str(receipt))} chars")
+
+        t.h1("rev proves which version it landed on")
+        second = tool("td-1", append_detail="and again")
+        t.tln(f"rev advanced: {second['rev'] != receipt['rev']}")
+
+        t.h1("return_detail=True opts back into the full row")
+        full = tool("td-1", append_detail="once more", return_detail=True)
+        t.tln(f"carries the detail: {'detail' in full}")
+        t.tln(f"and the title too:  {'title' in full}")
+
+        t.h1("a write that does not persist raises rather than returning a receipt")
+        fake.drop_updates = True
+        try:
+            tool("td-1", append_detail="this must not look like success")
+            t.tln("returned a receipt (WRONG)")
+        except log.TodoWriteNotPersisted:
+            t.tln("TodoWriteNotPersisted raised: a receipt always means persisted")
+    finally:
+        server._client = original
+
+
 def test_unversioned_rows_need_the_one_time_migration(t: bt.TestCaseRun) -> None:
     fake = FakeAito([_todo(f"td-{i}", rev=None, revs=None) for i in range(1, 4)])
     t.h1("a write to an unversioned row refuses (no unconditional init on the fly)")

@@ -227,7 +227,8 @@ def decide_event(event_id: str, status: str, outcome: str | None = None,
 
 @mcp.tool()
 def update_todo(todo_id: str, changes: dict | None = None,
-                append_detail: str | None = None) -> dict:
+                append_detail: str | None = None,
+                return_detail: bool = False) -> dict:
     """Edit an existing todo (live Aito). `changes` maps field→value for any of
     area, title, action_type, status, priority, due_date, window, linked_id,
     linked_type, stakeholder_id, prep_status, detail, role, owner. Each is
@@ -245,9 +246,20 @@ def update_todo(todo_id: str, changes: dict | None = None,
     ClaimTaken: a takeover is release-then-claim, two deliberate steps.
 
     Safe to call from several agents at once: only the changed fields of this
-    one row are written, version-checked, so concurrent edits compose. Returns
-    the todo as read back after the write; an error means it did not persist."""
-    return logbook.update_todo(_client(), todo_id, changes or {}, append_detail=append_detail)
+    one row are written, version-checked, so concurrent edits compose.
+
+    RETURNS `{todo_id, rev, status}` — deliberately small. A long ticket's
+    `detail` runs to thousands of words, and echoing it back on every append
+    cost the agent lanes 3-6k tokens per call for a response they only needed
+    in order to confirm. `rev` is the version the write landed on, so a
+    non-error return still proves it persisted; a failed write RAISES and
+    never returns. Pass `return_detail=True` for the full row when you
+    actually want to read the todo back."""
+    row = logbook.update_todo(_client(), todo_id, changes or {},
+                              append_detail=append_detail)
+    if return_detail:
+        return row
+    return {"todo_id": row["todo_id"], "rev": row["rev"], "status": row["status"]}
 
 
 @mcp.tool()
