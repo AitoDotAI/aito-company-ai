@@ -271,6 +271,16 @@ self-certify as done; it waits for a human:
 > CLAIM line twice exposed that the work wasn't finished."*
 > — the CPO lane
 
+**What the ticket is not.** The lane that *receives* this work draws the line
+in a different place from the lane that files it. Asked whether a ticket is
+enough to pick engineering work back up after losing context, a core dev lane
+said it resumed from the git log and branch, committed design notes, its own
+memory files and its peers' messages — and that *"the ticket wasn't read
+once."* So the claim this chapter makes is the narrow one: a ticket carries
+the brief, the claim and the handoff, which is what coordination needs. The
+resumable state of the engineering itself is the commits, because that is what
+a build and a review actually check.
+
 **Where it falls short**, from the same notes, because this is the chapter most
 at risk of sounding tidier than it is:
 
@@ -282,6 +292,10 @@ at risk of sounding tidier than it is:
   hard to find in the history that makes the ticket valuable.
 - `owner` and `role` are free text, so one lane appears under several spellings.
   The same silent-drift class as a mismatched area name, and still open.
+- The board is reachable only while MCP is. A core dev lane spent a whole
+  working session unable to connect, and its work arrived as ticket ids pasted
+  into peer messages, with another lane writing the board on its behalf. There
+  is no fallback path to the store when the tool surface is down.
 - There is no "what needs a decision from a human" view across tickets, and no
   structured *current status* field — so the R&D lanes keep a separate,
   human-facing decisions list outside the board. That is a missing feature
