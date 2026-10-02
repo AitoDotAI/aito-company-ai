@@ -2,7 +2,7 @@
 
 Two predictive funnels over the same Aito instance. A funnel here is not a
 bar chart of counts — it answers the founder's question: **where is this
-slice leaking, what's the calibrated outlook, and which lever moves it.**
+slice leaking, what's the outlook, and which lever moves it.**
 
 | Funnel | Table | Stages | Marketing dimension |
 |--------|-------|--------|---------------------|
@@ -18,8 +18,8 @@ For any slice, all of it from Aito (`funnels.py`):
    the funnel shape.
 2. **The leak** — the step with the lowest continue-rate, flagged.
 3. **The outlook** — `_predict` of the deepest stage for the slice, with
-   `$why` (base rate × the lift of each fixed dimension). This is the
-   calibrated probability, which on a thin slice differs from the raw
+   `$why` (base rate × the lift of each fixed dimension). This is Aito's
+   smoothed probability, which on a thin slice differs from the raw
    count-rate — and that difference is the honest part.
 4. **Why it leaks** — `_relate {$on: [deepest_stage, slice]}`: the
    pre-event attributes that drive reaching the deepest stage *within this

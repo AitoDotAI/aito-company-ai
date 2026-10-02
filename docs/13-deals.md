@@ -22,8 +22,8 @@ arithmetic:
 The planted signal the model recovers: a present champion and no blocker
 win; no champion, a blocker, and a long touch gap lose. So a deal the
 operator rates 70% but which looks like deals that historically closed at
-20% (no champion, still a lead, stalled) is surfaced as exactly that — the
-calibrated second opinion.
+20% (no champion, still a lead, stalled) is surfaced as exactly that — a
+second opinion learned from closed deals.
 
 ## The closed loop
 

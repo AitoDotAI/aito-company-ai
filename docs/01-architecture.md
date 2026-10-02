@@ -15,7 +15,7 @@ aito-company-ai MCP server           thin tool layer, zero logic
         |  HTTP
         v
 Aito instance (docker)               intuition: ranking, similarity,
-        ^                            calibrated confidence, learning
+        ^                            probabilities, learning
         |
    loaders (CLI)                     rolodex + outcome log -> Aito tables
 ```

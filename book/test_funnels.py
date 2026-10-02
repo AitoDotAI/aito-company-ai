@@ -1,6 +1,6 @@
 """Funnel gate: the predictive funnel data layer on both datasets.
 
-Snapshots the stage counts, step conversion, the leak, Aito's calibrated
+Snapshots the stage counts, step conversion, the leak, Aito's
 outlook + $why, causes, and lever for both funnels (website over sessions,
 sales over contacts) on seed, a couple of slices, and the cold-start tiny
 set. The HTML carries no logic; this data layer is where correctness is

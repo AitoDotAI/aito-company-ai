@@ -1,16 +1,37 @@
 # Company AI
 
-**A small company's sales assistant that learns from what actually happened.**
+**An open-source agentic OS for a small company — go-to-market, R&D, and the
+knowledge underneath, in one store an agent can read end to end.**
 
-It keeps track of the things a salesperson otherwise keeps in their head —
-who the customers are, which deals are moving, who was in the last meeting,
-what was said — and answers questions about them.
+"OS" is meant literally rather than as a flourish: the pipeline, the funnel,
+the experiments, the decisions, the events, the recurring work and the notes
+are not separate tools glued together — they are one schema in one database,
+and every surface is a query over it. A Claude session works that data
+directly through MCP. The dashboard is a window on the same queries, for when
+you would rather look than ask. Neither is the system of record; the database
+is, and both read it.
 
-What makes it different from a normal CRM is where the numbers come from.
-Nobody configures a scoring rule. Every rate, ranking and likelihood is
-worked out from **this company's own history**, so when the history changes
-the answers change by themselves. A deal looks promising because deals that
-looked like it were won before.
+What that buys is an agent with the whole company in scope. It can see that a
+deal went quiet, that the experiment meant to unblock it was decided last
+week, and that the note explaining why sits on the account — without anyone
+wiring those three things together.
+
+And agents do not only read it — they **work in it**. They file todos and claim
+them, record decisions, log outcomes and touches, write notes, tick routines
+and add contacts and deals. Twenty-eight of the MCP tools write. That is the
+point of calling it an OS rather than a dashboard: it is the shared workspace
+several agents operate in at once, which is also why there is a claim protocol
+so two of them do not build the same thing twice.
+
+What is gated is the *outside world* — no email, no LinkedIn, no calendar
+writes. An agent with the run of the company's own store and no way to send
+anything from it is the deliberate shape here, not a missing feature.
+
+What makes it different from a CRM or a wiki is where the numbers come from.
+Nobody configures a scoring rule. Every rate, ranking and likelihood is worked
+out from **this company's own history**, so when the history changes the
+answers change by themselves. A deal looks promising because deals that looked
+like it were won before.
 
 [![Overview](docs/assets/dashboard-overview.png)](docs/use-cases/README.md)
 
@@ -22,17 +43,40 @@ a time, in pictures.
 
 ## The kind of question it answers
 
-- **Who should I call today, and what do I say?** Ranked by who is most
-  likely to move, with the reason attached.
-- **Which of these deals will actually close?** A probability for every open
-  deal, learned from the ones that closed before — next to your own guess,
-  because where the two disagree is the deal worth looking at.
-- **Who actually pays us, and what are they worth?** Customers, prospects and
-  lapsed accounts, with what each brings in.
+**Going to market**
+
+- **Who should I call today, and what do I say?** Ranked by who is most likely
+  to move, with the reason attached.
+- **What is in the pipeline, and what has gone quiet?** Deals by stage and
+  value, with how long each has been cold. There is also a model probability
+  per deal; treat it as an experiment rather than an input — on a pipeline of
+  ~20 deals it is sparse-data noise, and the operator's own number is what
+  gets used.
 - **Where is the funnel leaking, and what should I post?** The stage costing
   the most, and how a draft is likely to do before you publish it.
+
+**Building and learning**
+
+- **Did that experiment pay off?** What was tried, what was expected, what
+  happened — so a logged outcome visibly moves the next answer.
+- **What did we decide, and did it hold up?** Decisions recorded with their
+  outcomes, including the ones where the agent was overruled.
+- **What is actually on the R&D list, and what is late?** The same action
+  surface as sales, ranked by priority rather than by date.
+
+**Knowing**
+
 - **What do we already know about this account?** Notes and meetings filed
   against the company and the people, not in a folder someone has to find.
+- **What kind of company is this, judged only by who works there?** Accounts,
+  people, deals and notes are linked, so a question can be answered from an
+  account's *neighbourhood* rather than from its own record.
+- **Where did we discuss pricing?** — asked in Finnish, over notes written in
+  English. Search matches on meaning as well as words, so a result need share
+  no term with the question.
+
+Alongside those: events as a go/no-go board, recurring work as routines that
+prepare themselves, and an append-only log of everything that changed.
 
 It is honest when it does not know. Early on, with little history, the
 probabilities are weak and look weak. A confident number from four data
@@ -46,6 +90,94 @@ always be checked rather than trusted.
 
 **As a dashboard.** A set of read-only screens over the same numbers, for
 when you want to look rather than ask.
+
+In practice the split falls along who is asking: the agent lanes work it
+entirely through MCP and never open the dashboard, and the operator mostly
+uses the screens. Same queries either way — neither side is a summary of the
+other.
+
+## How it is actually used
+
+This repository is not a demo with a story attached — it runs Aito's own
+go-to-market and R&D, worked daily by several Claude lanes at once. What
+follows is quoted from those lanes, including the parts that do not flatter the
+software.
+
+**The load-bearing use turned out to be recall, not prediction.**
+
+> *"'Everything we have on `<person> <company>`' before a meeting: one semantic
+> search, then `document_read` on the 2–4 hits. This is THE load-bearing use.
+> Today it found the right contact even though the name was misspelled in the
+> request (one letter off), and pulled the intro email context, the prior call
+> outcome and a misread we had corrected weeks ago."*
+> — the CRO lane
+
+**The R&D lanes use it in a completely different shape.** Where the GtM side
+reads broadly, the product side writes narrowly to one place:
+
+> *"Mine is 'append this finding to the ticket that owns it' — the ticket as a
+> running lab notebook. Reads are almost always a single todo by id, not
+> search."*
+> — the CPO lane
+
+A todo's `detail` is therefore not a description but an append-only log, and
+corrections are appended rather than edited away, so a wrong claim stays
+visible next to the correction that overturned it. Promoting work to `review`
+requires a handoff block (`CLAIM / VERIFY / SCOPE / RISK / PUSHED`), which is
+checked rather than merely conventional:
+
+> *"The validator rejected a review I tried to set without it, and the forced
+> CLAIM line twice exposed that the work wasn't finished."*
+> — the CPO lane
+
+**The strongest property is one nobody designed for: shared memory between
+agents.**
+
+> *"Several Claude sessions (CRO, CPO, demo lanes) write notes and todos, and
+> any of them can reconstruct a relationship's history cold. Without it, a lane
+> re-derives or contradicts another lane's facts. One concrete failure it
+> prevents: an agent 'verifying' a thread as dropped, when the meeting actually
+> happened and was recorded by another lane."*
+> — the CRO lane
+
+The product side reports the same property from the other end:
+
+> *"One ERP-accuracy regression ticket carried a week of history across four
+> sessions — found by one lane, released in writing, picked up by a second,
+> measured by a third, corrected by me — and any of us could reconstruct where
+> it stood cold, including which earlier claims were retracted and why."*
+> — the CPO lane
+
+A note carries the date it is *about* (`noted_on`), and a correction is filed as
+its own dated entry — so "we misread X, here is what it actually meant" is
+retrievable later, which stops the same error being made twice.
+
+**What is not earning its keep.** The same notes, unedited:
+
+- **Close-likelihood (`p_win`) is not acted on.** *"With ~20 deals it's
+  sparse-data noise… We defer to the operator's own probability."* It is kept
+  as an experiment that should improve as the closed history grows.
+- **`score_post` is unused** — LinkedIn copy is graded against a written
+  checklist instead.
+- **The routines board** *"has been decorative (every routine overdue)"*,
+  because routines are not ticked as the work happens.
+- **Todos go stale.** An honest statement of the limit, from the lane that
+  lives with it: *"the board is only as current as the agents that close
+  tickets."*
+- **Active tickets grow into logs.** Thousands of words of dated appends, with
+  no structured field for current status or next step: *"update_todo echoes the
+  full detail back on every call, which is expensive for an agent and makes the
+  current state hard to find."*
+- **`owner` and `role` are unvalidated free text**, so the same lane appears as
+  `core-2`, `aito-core-2` and `core-a`. The same class of silent drift as the
+  area-name bug these notes turned up, and not yet fixed.
+- **Search does not serve R&D well.** It is tuned on documents, contacts and
+  deals; asked for a ticket it returns sales material, and the lane falls back
+  to remembering ids.
+
+Those four are in the repository because removing a feature that is not working
+is a decision, and pretending it works is a defect. Each is a known gap, not a
+surprise.
 
 ## Try it
 
@@ -65,7 +197,7 @@ cp .env.example .env                             # point at it
 The rest of this file is for people who want to run or change it.
 
 Claude does the reasoning; [Aito](https://aito.ai) — a predictive database —
-does the ranking, retrieval and the calibrated probabilities; this repository
+does the ranking, retrieval and the probabilities; this repository
 is the thin layer between them. It holds schema, loaders, an MCP server, a
 morning-brief prompt, a read-only dashboard, and the tests. It runs a real
 pipeline daily.
@@ -82,7 +214,7 @@ aito-company-ai MCP server           thin tool layer, zero logic
         |  HTTP
         v
 Aito instance (docker)               intuition: ranking, similarity,
-        ^                            calibrated confidence, learning
+        ^                            probabilities, learning
         |
    loaders (CLI)                     rolodex + outcome log -> Aito tables
 ```
@@ -152,6 +284,7 @@ The `./do` script manages it (run `./do help` for all commands):
 ./do status             # is it up? which instance, which build
 ./do restart            # rebuild + restart    ./do stop    ./do logs
 ./do dev                # vite hot-reload (:5173) + backend (:8770), for UI work
+./do reindex            # rebuild the search index (+ embeddings, if configured)
 ```
 
 `./do` targets the Aito instance in `COMPANY_AI_ENV` (defaulting to
@@ -170,7 +303,7 @@ actions across every area, action-first.
 Each Work view opens with its action block (Sales/Marketing by date,
 Operations/R&D by priority), then its analytics. Spec:
 [`docs/12-todos-and-now.md`](docs/12-todos-and-now.md). **Sales** also shows
-the pipeline: each open deal's weighted value with Aito's calibrated
+the pipeline: each open deal's weighted value with Aito's
 close-likelihood next to the operator's own probability — where they diverge
 is the deal to look at ([`docs/13-deals.md`](docs/13-deals.md)).
 
@@ -182,6 +315,31 @@ by kind and area, linked to companies and people, edited in place, and searchabl
 ([`docs/25-documents.md`](docs/25-documents.md)). Import an existing markdown
 dir once with `company-ai documents-import <dir>`.
 
+![Documents — notes linked to the accounts and people they concern](docs/assets/dashboard-documents.png)
+
+The **Knowledge graph** view is the newest surface. Contacts, deals and
+documents all link to the company, and Aito walks those links in both
+directions — forward to the account (`company_id.industry`), and back to its
+people (`$refs.contacts.company_id`). Each card is a single query, shown next
+to its answer, because the claim being made is that the question and the query
+are nearly the same sentence.
+
+[![Knowledge graph — each question beside the query that answered it](docs/assets/dashboard-graph-hero.png)](docs/31-knowledge-graph.md)
+
+Two of those cards do something a relational database cannot: infer an
+account's industry from the people linked to it, and predict a deal's outcome
+from a fact that exists nowhere on the deal — returning `$why`, so the answer
+arrives with what moved it and by how much. Design, and the sharp edges found
+building it, in [`docs/31-knowledge-graph.md`](docs/31-knowledge-graph.md).
+
+**Search** ranks documents, contacts and deals together, and learns: results
+that get clicked for a query rise for similar queries later. With an
+embeddings deployment configured it also matches on meaning, which is what
+lets a French or Finnish question find an English note
+([`docs/23-search.md`](docs/23-search.md)).
+
+![Search — a French query returning English documents](docs/assets/dashboard-search-semantic.png)
+
 **Analytics — Segment 360.** Pick a slice (segment · tier · ai_lifecycle ·
 source); each KPI shows the rate, the root causes (`_relate`), and the lever
 (`_recommend`). Design in [`docs/07-dashboard.md`](docs/07-dashboard.md).
@@ -189,7 +347,7 @@ source); each KPI shows the rate, the root causes (`_relate`), and the lever
 ![Analytics — Segment 360](docs/assets/dashboard-analytics.png)
 
 **Marketing** combines the website/acquisition funnel (visitor → signup →
-trial → paid, with the biggest-drop leak and Aito's calibrated outlook) and
+trial → paid, with the biggest-drop leak and Aito's outlook) and
 the **post scorer** — the messaging formula that predicts a draft's win
 probability on its channel (LinkedIn reach / HN views, never upvotes) and the
 lever to switch.
@@ -211,11 +369,19 @@ it at runtime. Details in `docs/06-privacy.md`.
 
 ## Permissions
 
-The agent is internal-facing: it reads the pipeline and drafts text for a
-human to act on. It sends nothing outbound — no email, no LinkedIn, no
-calendar writes; those are gated decisions, not features (see
-`docs/05-phases.md`). Outcome logging is the only write, and it is always
-operator-initiated.
+The agent is internal-facing, and inside that boundary it writes freely: todos,
+decisions, outcomes, touches, notes, routine ticks, contacts, deals,
+experiments, events and posts all have write tools, and agents use them heavily
+— the board is largely agent-written. Several agents work the same store
+concurrently, which is why claiming a todo before starting it is a protocol
+rather than a nicety (`docs/12-todos-and-now.md`).
+
+The boundary is OUTBOUND action: no email, no LinkedIn, no calendar writes.
+Those are gated decisions, not features (see `docs/05-phases.md`). An agent
+may draft the message; a human sends it.
+
+Restoring a backup is also operator-only: MCP can snapshot, never promote
+(`docs/21-backups.md`).
 
 ## Tests
 

@@ -40,7 +40,8 @@ export const api = {
   deals: () => get("/deals"),
   whoToReach: () => get("/who-to-reach"),
   salesTrend: () => get("/sales-trend"),
-  pwin: (stage, blocker, champion_present) => get("/pwin", { stage, blocker, champion_present }),
+  pwin: (stage, blocker, champion_present, segment) =>
+    get("/pwin", { stage, blocker, champion_present, segment }),
   graph: () => get("/graph"),
   companies: () => get("/companies"),
   companyDetail: (id) => get(`/companies/${id}`),

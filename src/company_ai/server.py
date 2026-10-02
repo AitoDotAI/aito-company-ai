@@ -37,7 +37,7 @@ def _embedder():
 @mcp.tool()
 def who_to_call(window: str, top_n: int = 5) -> list:
     """Today's call queue for a window (0800, 1215, 1600), ranked by Aito's
-    calibrated probability of a good outcome. Weak $p on small data is
+    probability of a good outcome. Weak $p on small data is
     expected and shown as-is."""
     return queries.who_to_call(_client(), window, top_n=top_n, as_of=date.today()).derived
 
@@ -135,13 +135,14 @@ def add_todo(
     area: str, title: str, priority: int, status: str = "ready",
     prep_status: str = "ready", action_type: str | None = None,
     due_date: str | None = None, window: str | None = None,
+    slot: str | None = None,
     linked_id: str | None = None, linked_type: str | None = None,
-    stakeholder_id: str | None = None, role: str | None = None,
-    owner: str | None = None,
+    stakeholder_id: str | None = None, detail: str | None = None,
+    role: str | None = None, owner: str | None = None,
 ) -> dict:
-    """Add an action to the todos table (live Aito). area: sales/distribution/
+    """Add an action to the todos table (live Aito). area: sales/marketing/
     operations/rnd/experiments (operations is the catch-all). priority
-    1=highest. Sales/distribution need a due_date (ISO) + window; the others
+    1=highest. Sales/marketing need a due_date (ISO) + window; the others
     must not. action_type: call/email/meeting/message/research/admin/post/ship.
     A todo may link a deal (linked_type='deal', linked_id=<deal_id>) and a
     stakeholder (stakeholder_id=<contact_id>); both are validated live.
@@ -152,13 +153,18 @@ def add_todo(
     is up front, because there is no safe self-service claim on this instance
     (see docs/12). Leave it null for a lane worked by a single agent.
 
+    `detail` is the body of the ticket: the title is the headline, the detail is
+    the brief that lets another agent pick the work up cold. Set it HERE — it
+    used to be reachable only through update_todo, which cost two calls for
+    every ticket and left briefs unwritten.
+
     When an agent finishes, it sets status='review', not 'done' — a person
     closes the todo, so agent work does not self-certify."""
     return logbook.add_todo(
         _client(), area=area, title=title, priority=priority, status=status,
         prep_status=prep_status, action_type=action_type, due_date=due_date,
-        window=window, linked_id=linked_id, linked_type=linked_type,
-        stakeholder_id=stakeholder_id, role=role, owner=owner)
+        window=window, slot=slot, linked_id=linked_id, linked_type=linked_type,
+        stakeholder_id=stakeholder_id, detail=detail, role=role, owner=owner)
 
 
 @mcp.tool()
@@ -247,7 +253,7 @@ def update_todo(todo_id: str, changes: dict | None = None,
 @mcp.tool()
 def classify_todo(title: str, given: dict | None = None) -> dict:
     """Suggest a new todo's blank fields from its title: Aito predicts `area`
-    and `action_type` (with calibrated $p) from the title's words, and a
+    and `action_type` (with its $p) from the title's words, and a
     literal scan offers candidate stakeholders (contacts named/companied in
     the title). Advisory — confirm before add_todo; weak on thin data."""
     from . import classify
@@ -334,7 +340,7 @@ def log_touch(
 def deal_pipeline() -> dict:
     """The open sales pipeline ranked by weighted value (value × the
     operator's probability), with KPIs (weighted pipeline, open value,
-    stalled count) and, per deal, Aito's calibrated close-likelihood
+    stalled count) and, per deal, Aito's close-likelihood
     (P(won) learned from closed-deal history) with its $why, plus a
     stalled flag. Where Aito's p_win diverges from the operator's own
     probability is the signal to look at."""
@@ -484,7 +490,7 @@ def funnel(name: str, slice: dict | None = None) -> dict:
     conversation → meeting). `slice` filters by the funnel's dimensions
     (website: source/campaign/device/country/landing_page; sales: segment/
     tier/ai_lifecycle/source). Returns stage counts and step conversion, the
-    biggest-drop leak, Aito's calibrated outlook for the deepest stage, the
+    biggest-drop leak, Aito's outlook for the deepest stage, the
     causes of the leak (_relate), and the lever that moves it (_recommend)."""
     return funnels.funnel(_client(), name, slice or {}).derived
 
@@ -579,9 +585,17 @@ def list_users() -> dict:
 
 @mcp.tool()
 def assign(entity: str, entity_id: str, user_id: str | None = None) -> dict:
-    """Assign a work item to a user (docs/27). `entity` is contacts|todos|deals;
+    """Assign a work item to a USER (docs/27). `entity` is contacts|todos|deals;
     `user_id` from list_users, or omit/null to unassign. Ownership lives in a
-    join table, so the CRM tables are untouched. Validated (rule 3)."""
+    join table, so the CRM tables are untouched. Validated (rule 3).
+
+    NOT the same thing as a todo's `owner`, and this tool never touches it.
+    Two separate concepts, deliberately:
+      * `assign` / `my_work`  — which PERSON a work item belongs to (join table)
+      * `claim_todo` / `owner` — which AGENT INSTANCE is working it (row column)
+    So `assign(..., None)` does NOT release an agent's claim. To release a
+    claim use `update_todo(todo_id, {"owner": ""})`; to hand work to a lane
+    rather than an instance, set `role`."""
     return logbook.set_assignment(_client(), entity, entity_id, user_id)
 
 
@@ -598,15 +612,15 @@ def todos_now(top_n: int = 8) -> dict:
     """The cross-area action surface: the most urgent open todos right now,
     ranked by overdue-ness, then priority, then due-date proximity. This is
     the 'Now' view and the action core of the morning brief — what to do
-    next across sales, distribution, operations, and R&D."""
+    next across sales, marketing, operations, and R&D."""
     return todos.now(_client(), top_n=top_n).derived
 
 
 @mcp.tool()
 def todos_area(area: str) -> dict:
-    """Todos for one area. Sales and distribution come back laid out by date
+    """Todos for one area. Sales and marketing come back laid out by date
     (the calendar lens); operations and R&D come back ranked by priority
-    (the pipeline lens). area: sales, distribution, operations, rnd."""
+    (the pipeline lens). area: sales, marketing, operations, rnd, experiments."""
     from . import schema
     client = _client()
     if area in schema.CALENDAR_AREAS:
@@ -694,7 +708,7 @@ def populate() -> str:
         "own probability 0-100, champion_present, blocker)\n"
         "   - an action to track -> add_todo (area routes it to a view, "
         "operations is the catch-all; action_type + a stakeholder contact and/"
-        "or a deal; sales/distribution need a due_date); edit one -> update_todo\n"
+        "or a deal; sales/marketing need a due_date); edit one -> update_todo\n"
         "   - a shipped post -> add_post (channel, tone, reach_or_views, "
         "outcome); a website session -> log_session\n"
         "   - a call/email/meeting that happened -> log_touch\n"

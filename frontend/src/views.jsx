@@ -525,7 +525,7 @@ function FunnelBody({ name, slice }) {
         <div className="gauge">
           <div className={"p " + (d.outlook.p >= 0.5 ? "win" : d.outlook.p >= 0.2 ? "mid" : "low")}>
             {pct(d.outlook.p)}</div>
-          <div className="lbl">calibrated P({d.deepest_label}) for this slice</div>
+          <div className="lbl">Aito's P({d.deepest_label}) for this slice</div>
         </div>
         <div className="section-title">Why it leaks</div>
         <WhyList items={d.causes} />
@@ -617,6 +617,12 @@ function ScorerRead({ platform, feat }) {
   if (r.loading) return <Block title="Aito read" ptype="predict"><Loading /></Block>;
   if (r.err) return <Block title="Aito read" ptype="predict"><ErrorBox msg={r.err} /></Block>;
   const d = r.data;
+  if (d.p_win == null) return (
+    <Block title={"Aito read — " + d.platform} ptype="predict">
+      <div className="empty">Not enough history: no post has been measured yet, so there is
+        no outcome to learn P(win) from. Log a post result to start.</div>
+    </Block>
+  );
   return (
     <Block title={"Aito read — " + d.platform} ptype="predict">
       <div className="gauge">
@@ -645,7 +651,7 @@ function Deals() {
   return (
     <>
       <KpiRow items={[
-        { label: "weighted pipeline", value: eur(kpis.weighted_pipeline) },
+        { label: "weighted pipeline (own %)", value: eur(kpis.weighted_pipeline), sub: "Σ value × your probability, not Aito's" },
         { label: "open value", value: eur(kpis.open_value), sub: `${kpis.open_deals} deals` },
         { label: "stalled", value: kpis.stalled, sub: "no touch > 14d" },
       ]} />
@@ -663,6 +669,7 @@ function Deals() {
                 <div className="amm">
                   <span>own {d.probability}%</span>
                   {pw != null && <span> · Aito {pw}%{why ? " (" + why + ")" : ""}</span>}
+                  {d.basis === "no_history" && <span> · Aito: no closed deals yet</span>}
                   {d.stalled && <span className="area"> · stalled {d.days_since_touch}d</span>}
                   {d.blocker !== "none" && <span> · {d.blocker.replace(/_/g, " ")}</span>}
                 </div>
@@ -1996,6 +2003,7 @@ function GraphAnswer({ a }) {
   return (
     <div className="gq-card">
       <div className="gq-q">{a.question}</div>
+      {a.endpoint && <div className="gq-endpoint">POST {a.endpoint}</div>}
       <pre className="gq-query">{JSON.stringify(a.request, null, 1)}</pre>
       {a.why && a.why.length > 0 && (
         <div className="gq-why">
@@ -2026,6 +2034,9 @@ function GraphAnswer({ a }) {
       )}
       {a.error ? (
         <div className="gq-err">{a.error}</div>
+      ) : a.no_history ? (
+        <div className="gq-empty">Not enough history: no deal has closed yet, so there is no
+          outcome to learn from.</div>
       ) : (
         <>
           <div className="gq-meta">
@@ -2072,7 +2083,7 @@ export function GraphView() {
             And the neighbourhood can condition a <b>prediction</b>: a deal at an
             account where we know a CTO closes at{" "}
             <b>{Math.round(r.data.conditioned_p * 100)}%</b>, against a{" "}
-            {Math.round(r.data.baseline_p * 100)}% base rate across all deals.
+            {Math.round(r.data.baseline_p * 100)}% base rate across closed deals.
             Whether a CTO is on file exists nowhere on the deal — only across the
             link. Both figures come from the queries on this page.
           </div>
@@ -2288,7 +2299,7 @@ function stageBreakdown(deals) {
 // via /api/pwin and fills in. Cached in a module Map, so it's instant on
 // re-navigation within the session; the graph shares the same cache.
 const pwinCache = new Map();
-const pwinKey = (d) => `${d.stage}|${d.blocker}|${d.champion_present}`;
+const pwinKey = (d) => `${d.stage}|${d.blocker}|${d.champion_present}|${d.segment}`;
 function usePwin(deals) {
   const [, bump] = useState(0);
   useEffect(() => {
@@ -2299,7 +2310,7 @@ function usePwin(deals) {
       const k = pwinKey(d);
       if (pwinCache.has(k) || pending.has(k)) continue;
       pending.add(k);
-      api.pwin(d.stage, d.blocker, d.champion_present)
+      api.pwin(d.stage, d.blocker, d.champion_present, d.segment)
         .then((r) => { if (alive) { pwinCache.set(k, r); bump((n) => n + 1); } })
         .catch(() => {});
     }
@@ -2308,7 +2319,7 @@ function usePwin(deals) {
   return (deals || []).map((d) => {
     if (d.p_win != null) return d;
     const c = pwinCache.get(pwinKey(d));
-    return c ? { ...d, p_win: c.p_win, why: c.why } : d;
+    return c ? { ...d, p_win: c.p_win, why: c.why, n: c.n, basis: c.basis, thin: c.thin } : d;
   });
 }
 
@@ -2332,7 +2343,12 @@ function WhoToReach() {
             </div>
             <div className="co-deals">
               <span className={"co-eur " + (pw != null && pw >= 50 ? "up" : "")}>{pw != null ? pw + "%" : "–"}</span>
-              <span className="co-dsub">P(won)</span>
+              <span className="co-dsub" title="Learned from closed deals with the same blocker and champion. Stage is not in the closed history.">
+                {row.basis === "no_history" ? "P(won) · no closed deals yet"
+                  : row.basis === "base_rate" ? "P(won) · base rate (too few like it)"
+                  : row.basis === "partial" ? `P(won) · ${row.n} like it · thin: ${row.thin.map((x) => x.feature).join(", ")}`
+                  : row.n != null ? `P(won) · ${row.n} like it` : "P(won)"}
+              </span>
             </div>
           </div>
         );
@@ -2354,7 +2370,7 @@ function SalesAnalytics() {
     <>
       <KpiRow items={[
         { label: "win rate", value: t ? pct(t.win_rate) : "…", sub: t ? `${t.won}/${t.closed} closed` : "" },
-        { label: "weighted pipeline", value: eur(kpis.weighted_pipeline), sub: "P(won) · value" },
+        { label: "weighted pipeline (own %)", value: eur(kpis.weighted_pipeline), sub: "Σ value × your probability, not Aito's" },
         { label: "open value", value: eur(kpis.open_value), sub: `${kpis.open_deals} open` },
         { label: "avg cycle", value: t ? t.avg_cycle_days + "d" : "…", sub: "won deals" },
         { label: "stalled", value: kpis.stalled, sub: "no touch > 14d" },
@@ -2398,7 +2414,7 @@ function Overview() {
   return (
     <>
       <KpiRow items={[
-        { label: "weighted pipeline", value: eur(kpis.weighted_pipeline), sub: "P(won) · value" },
+        { label: "weighted pipeline (own %)", value: eur(kpis.weighted_pipeline), sub: "Σ value × your probability, not Aito's" },
         { label: "win rate", value: t ? pct(t.win_rate) : "…", sub: t ? `${t.won}/${t.closed} closed` : "" },
         { label: "open deals", value: kpis.open_deals, sub: eur(kpis.open_value) },
         { label: "avg cycle", value: t ? t.avg_cycle_days + "d" : "…", sub: "won deals" },

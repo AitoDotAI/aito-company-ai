@@ -372,9 +372,10 @@ def create_app(config: Config | None = None) -> FastAPI:
         return _guarded(lambda: deals.pipeline(client(), predict=False).derived)
 
     @app.get("/api/pwin")
-    def pwin_route(stage: str, blocker: str, champion_present: str):
+    def pwin_route(stage: str, blocker: str, champion_present: str, segment: str | None = None):
         # Aito's P(won) for one deal profile — cached per profile in the browser.
-        return _guarded(lambda: deals.close_likelihood(client(), stage, blocker, champion_present))
+        return _guarded(lambda: deals.close_likelihood(
+            client(), stage, blocker, champion_present, segment=segment))
 
     @app.get("/api/who-to-reach")
     def who_to_reach_route():

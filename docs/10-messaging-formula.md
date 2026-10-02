@@ -47,7 +47,7 @@ Three kinds of Aito call (`scorer.py`), nothing computed in Python:
 
 1. **P(win)** — `_predict won GIVEN (channel, tone, ai_made, format,
    link_placement, lane, topic, length_bucket, weekday)`. The draft's
-   calibrated win probability.
+   win probability.
 2. **What moved it** — the `$why` per-feature contribution on that
    prediction (base rate × each feature's lift). This is the explanation,
    and it is the product.

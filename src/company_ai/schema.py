@@ -245,7 +245,7 @@ TODOS = {
     "type": "table",
     "columns": {
         "todo_id": {"type": "String"},
-        "area": {"type": "String"},          # sales, distribution, operations, rnd, experiments
+        "area": {"type": "String"},          # see TODO_AREA_ORDER
         # analyzed so Aito can _predict area/action_type from the title's words
         # (the auto-assign suggester, classify.py)
         "title": {"type": "Text", "analyzer": "english"},
@@ -703,6 +703,12 @@ def deal_won(stage: str) -> bool | None:
 # one action table; `area` routes a todo to its view. operations is the
 # catch-all for work that doesn't belong to a named area.
 TODO_AREAS = {"sales", "marketing", "operations", "rnd", "experiments"}
+# the same areas in display order — the ONE place that orders them, so a
+# surface cannot drift to a name the instance rejects (it did: "distribution"
+# was renamed to "marketing" and board/assistant kept querying the old name,
+# which silently returned nothing).
+TODO_AREA_ORDER = ("sales", "marketing", "operations", "rnd", "experiments")
+assert set(TODO_AREA_ORDER) == TODO_AREAS
 TODO_DEFAULT_AREA = "operations"
 TODO_STATUS = {"ready", "draft", "prog", "blocked", "done", "monitor", "on_track",
                "review", "archived"}

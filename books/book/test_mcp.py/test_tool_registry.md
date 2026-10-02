@@ -160,6 +160,13 @@ Edit an existing todo (live Aito). `changes` maps field→value for any of
     rewriting it, pass `append_detail` instead: it is appended after a blank
     line, and concurrent appends from several agents all land.
 
+    `owner`: `{"owner": ""}` RELEASES a claim; another agent can then
+    claim_todo it. Release is NOT guarded: it clears whoever holds the todo.
+    So release only your own claim, or one confirmed abandoned (its agent is
+    gone, or a human said so); releasing a live agent's claim lets two agents
+    work the same todo. Setting a DIFFERENT owner over a live claim raises
+    ClaimTaken: a takeover is release-then-claim, two deliberate steps.
+
     Safe to call from several agents at once: only the changed fields of this
     one row are written, version-checked, so concurrent edits compose. Returns
     the todo as read back after the write; an error means it did not persist.
@@ -270,6 +277,10 @@ Claim a todo for yourself BEFORE working it, so two agents never pick the
     coordinating. Claiming only sets the owner; it does not start or finish the
     work. When you finish, set status='review' (a human closes it with
     complete_todo — agents don't self-certify).
+
+    To give a todo up, release it with update_todo(todo_id, {"owner": ""}); it
+    is then claimable again. Freeing ANOTHER agent's claim the same way is for
+    a claim confirmed abandoned, not a busy one (see update_todo).
 
 ## archive_todo
 

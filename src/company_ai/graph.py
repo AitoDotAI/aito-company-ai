@@ -22,7 +22,22 @@ Every question below is a single Aito query. Nothing here ranks, scores or
 filters in Python — the database answers, we render (rule 2).
 """
 
-from .aito import AitoClient
+from . import history
+from .aito import AitoClient, AitoError
+
+
+# Engine v2.11.1 rejects a link path inside a nested `from` ("bit fAnd operation
+# requires same sized bit sets, found: 240, 280": the link is counted over the
+# whole table), so the two cards whose evidence walks a link predict over all
+# deals. The closed-deals filter as outer `where` is no substitute: Aito joins it
+# into the evidence (explained-odds read 0.97 instead of 0.71). On v2.11.1 an
+# open deal's `won` is null and does not count; a False read from July-era data
+# would (test_finished_history lists both cards). Back to history.finished once
+# core fixes it.
+LINK_IN_NESTED_FROM = "v2.11.1: a link path inside a nested from is a 400"
+
+# every card is POSTed here, `predict` questions included; the card shows it
+ENDPOINT = "/api/v2/_query"
 
 # Each question is (id, prose, request). The prose is the question a person
 # actually asks; the request is what the graph makes of it. The view shows
@@ -47,6 +62,7 @@ QUESTIONS: list[tuple[str, str, dict]] = [
         # account's industry lives on the company, the champion and the blocker
         # on the deal. $why returns what each of them did to the number, so the
         # answer arrives with its reasons instead of as a bare probability.
+        # Over all deals, not history.finished, because of LINK_IN_NESTED_FROM.
         {"from": "deals",
          "where": {"company_id.industry": "accounting",
                    "champion_present": True,
@@ -62,6 +78,7 @@ QUESTIONS: list[tuple[str, str, dict]] = [
         # a fact that exists nowhere on the deal. The view puts the answer next
         # to BASELINE_REQUEST below, because a conditioned probability only
         # means something against the unconditioned one.
+        # Over all deals: LINK_IN_NESTED_FROM.
         {"from": "deals",
          "where": {"company_id.$refs.contacts.company_id":
                    {"$exists": {"role": "CTO"}}},
@@ -116,7 +133,7 @@ QUESTIONS: list[tuple[str, str, dict]] = [
 # was 25% — and how a 27% result can look decisive at 73/27 while saying
 # nothing. Computed, never written down: every time these numbers were typed
 # into prose they drifted the next time the seed was regenerated.
-BASELINE_REQUEST = {"from": "deals", "predict": "won", "select": ["$value", "$p"]}
+BASELINE_REQUEST = {"from": history.finished("deals"), "predict": "won", "select": ["$value", "$p"]}
 
 
 def _p_true(hits: list[dict]) -> float | None:
@@ -129,9 +146,16 @@ def answer(client: AitoClient, question_id: str, prose: str, request: dict) -> d
     """Run one question. A failure is reported, not swallowed: this is a
     deliberately un-battle-tested corner of Aito, and a card that says which
     query broke and how is worth more than a view that refuses to render."""
-    out = {"id": question_id, "question": prose, "request": request}
+    out = {"id": question_id, "question": prose, "endpoint": ENDPOINT, "request": request}
     try:
-        response = client.query(request)
+        try:
+            response = client.query(request)
+        except AitoError as error:
+            # no closed deal yet: a state the card says, not a failure
+            if not history.is_empty_population(error):
+                raise
+            out.update(hits=[], total=0, no_history=True)
+            return out
         hits = response.get("hits", [])
         # $why comes back as a nested tree that is far too big to render raw.
         # Flatten it to the labelled lift factors the dashboard already uses for
@@ -157,7 +181,10 @@ def answer(client: AitoClient, question_id: str, prose: str, request: dict) -> d
 def board(client: AitoClient) -> dict:
     """Every question, each with the query that answered it."""
     answers = [answer(client, qid, prose, req) for qid, prose, req in QUESTIONS]
-    base = answer(client, "baseline", "How likely is any deal to close?", BASELINE_REQUEST)
+    # the base rate is a card too: the view quotes it, so its query is on the page
+    base = answer(client, "baseline", "How likely is any closed deal to have been won?",
+                  BASELINE_REQUEST)
+    answers.append(base)
     conditioned = next((a for a in answers if a["id"] == "cto-odds"), None)
     return {
         "answers": answers,
