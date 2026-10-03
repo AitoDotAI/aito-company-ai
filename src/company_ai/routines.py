@@ -17,6 +17,7 @@ monthly+day) and a `prep` recipe. Two jobs:
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 
+from . import clock
 from . import queries, schema
 from .aito import AitoClient
 
@@ -58,7 +59,7 @@ class Result:
 
 def board(client: AitoClient, as_of: date | None = None) -> Result:
     """The active routines, each with its due state; due ones first."""
-    as_of = as_of or date.today()
+    as_of = as_of or clock.today()
     result = Result()
     request = {"from": "routines", "where": {"active": True}, "limit": 1000}
     response = client.query(request)
@@ -96,7 +97,7 @@ def prepare(client: AitoClient, routine: dict, as_of: date | None = None) -> Res
     """Build the run pack for a routine: the Aito-grounded data + a prompt to
     run in Claude (Desktop, which has the MCP tools). The app prepares; Claude
     runs (rule 1)."""
-    as_of = as_of or date.today()
+    as_of = as_of or clock.today()
     result = Result()
     prep = routine["prep"]
     if prep == "prospects":
@@ -130,7 +131,7 @@ def _execute(client: AitoClient, routine: dict, *, llm=None,
     provider in llm.py.
     """
     from . import assistant, log      # local import: assistant pulls heavier deps
-    as_of = as_of or date.today()
+    as_of = as_of or clock.today()
     pack = prepare(client, routine, as_of=as_of).derived
     # search=None, fetch=None: the routines runner is UNATTENDED, so it gets the
     # Aito read tools but NOT the outbound web tools. That removes the exfiltration
@@ -161,7 +162,7 @@ def run_due(client: AitoClient, *, llm=None, as_of: date | None = None,
     scheduler. `only` limits the run to those routine_ids; `force` runs them
     even when not due (a deliberate re-run — the timer never sets it).
     """
-    as_of = as_of or date.today()
+    as_of = as_of or clock.today()
     ran = []
     for r in board(client, as_of=as_of).derived["routines"]:
         if only is not None and r["routine_id"] not in only:
@@ -178,7 +179,7 @@ def run_routine(client: AitoClient, routine_id: str, *, llm=None,
     Defaults to `force=True` — an explicit click/call means run it now, even if
     it isn't due. With `force=False` a not-due routine is skipped (ran=None),
     so the caller can honour due-ness. Returns the `_execute` record (or None)."""
-    as_of = as_of or date.today()
+    as_of = as_of or clock.today()
     match = [r for r in board(client, as_of=as_of).derived["routines"]
              if r["routine_id"] == routine_id]
     assert match, f"unknown routine_id {routine_id!r}"

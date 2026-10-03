@@ -16,6 +16,7 @@ next_action not yet due" would be unimplementable.
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 
+from . import clock
 from . import schema
 from .aito import AitoClient
 
@@ -79,7 +80,7 @@ def who_to_call(
 ) -> Result:
     """Query 1: contacts ranked by Aito's $p of a good outcome now."""
     assert window in schema.WINDOWS, f"unknown window {window!r}"
-    as_of = as_of or date.today()
+    as_of = as_of or clock.today()
     weekday = schema.WEEKDAYS[as_of.weekday()]
     result = Result()
     contacts = _fetch_all(client, result, "contacts")
@@ -211,7 +212,7 @@ def opener_context(client: AitoClient, contact_id: str, top_n: int = 3) -> Resul
 
 def what_changed(client: AitoClient, as_of: date | None = None) -> Result:
     """Query 3: yesterday's touches plus open follow-ups due within 72h."""
-    as_of = as_of or date.today()
+    as_of = as_of or clock.today()
     result = Result()
 
     since = (as_of - timedelta(days=1)).isoformat() + "T00:00:00"

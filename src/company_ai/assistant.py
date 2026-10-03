@@ -33,6 +33,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import date
 from typing import Callable
 
+from . import clock
 from . import (analytics, changelog, deals, decisions, experiments, funnels, queries,
                schema, scorer, search, todos)
 from .aito import AitoClient
@@ -304,7 +305,7 @@ def run_turn(history: list[dict], *, client: AitoClient | None = None,
         search = make_search_client(config)
     if fetch == "__default__":
         fetch = make_fetcher(config)
-    as_of = as_of or date.today()
+    as_of = as_of or clock.today()
 
     ctx = ToolContext(aito=client, as_of=as_of, search=search, fetch=fetch)
     tools = active_tools(ctx, allow=config.assistant_tools or None)

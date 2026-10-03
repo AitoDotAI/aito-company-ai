@@ -17,6 +17,7 @@ import json
 from datetime import date, timedelta
 from pathlib import Path
 
+from . import clock
 from . import (analytics, changelog, deals, decisions, experiments, funnels, queries,
                schema, scorer, todos)
 from .aito import AitoClient
@@ -110,7 +111,7 @@ def run(prompt_name: str, mode: str, *, client: AitoClient | None = None,
     assert prompt_name in COMPOSERS, f"unknown composer {prompt_name!r}; have {sorted(COMPOSERS)}"
     config = Config.from_env()
     client = client or AitoClient(config.instance_url, config.api_key)
-    as_of = as_of or date.today()
+    as_of = as_of or clock.today()
     facts = gather(client, COMPOSERS[prompt_name], as_of)
     system, user = assemble(prompt_name, mode, facts)
     llm = llm or make_client(config)

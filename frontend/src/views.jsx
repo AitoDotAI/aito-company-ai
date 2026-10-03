@@ -4,6 +4,7 @@
 // fabricated data (the repo's weak-and-honest rule). The analytics surfaces
 // we *can* back with Aito today are fully live.
 import React, { useState, useEffect, useRef } from "react";
+import { todayIso } from "./clock.js";
 import { api, pct } from "./api.js";
 import { Block, KpiRow, FunnelChart, QuarterBars, WhyList, Levers, BarRow, Select,
          ActionPipeline, ActionCalendar, WeekCalendar, useAsync, useIsPhone, Loading, ErrorBox } from "./primitives.jsx";
@@ -122,7 +123,7 @@ export function QuickAdd({ defaultArea, onAdded }) {
   const [area, setArea] = useState(defaultArea);
   const areaTouched = useRef(false);
   const [stakeholderId, setStakeholderId] = useState("");
-  const [due, setDue] = useState(() => new Date().toISOString().slice(0, 10));
+  const [due, setDue] = useState(() => todayIso());
   const [slot, setSlot] = useState("10:30");
   const [infer, setInfer] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -1451,7 +1452,7 @@ const NOTE_DRAFT_KEY = "note-draft";
 const blankNote = () => ({
   title: "", body: "", kind: "internal", area: "", company: "",
   stakeholder_id: "", topics: "",
-  noted_on: new Date().toISOString().slice(0, 10),
+  noted_on: todayIso(),
 });
 
 export function NoteCreate() {
