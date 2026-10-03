@@ -549,14 +549,28 @@ function PostsBoard() {
   const mats = useAsync(() => api.table("materials"), []);
   const chans = useAsync(() => api.table("channels"), []);
   if (posts.loading || mats.loading || chans.loading) return <Loading label="Loading posts…" />;
-  // a missing table (instance not migrated to the marketing model yet) degrades
-  // to a friendly empty, not a broken view
-  if (posts.err || mats.err || chans.err)
-    return <div className="empty">No posts yet — add materials, channels and posts
-      (or run <code>./do migrate</code> if this instance predates the marketing model).</div>;
+  // An error is NOT an empty state. This board reads raw tables, which the role
+  // guard restricts to the operator, so a viewer without that role was being
+  // shown "nothing published yet" over a full table — the view looked bare and
+  // the real reason was hidden (rule 3: never swallow the surprise).
+  const err = posts.err || mats.err || chans.err;
+  if (err)
+    return /operator only|restricted/i.test(err)
+      ? <div className="empty">
+          <strong>Sign in as the operator to see this board.</strong>
+          <span>Posts, materials and channels are operator-only, so this view is
+            hidden rather than empty — there may well be posts behind it.</span>
+        </div>
+      : <ErrorBox msg={err} />;
   const mt = Object.fromEntries(mats.data.rows.map((m) => [m.material_id, m.title]));
   const ch = Object.fromEntries(chans.data.rows.map((c) => [c.channel_id, c.name]));
   const rows = posts.data.rows;
+  if (!rows.length)
+    return <div className="empty">
+      <strong>Nothing published yet.</strong>
+      <span>This board compares the same material across channels, so what works
+        where becomes visible as soon as a piece runs in more than one place.</span>
+    </div>;
   const by = (s) => rows.filter((r) => r.status === s).length;
   return (
     <>
@@ -2452,7 +2466,7 @@ export const VIEWS = {
            prims: ["action-pipeline"],
            data: [{ table: "todos", label: "all todos" }],
            render: () => <Block title="Do next" ptype="action-pipeline"><NowAction /></Block> },
-  sales: { title: "Sales", desc: "The sales to-do list, the pipeline, the companies behind it, this week's calls, and the funnel.",
+  sales: { title: "Sales", desc: "The sales to-do list, the pipeline, the companies behind it, this week's calls, and the analytics over all of it.",
            prims: ["action-pipeline", "action-calendar", "kpi-row", "chart"],
            data: [{ table: "deals" }, { table: "contacts" }, { table: "touches" }],
            docsArea: "sales",
@@ -2465,18 +2479,23 @@ export const VIEWS = {
                render: () => <Companies /> },
              { id: "calls", label: "Calls",
                render: () => <Block title="This week" ptype="action-calendar"><AreaAction area="sales" lens="calendar" /></Block> },
-             { id: "funnel", label: "Funnel",
-               render: () => <FunnelView only="sales" /> },
+             { id: "analytics", label: "Analytics",
+               render: () => <SalesAnalytics /> },
            ] },
-  marketing: { title: "Marketing", desc: "What to ship to which channel, the go/no-go board, then the formula behind reach.",
+  marketing: { title: "Marketing", desc: "What to ship this week, how the same material performed across channels, where the website funnel leaks, and how a draft is likely to do before you publish it.",
            prims: ["action-calendar", "kpi-row", "chart", "optimizer"],
            data: [{ table: "posts" }, { table: "materials" }, { table: "channels" }, { table: "sessions" }],
            docsArea: "marketing",
-           render: () => (<>
-             <Block title="This week" ptype="action-calendar"><AreaAction area="marketing" lens="calendar" /></Block>
-             <Block title="Posts — material × channel" ptype="kpi-row"><PostsBoard /></Block>
-             <FunnelView only="website" />
-             <Block title="Post scorer" ptype="optimizer"><Scorer /></Block></>) },
+           tabs: [
+             { id: "todo", label: "To do",
+               render: () => <Block title="This week"><AreaAction area="marketing" lens="calendar" /></Block> },
+             { id: "posts", label: "Posts",
+               render: () => <Block title="Posts — material × channel"><PostsBoard /></Block> },
+             { id: "analytics", label: "Analytics",
+               render: () => <FunnelView only="website" /> },
+             { id: "scorer", label: "Scorer",
+               render: () => <Block title="Score a draft before you post it"><Scorer /></Block> },
+           ] },
   mywork: { title: "My work", desc: "The leads, deals, and tasks assigned to you — your focused lane over the shared CRM. Reassign here; the operator or the agent can assign to anyone.",
            prims: ["kpi-row", "action-pipeline"],
            render: () => <MyWork /> },
@@ -2525,7 +2544,7 @@ export const VIEWS = {
   search: { title: "Search", desc: "Smart search across content — docs, contacts, and deals — ranked by Aito text-match relevance. The same index the assistant grounds on.",
            prims: ["document-tree"],
            render: (param) => <SearchView initial={param} /> },
-  salesanalytics: { title: "Sales analytics", desc: "Pipeline health, close-likelihood by stage, who to reach, and the sales funnel with its lever — the sales counterpart to the marketing metrics.",
+  salesanalytics: { title: "Sales analytics", desc: "Pipeline health, close-likelihood by stage, who to reach, and the sales funnel with its lever. Also the Analytics tab of the Sales view, which is where it is normally reached.",
            prims: ["kpi-row", "predict", "chart"],
            data: [{ table: "deals" }, { table: "contacts" }],
            render: () => <SalesAnalytics /> },

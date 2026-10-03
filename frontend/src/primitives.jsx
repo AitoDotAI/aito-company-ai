@@ -10,7 +10,6 @@ export function Block({ title, ptype, note, children }) {
     <section className="block">
       <div className="block-head">
         <h2>{title}</h2>
-        {ptype && <span className="ptype">{ptype}</span>}
         {note && <span className="note">{note}</span>}
       </div>
       {children}

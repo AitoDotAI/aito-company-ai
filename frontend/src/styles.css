@@ -660,7 +660,15 @@ select:focus { outline:none; border-color:var(--purple); }
 .lever { display:flex; align-items:center; gap:10px; font-size:13px; margin:7px 0; }
 .lever .fn { flex:0 0 130px; color:var(--ink-faint); }
 .lever.act .sw { color:var(--ok); font-weight:600; }
-.empty { color:var(--ink-faint); font-style:italic; font-size:13px; }
+/* Empty is a state, not an absence: a bordered panel keeps the page's rhythm
+   where a bare italic line left a hole. `strong` is the headline, `span` the
+   explanation; a plain string still renders correctly on its own. */
+.empty { display:flex; flex-direction:column; gap:5px; align-items:flex-start;
+  color:var(--ink-faint); font-size:13px; line-height:1.55;
+  padding:20px 22px; border:1px dashed var(--line-bright); border-radius:10px;
+  background:var(--tint); }
+.empty strong { color:var(--ink-dim); font-size:14px; font-weight:600; }
+.empty span { max-width:62ch; }
 .placeholder { border:1px dashed var(--line-bright); border-radius:14px; padding:40px 28px;
   text-align:center; color:var(--ink-faint); background:var(--tint); }
 .placeholder h3 { color:var(--ink-dim); font-size:15px; margin-bottom:8px; }

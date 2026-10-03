@@ -11,7 +11,7 @@ const NAV = [
   { group: "NOW", items: [["now", "Today"], ["overview", "Overview"], ["mywork", "My work"], ["chat", "Chat"], ["routines", "Routines"]] },
   { group: "WORK", items: [["sales", "Sales"], ["marketing", "Marketing"], ["events", "Events"], ["ops", "Operations"], ["rnd", "R&D"], ["exp", "Learning"]] },
   { group: "KNOWLEDGE", items: [["graph", "Knowledge graph"], ["search", "Search"], ["activity", "Activity"], ["documents", "Documents"]] },
-  { group: "ANALYTICS", items: [["salesanalytics", "Sales analytics"], ["analytics", "Metrics"], ["decisions", "Decisions"], ["data", "Data"]] },
+  { group: "ANALYTICS", items: [["analytics", "Metrics"], ["decisions", "Decisions"], ["data", "Data"]] },
   { group: "ADMIN", items: [["admin", "Admin"]] },
 ];
 
@@ -164,12 +164,6 @@ export default function App() {
             </div>
           )}
         </div>
-        {view.prims && (
-          <div className="composed">
-            <span className="lbl">composed of</span>
-            {view.prims.map((p) => <span className="prim-tag" key={p}>{p}</span>)}
-          </div>
-        )}
         <div className="view" key={route}><TabbedView view={view} param={param} /></div>
       </main>
 
