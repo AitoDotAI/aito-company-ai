@@ -523,11 +523,22 @@ function FunnelBody({ name, slice }) {
         <FunnelChart stages={d.stages} leak={d.leak} />
       </Block>
       <Block title="Aito read" ptype="predict">
-        <div className="gauge">
-          <div className={"p " + (d.outlook.p >= 0.5 ? "win" : d.outlook.p >= 0.2 ? "mid" : "low")}>
-            {pct(d.outlook.p)}</div>
-          <div className="lbl">Aito's P({d.deepest_label}) for this slice</div>
-        </div>
+        {/* With no rows at the top of the funnel there is nothing to learn from,
+            and Aito's answer is its uninformed prior — 50%. Shown as a reading
+            (in the "winning" colour, no less) that is a number from nothing. The
+            same happens for any slice that filters down to zero rows. */}
+        {!(d.stages[0] && d.stages[0].count) ? (
+          <div className="gauge">
+            <div className="p none">—</div>
+            <div className="lbl">no data in this slice yet, so no P({d.deepest_label}) to read</div>
+          </div>
+        ) : (
+          <div className="gauge">
+            <div className={"p " + (d.outlook.p >= 0.5 ? "win" : d.outlook.p >= 0.2 ? "mid" : "low")}>
+              {pct(d.outlook.p)}</div>
+            <div className="lbl">Aito's P({d.deepest_label}) for this slice</div>
+          </div>
+        )}
         <div className="section-title">Why it leaks</div>
         <WhyList items={d.causes} />
         {d.lever && (<>
@@ -2113,9 +2124,30 @@ export function GraphView() {
               {r.data.failed.length} of {r.data.answers.length} queries failed: {r.data.failed.join(", ")}
             </div>
           )}
-          <div className="gq-grid">
-            {r.data.answers.map((a) => <GraphAnswer key={a.id} a={a} />)}
-          </div>
+          {r.data.answers.length > 0 && r.data.answers.every((a) => !a.total) ? (
+            // An empty instance answered every question with "no rows". That is
+            // honest, but nine cards of query JSON ending in "0 ROWS" read as a
+            // broken page on a first visit. Say what the page needs instead, and
+            // keep the queries one click away — they are the instructive part.
+            <>
+              <div className="empty">
+                <strong>The graph is built from your accounts, people and deals.</strong>
+                <span>There are none yet. Load or add some and every question on this
+                  page answers itself — each one is a single Aito query that walks
+                  the links between them.</span>
+              </div>
+              <details className="gq-preview">
+                <summary>See the {r.data.answers.length} questions and the queries behind them</summary>
+                <div className="gq-grid">
+                  {r.data.answers.map((a) => <GraphAnswer key={a.id} a={a} />)}
+                </div>
+              </details>
+            </>
+          ) : (
+            <div className="gq-grid">
+              {r.data.answers.map((a) => <GraphAnswer key={a.id} a={a} />)}
+            </div>
+          )}
         </>
       )}
     </>
@@ -2338,12 +2370,34 @@ function usePwin(deals) {
   });
 }
 
-function WhoToReach() {
+// A rate over nothing is not zero. 0 of 0 closed deals is "no data yet", and
+// showing 0% tells someone who has simply not loaded anything that they never
+// win — confident-and-fabricated, the one thing CLAUDE.md calls a defect.
+function winRateKpi(t) {
+  if (!t) return { label: "win rate", value: "…", sub: "" };
+  if (!t.closed) return { label: "win rate", value: "—", sub: "no closed deals yet" };
+  return { label: "win rate", value: pct(t.win_rate), sub: `${t.won}/${t.closed} closed` };
+}
+function cycleKpi(t) {
+  if (!t) return { label: "avg cycle", value: "…", sub: "won deals" };
+  if (!t.won) return { label: "avg cycle", value: "—", sub: "no won deals yet" };
+  return { label: "avg cycle", value: t.avg_cycle_days + "d", sub: "won deals" };
+}
+
+function WhoToReach({ openDeals }) {
   const r = useAsync(() => api.whoToReach(), []);
   const rows = usePwin(r.data?.rows);   // fill p_win lazily from the shared cache
   if (r.loading) return <Loading />;
   if (r.err) return <ErrorBox msg={r.err} />;
-  if (!rows.length) return <div className="empty">No stalled deals — the pipeline is warm.</div>;
+  if (!rows.length)
+    return openDeals === 0
+      ? <div className="empty">
+          <strong>No open deals yet.</strong>
+          <span>Once deals are in the pipeline, the ones going cold surface here,
+            ranked by how likely they still are to close.</span>
+        </div>
+      : <div className="empty">Nothing has gone cold — every open deal was touched
+          in the last two weeks.</div>;
   const ranked = [...rows].sort((a, b) => (b.p_win ?? -1) - (a.p_win ?? -1)).slice(0, 8);
   return (
     <div className="co-list">
@@ -2384,10 +2438,10 @@ function SalesAnalytics() {
   return (
     <>
       <KpiRow items={[
-        { label: "win rate", value: t ? pct(t.win_rate) : "…", sub: t ? `${t.won}/${t.closed} closed` : "" },
+        winRateKpi(t),
         { label: "weighted pipeline (own %)", value: eur(kpis.weighted_pipeline), sub: "Σ value × your probability, not Aito's" },
         { label: "open value", value: eur(kpis.open_value), sub: `${kpis.open_deals} open` },
-        { label: "avg cycle", value: t ? t.avg_cycle_days + "d" : "…", sub: "won deals" },
+        cycleKpi(t),
         { label: "stalled", value: kpis.stalled, sub: "no touch > 14d" },
       ]} />
       {t && t.quarters.length > 0 && (
@@ -2397,6 +2451,7 @@ function SalesAnalytics() {
       )}
       <div className="cols">
         <Block title="Pipeline by stage" ptype="predict">
+          {!stages.length && <div className="empty">No open deals yet.</div>}
           <div className="list">
             {stages.map((s) => (
               <BarRow key={s.stage} name={`${s.stage} · ${s.count}`} p={s.frac}
@@ -2406,7 +2461,7 @@ function SalesAnalytics() {
           </div>
         </Block>
         <Block title="Who to reach now" ptype="who_to_reach">
-          <WhoToReach />
+          <WhoToReach openDeals={kpis.open_deals} />
         </Block>
       </div>
       <FunnelView only="sales" />
@@ -2430,9 +2485,9 @@ function Overview() {
     <>
       <KpiRow items={[
         { label: "weighted pipeline (own %)", value: eur(kpis.weighted_pipeline), sub: "Σ value × your probability, not Aito's" },
-        { label: "win rate", value: t ? pct(t.win_rate) : "…", sub: t ? `${t.won}/${t.closed} closed` : "" },
+        winRateKpi(t),
         { label: "open deals", value: kpis.open_deals, sub: eur(kpis.open_value) },
-        { label: "avg cycle", value: t ? t.avg_cycle_days + "d" : "…", sub: "won deals" },
+        cycleKpi(t),
         { label: "paid conversions", value: paid ?? "…", sub: "website funnel" },
         { label: "stalled", value: kpis.stalled, sub: "no touch > 14d" },
       ]} />
@@ -2441,6 +2496,7 @@ function Overview() {
       )}
       <div className="cols">
         <Block title="Pipeline by stage" ptype="predict">
+          {!stages.length && <div className="empty">No open deals yet.</div>}
           <div className="list">
             {stages.map((s) => (
               <BarRow key={s.stage} name={`${s.stage} · ${s.count}`} p={s.frac}
@@ -2449,7 +2505,7 @@ function Overview() {
             ))}
           </div>
         </Block>
-        <Block title="Who to reach now" ptype="who_to_reach"><WhoToReach /></Block>
+        <Block title="Who to reach now" ptype="who_to_reach"><WhoToReach openDeals={kpis.open_deals} /></Block>
       </div>
     </>
   );

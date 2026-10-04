@@ -154,6 +154,34 @@ describe("Sales analytics view", () => {
     await waitFor(() => expect(screen.getByText(/Lever: source/)).toBeInTheDocument());
   });
 
+  it("on an empty instance, says 'no data yet' instead of 0% and a warm pipeline", async () => {
+    // A rate over nothing is not zero: 0 of 0 closed deals rendered as "0%"
+    // tells a newcomer they never win, and "the pipeline is warm" over zero
+    // deals is a claim. This is the first screen someone sees after install.
+    api.deals.mockResolvedValue({
+      kpis: { weighted_pipeline: 0, open_value: 0, open_deals: 0, stalled: 0 }, deals: [] });
+    api.whoToReach.mockResolvedValue({ as_of: "2026-10-04", count: 0, rows: [] });
+    api.salesTrend.mockResolvedValue({
+      win_rate: 0, avg_cycle_days: 0, won: 0, closed: 0, quarters: [] });
+    // funnel definitions live in code, so an empty instance still serves them
+    api.funnelCatalog.mockResolvedValue({ funnels: [
+      { key: "sales", label: "Sales funnel", dimensions: ["segment"], values: { segment: [] } }] });
+    api.funnel.mockResolvedValue({
+      deepest_label: "meeting", outlook: { p: 0.5, why: [] }, causes: [], leak: null, lever: null,
+      stages: [{ key: "all", label: "Contacts", count: 0, rate_of_top: null }] });
+
+    render(VIEWS.salesanalytics.render());
+    expect(await screen.findByText("no closed deals yet")).toBeInTheDocument();
+    expect(screen.getByText("no won deals yet")).toBeInTheDocument();
+    expect(screen.queryByText("0%")).toBeNull();
+    expect(screen.queryByText("0d")).toBeNull();
+    await waitFor(() => expect(screen.getAllByText("No open deals yet.").length).toBeGreaterThan(0));
+    expect(screen.queryByText(/pipeline is warm/)).toBeNull();
+    // and the funnel does not present Aito's zero-row prior as a 50% reading
+    expect(await screen.findByText(/no data in this slice yet/)).toBeInTheDocument();
+    expect(screen.queryByText("50%")).toBeNull();
+  });
+
   it("is still routable on its own, for deep links", () => {
     expect(VIEWS.salesanalytics).toBeTruthy();
     expect(VIEWS.salesanalytics.title).toBe("Sales analytics");

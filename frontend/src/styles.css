@@ -873,3 +873,12 @@ select:focus { outline:none; border-color:var(--purple); }
 .asof-banner strong { font-size:11px; letter-spacing:0.08em; text-transform:uppercase;
   color:var(--purple); }
 .asof-banner b { color:var(--ink); font-weight:600; }
+
+/* the graph's empty-instance preview: the questions stay inspectable, folded */
+.gq-preview { margin-top:14px; }
+.gq-preview > summary { cursor:pointer; font-size:13px; color:var(--purple);
+  padding:6px 0; list-style:none; }
+.gq-preview > summary::before { content:"▸ "; }
+.gq-preview[open] > summary::before { content:"▾ "; }
+.gq-preview[open] > .gq-grid { margin-top:10px; }
+.gauge .p.none { color:var(--ink-faint); }

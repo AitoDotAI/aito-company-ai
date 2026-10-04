@@ -142,7 +142,7 @@ You need [Docker](https://www.docker.com/) and about a minute. This loads the
 invented demo data, not anything real:
 
 ```sh
-docker run -d -p 9005:9005 ghcr.io/aitohq/aito   # the database
+docker run -d -p 9005:9005 -e AITO_DISABLE_AUTH=true ghcr.io/aitohq/aito   # the database
 cp .env.example .env                             # point at it
 ./do install && ./do seed && ./do start          # → http://localhost:8770
 ```
@@ -181,7 +181,7 @@ Aito instance (docker)               intuition: ranking, similarity,
 One Aito instance is the brain; both sides below read the same tables.
 
 ```sh
-docker run -d -p 9005:9005 ghcr.io/aitohq/aito        # 1. an Aito instance
+docker run -d -p 9005:9005 -e AITO_DISABLE_AUTH=true ghcr.io/aitohq/aito        # 1. an Aito instance
 cp .env.example .env                                   # 2. point at it
 ./do seed                                              # 3. schema + every table
 ```

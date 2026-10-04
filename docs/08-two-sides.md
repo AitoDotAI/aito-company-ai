@@ -30,7 +30,7 @@ surfaces only compose and render what Aito returns.
 ## Shared setup (do once)
 
 ```sh
-docker run -d -p 9005:9005 ghcr.io/aitohq/aito   # 1. the Aito instance
+docker run -d -p 9005:9005 -e AITO_DISABLE_AUTH=true ghcr.io/aitohq/aito   # 1. the Aito instance
 cp .env.example .env                              # 2. point at it (AITO_INSTANCE_URL)
 uv run company-ai create-schema                   # 3. the tables
 uv run company-ai load-rolodex --seed             # 4. data (omit --seed for the
