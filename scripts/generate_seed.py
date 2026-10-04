@@ -1127,6 +1127,11 @@ def generate(out_dir: Path, n_contacts: int, n_touches: int, n_sessions: int,
     events = make_events(rng, n_events, f"{prefix}v")
     routines = make_routines(n_routines, f"{prefix}o")
     documents = make_documents(rng, accounts, contacts, f"{prefix}dc")
+    # the date this dataset is ABOUT. Without it a fixed seed rots: four months
+    # later every deal reads as stalled. `./do seed` hands it to the instance as
+    # its reckoning date (clock.py), so a fresh install shows a working week.
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / "AS_OF").write_text(AS_OF.isoformat() + "\n")
     write_csv(out_dir / "rolodex.csv", contacts)
     write_csv(out_dir / "touches.csv", touches)
     write_csv(out_dir / "sessions.csv", sessions)

@@ -41,7 +41,7 @@ def test_seed_is_generator_output(t: bt.TestCaseRun) -> None:
         files = ("rolodex.csv", "touches.csv", "sessions.csv", "materials.csv",
                  "channels.csv", "posts.csv", "todos.csv", "deals.csv",
                  "decisions.csv", "experiments.csv", "events.csv", "routines.csv",
-                 "documents.csv")
+                 "documents.csv", "AS_OF")
         for rel in [f"{d}/{f}" for d in ("seed", "seed_tiny") for f in files]:
             committed = (REPO_ROOT / "data" / rel).read_bytes()
             regenerated = (Path(tmp) / rel).read_bytes()

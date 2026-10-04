@@ -63,6 +63,16 @@ resolve() {
   fi
   PIDFILE=".dashboard.${PORT}.pid"
   LOGFILE=".dashboard.${PORT}.log"
+  # The reckoning date of the dataset last seeded into THIS instance (keyed by
+  # port, like the pidfile). A seed carries the date it is about; without it a
+  # fixed demo rots until every deal reads as stalled. An explicit
+  # COMPANY_AI_AS_OF always wins, and loading a directory with no anchor clears
+  # it, so real data never inherits a sample's date. The dashboard says so in a
+  # banner whenever it is in effect (clock.py).
+  ASOF_FILE=".seeded-as-of.${PORT}"
+  if [ -z "${COMPANY_AI_AS_OF:-}" ] && [ -f "$ASOF_FILE" ]; then
+    export COMPANY_AI_AS_OF="$(tr -dc '0-9-' < "$ASOF_FILE")"
+  fi
   HEALTH="http://127.0.0.1:${PORT}/api/score-options"  # static, needs no Aito
 }
 
@@ -132,6 +142,12 @@ cmd_seed() {
   # drifted and silently skipped routines + users, so those shipped empty in the
   # public demo even though data/seed carries both.
   uv run company-ai load-all --dir "$dir"
+  if [ -f "$dir/AS_OF" ]; then
+    cp "$dir/AS_OF" "$ASOF_FILE"
+    say "this dataset is about $(cat "$dir/AS_OF") — the dashboard will reckon from that date"
+  else
+    rm -f "$ASOF_FILE"
+  fi
 }
 
 cmd_seed_tiny() { SEED_DIR=data/seed_tiny cmd_seed "${1:-}"; }

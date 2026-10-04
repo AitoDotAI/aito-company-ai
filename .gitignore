@@ -35,3 +35,6 @@ frontend/.vite/
 # off-box backup staging: CSV dumps of every table (ops/backup-offbox.sh).
 # This is the REAL dataset on its way off the box — never tracked (docs/06).
 .backups/
+
+# the reckoning date of the last seeded dataset, per instance port (./do seed)
+.seeded-as-of.*
