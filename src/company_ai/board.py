@@ -59,7 +59,7 @@ READS = {
     "who_to_call": _who,
     "todos_now": lambda c, a: todos.now(c, as_of=a).derived,
     "todos_area": _todos_area,
-    "score_post": lambda c, a: scorer.score(c, "linkedin").derived,
+    "score_post": lambda c, a: scorer.score(c, schema.default_platform()).derived,
     "what_changed": lambda c, a: queries.what_changed(c, as_of=a).derived,
     "recent_changes": lambda c, a: changelog.recent(c, limit=50),
     "last_week": lambda c, a: changelog.recent(

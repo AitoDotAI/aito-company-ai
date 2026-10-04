@@ -545,7 +545,8 @@ def create_app(config: Config | None = None) -> FastAPI:
         return {"options": SCORE_OPTIONS, "features": scorer.FEATURES}
 
     @app.get("/api/score")
-    def score_route(request: Request, platform: str = "linkedin"):
+    def score_route(request: Request, platform: str = ""):
+        platform = platform or schema.default_platform()
         q = request.query_params
         feats = {f: q[f] for f in scorer.FEATURES if q.get(f)}
         return _guarded(lambda: scorer.score(client(), platform, feats).derived)

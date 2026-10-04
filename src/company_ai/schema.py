@@ -831,3 +831,76 @@ def contact_funnel_flags(outcomes: list[str]) -> dict[str, bool]:
         "ever_conversation": any(f["good_outcome"] for f in flags),
         "ever_meeting": any(f["booked"] for f in flags),
     }
+
+
+# ---- deployment vocabulary (docs/32) -------------------------------------
+#
+# Everything above is this repository's own business written down. Another
+# company's customers are not segmented into {accounting, erp, ecommerce,
+# analytics, consultancy}, and their losses are not blocked by
+# `consultant_lock`. Rule 3 makes every one of those a hard gate, so without
+# this their first CSV row raises and the product is unusable on their data.
+#
+# The gate stays strict — it is the vocabulary that moves. Point
+# COMPANY_AI_VOCABULARY at a JSON file naming the sets you want replaced:
+#
+#     {"SEGMENTS": ["public", "retail", "industry"], "TIERS": ["1", "2"]}
+#
+# Only the sets listed in OVERRIDABLE may be replaced. The rest are STRUCTURAL:
+# code branches on their values (a deal is `won` because its stage is
+# "closed_won"; the brief picks a call window by the clock; the views are keyed
+# on todo areas), so replacing them would not configure the product, it would
+# break it. Naming one of those — or a set that does not exist — raises, rather
+# than being quietly ignored and leaving an operator to wonder why their
+# vocabulary did not take.
+OVERRIDABLE = {
+    # who you sell to, and how you grade them
+    "SEGMENTS", "TIERS", "SOURCES", "LIFECYCLES",
+    # how you reach them, and why deals stall
+    "TOUCH_CHANNELS", "DEAL_BLOCKERS",
+    # what you publish, and where
+    "MATERIAL_TYPES", "PLATFORMS", "TONES", "POST_FORMATS", "POST_TOPICS",
+    # the rest of the descriptive vocabulary
+    "DECISION_TYPES", "EVENT_TYPES", "WEB_SOURCES", "DEVICES", "LANDING_PAGES",
+}
+
+
+def default_platform() -> str:
+    """The platform a surface scores when the caller names none. Derived, because
+    a deployment may not publish to LinkedIn at all; stable, so snapshots do not
+    wobble between runs."""
+    return "linkedin" if "linkedin" in PLATFORMS else sorted(PLATFORMS)[0]
+
+
+def _apply_vocabulary() -> None:
+    import json
+    import os
+    from pathlib import Path
+
+    path = (os.environ.get("COMPANY_AI_VOCABULARY") or "").strip()
+    if not path:
+        return
+    file = Path(path)
+    assert file.is_file(), f"COMPANY_AI_VOCABULARY={path!r} is not a file"
+    try:
+        spec = json.loads(file.read_text())
+    except json.JSONDecodeError as e:
+        raise AssertionError(f"{path} is not valid JSON: {e}") from e
+    assert isinstance(spec, dict), f"{path} must be a JSON object of SET -> [values]"
+
+    g = globals()
+    for name, values in spec.items():
+        assert name in OVERRIDABLE, (
+            f"{path}: {name!r} cannot be overridden. "
+            f"Overridable: {', '.join(sorted(OVERRIDABLE))}"
+            + ("" if name in g else f" ({name!r} is not a vocabulary set at all)"))
+        assert isinstance(values, list) and values and all(
+            isinstance(v, str) and v.strip() for v in values), \
+            f"{path}: {name} must be a non-empty list of non-empty strings"
+        g[name] = set(values)
+
+    # PLATFORMS has an alias some call sites still use; keep them the same set.
+    g["POST_CHANNELS"] = g["PLATFORMS"]
+
+
+_apply_vocabulary()

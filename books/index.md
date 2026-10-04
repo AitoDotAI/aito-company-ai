@@ -174,4 +174,7 @@
      * [test_users.py::test_assign_across_entities_and_my_work](book/test_users.py::test_assign_across_entities_and_my_work.md)
      * [test_users.py::test_invalid_assignments_raise](book/test_users.py::test_invalid_assignments_raise.md)
      * [test_users.py::test_roster_and_identity](book/test_users.py::test_roster_and_identity.md)
+     * [test_vocabulary.py::test_a_company_brings_its_own_vocabulary](book/test_vocabulary.py::test_a_company_brings_its_own_vocabulary.md)
+     * [test_vocabulary.py::test_defaults_derive_from_the_configured_vocabulary](book/test_vocabulary.py::test_defaults_derive_from_the_configured_vocabulary.md)
+     * [test_vocabulary.py::test_structural_sets_cannot_be_overridden](book/test_vocabulary.py::test_structural_sets_cannot_be_overridden.md)
 
