@@ -76,3 +76,31 @@ Your data still has to match the shapes in `docs/02-schema.md` — the columns,
 not the values. Bringing a rolodex means producing `rolodex.csv` with the
 documented columns; the vocabulary file is what lets the *values* in those
 columns be yours.
+
+## Checking your data before you load it
+
+```sh
+./do validate path/to/your/export       # no Aito instance needed
+```
+
+Rule 3 still holds — nothing loads if anything fails — but the refusal is now
+useful on a first export. Every CSV in the directory is parsed, **every**
+failed check is collected (not just the first on each row), and identical
+failures are grouped:
+
+```
+rolodex.csv          61 rows  62 problem(s)
+    unknown segment 'public-sector'  (21 rows: line 2, 4, 8, 9, …)
+      → allowed: accounting, analytics, … — or add it to SEGMENTS in your
+        vocabulary file (COMPANY_AI_VOCABULARY, docs/32)
+    created is not an ISO date: '12.03.2026'  (1 row: line 14)
+    duplicate contact_id 'sc004' (first on line 5)  (1 row: line 62)
+```
+
+Three hundred bad rows are usually three or four fixes, and most are answered
+by the vocabulary file. Where a value belongs to a structural set, the hint
+says so instead of suggesting an override that would be refused.
+
+`load_all` (and so `./do seed`) runs the same check first and raises
+`DataProblems` — an `AssertionError`, so existing handling still catches it —
+with the full report.
