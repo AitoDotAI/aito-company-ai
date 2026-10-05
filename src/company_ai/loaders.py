@@ -268,7 +268,6 @@ def derive_contact_funnel(contact_rows: list[dict], data_dir: Path) -> None:
 # Roles that count as a technical buyer for `companies.technical_contact`.
 # Kept next to the harvest because it is a property OF THE HARVEST, not of the
 # contact: the generator plants the effect on "we know a CTO there".
-TECHNICAL_CONTACT_ROLES = {"CTO"}
 
 
 def companies_from_csvs(data_dir: Path) -> list[dict]:
@@ -341,7 +340,7 @@ def companies_from_csvs(data_dir: Path) -> list[dict]:
                               if schema.deal_won(d.get("stage", "")) is None),
             "contact_count": len(ccs),
             # companies <- contacts, walked at load time
-            "technical_contact": any(r.get("role") in TECHNICAL_CONTACT_ROLES
+            "technical_contact": any(r.get("role") in schema.TECHNICAL_ROLES
                                      for r in ccs),
         })
     return rows

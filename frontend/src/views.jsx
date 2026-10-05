@@ -2095,6 +2095,9 @@ function GraphAnswer({ a }) {
   );
 }
 
+// "a CTO", "an IT Manager" — the role is this deployment's, so is its article
+const article = (w) => (w && /^[aeiou]/i.test(w) ? "an " : "a ") + (w || "technical contact");
+
 export function GraphView() {
   const r = useAsync(() => api.graph(), []);
   return (
@@ -2107,11 +2110,12 @@ export function GraphView() {
         {r.data && r.data.conditioned_p != null && r.data.baseline_p != null && (
           <div className="gq-finding">
             And the neighbourhood can condition a <b>prediction</b>: a deal at an
-            account where we know a CTO closes at{" "}
+            account where we know {article(r.data.technical_role)} closes at{" "}
             <b>{Math.round(r.data.conditioned_p * 100)}%</b>, against a{" "}
             {Math.round(r.data.baseline_p * 100)}% base rate across closed deals.
-            Whether a CTO is on file exists nowhere on the deal — only across the
-            link. Both figures come from the queries on this page.
+            Whether {article(r.data.technical_role)} is on file exists nowhere on the
+            deal — only across the link. Both figures come from the queries on this
+            page.
           </div>
         )}
       </div>

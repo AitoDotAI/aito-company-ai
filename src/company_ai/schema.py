@@ -853,9 +853,15 @@ def contact_funnel_flags(outcomes: list[str]) -> dict[str, bool]:
 # break it. Naming one of those — or a set that does not exist — raises, rather
 # than being quietly ignored and leaving an operator to wonder why their
 # vocabulary did not take.
+# The contact roles that make an account's `technical_contact` fact true — the
+# fact the knowledge graph's headline card conditions on. Job titles are the
+# most local vocabulary there is ("CTO" here, "IT-johtaja" or "Head of
+# Technology" elsewhere), so it is a deployment's to set.
+TECHNICAL_ROLES = {"CTO"}
+
 OVERRIDABLE = {
     # who you sell to, and how you grade them
-    "SEGMENTS", "TIERS", "SOURCES", "LIFECYCLES",
+    "SEGMENTS", "TIERS", "SOURCES", "LIFECYCLES", "TECHNICAL_ROLES",
     # how you reach them, and why deals stall
     "TOUCH_CHANNELS", "DEAL_BLOCKERS",
     # what you publish, and where

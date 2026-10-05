@@ -40,7 +40,7 @@ values:
 
 | | |
 |---|---|
-| who you sell to | `SEGMENTS` `TIERS` `SOURCES` `LIFECYCLES` |
+| who you sell to | `SEGMENTS` `TIERS` `SOURCES` `LIFECYCLES` `TECHNICAL_ROLES` |
 | how you reach them, why deals stall | `TOUCH_CHANNELS` `DEAL_BLOCKERS` |
 | what you publish, and where | `MATERIAL_TYPES` `PLATFORMS` `TONES` `POST_FORMATS` `POST_TOPICS` |
 | the rest | `DECISION_TYPES` `EVENT_TYPES` `WEB_SOURCES` `DEVICES` `LANDING_PAGES` |
@@ -104,3 +104,22 @@ says so instead of suggesting an override that would be refused.
 `load_all` (and so `./do seed`) runs the same check first and raises
 `DataProblems` — an `AssertionError`, so existing handling still catches it —
 with the full report.
+
+## The knowledge graph follows your data
+
+The graph's example questions used to name this repository's home turf outright
+— "an accounting account", "Which CFOs…", "where we know a CTO" — so on another
+company's data the showcase cards came back empty. Each parameter is now
+resolved from what is loaded, by an Aito query:
+
+- the industry is the one with **the most deals** (not the best win rate, which
+  picks a thin segment whose rate is noise);
+- the person is the **commonest non-technical role** at accounts in that
+  industry — who you would usually be talking to there;
+- the technical contact is whatever `TECHNICAL_ROLES` says. One role or several:
+  several become an `$or` of whole `$exists` clauses, because the engine
+  rejects an `$or` inside one.
+
+On the shipped seed these resolve to exactly the values the cards always used,
+so the demo is unchanged. On an empty instance they fall back to *your*
+configured vocabulary rather than to ours.
