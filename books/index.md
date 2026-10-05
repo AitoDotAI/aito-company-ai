@@ -181,6 +181,8 @@
      * [test_validate.py::test_load_all_refuses_and_writes_nothing](book/test_validate.py::test_load_all_refuses_and_writes_nothing.md)
      * [test_validate.py::test_the_shipped_seed_is_clean](book/test_validate.py::test_the_shipped_seed_is_clean.md)
      * [test_vocabulary.py::test_a_company_brings_its_own_vocabulary](book/test_vocabulary.py::test_a_company_brings_its_own_vocabulary.md)
+     * [test_vocabulary.py::test_a_company_brings_its_own_working_week](book/test_vocabulary.py::test_a_company_brings_its_own_working_week.md)
+     * [test_vocabulary.py::test_a_malformed_working_week_is_refused](book/test_vocabulary.py::test_a_malformed_working_week_is_refused.md)
      * [test_vocabulary.py::test_defaults_derive_from_the_configured_vocabulary](book/test_vocabulary.py::test_defaults_derive_from_the_configured_vocabulary.md)
      * [test_vocabulary.py::test_structural_sets_cannot_be_overridden](book/test_vocabulary.py::test_structural_sets_cannot_be_overridden.md)
 

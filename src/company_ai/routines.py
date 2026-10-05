@@ -75,7 +75,10 @@ def board(client: AitoClient, as_of: date | None = None) -> Result:
 def _prospect_pack(client: AitoClient, result: Result, routine: dict, as_of: date) -> dict:
     """Aito-ranked candidates for the next outreach batch + a Claude-Desktop
     prompt to load them (e.g. into your outreach tool) and draft openers."""
-    q = queries.who_to_call(client, "1215", top_n=10, as_of=as_of)
+    # the middle of the day's call windows (1215 for the default 0800/1215/1600):
+    # outreach prep ranks for midday, between the morning and late slots
+    windows = schema.call_windows()
+    q = queries.who_to_call(client, windows[len(windows) // 2], top_n=10, as_of=as_of)
     result.calls.extend(q.calls)
     candidates = q.derived
     lines = "\n".join(

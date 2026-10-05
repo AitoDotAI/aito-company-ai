@@ -624,6 +624,35 @@ OUTCOMES = {
     "no_reply",
 }
 WEEKDAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+
+# The operator's week. These defaults are THIS repository's operator
+# (operator-ground-truth.md §1): Thursdays away, Wednesday mornings protected.
+# They used to be hardcoded in schedule.py and brief.py, which made one
+# person's calendar part of the product. A deployment replaces them in its
+# vocabulary file (docs/32) — `"UNAVAILABLE": {}` for no restrictions at all.
+#
+# Call windows are named by their start time as HHMM; "other" is the catch-all
+# bucket for touches outside any window and is always present.
+UNAVAILABLE = {    # weekday -> windows the brief must not queue calls into
+    "thu": {"windows": "all", "reason": "Thursday — unavailable (Sisua), no calls today"},
+    "wed": {"windows": ["0800"],
+            "reason": "Wednesday morning — protected (Aito deep work), no calls before noon"},
+}
+WEEKDAY_NOTES = {  # soft context shown in the brief, never enforced
+    "mon": "Monday — historically the weakest call day",
+    "tue": "Tuesday — booking day",
+    "fri": "Friday — conversation day",
+}
+
+
+def call_windows() -> list[str]:
+    """The call windows in time order: WINDOWS without the catch-all."""
+    return sorted(w for w in WINDOWS if w != "other")
+
+
+def window_minutes(window: str) -> int:
+    """'1215' -> 735. Call windows are named by their start time."""
+    return int(window[:2]) * 60 + int(window[2:])
 DECISION_TYPES = {"call_priority", "opener_choice", "followup_timing"}
 HUMAN_ACTIONS = {"accepted", "overridden", "ignored"}
 
@@ -848,9 +877,8 @@ def contact_funnel_flags(outcomes: list[str]) -> dict[str, bool]:
 #
 # Only the sets listed in OVERRIDABLE may be replaced. The rest are STRUCTURAL:
 # code branches on their values (a deal is `won` because its stage is
-# "closed_won"; the brief picks a call window by the clock; the views are keyed
-# on todo areas), so replacing them would not configure the product, it would
-# break it. Naming one of those — or a set that does not exist — raises, rather
+# "closed_won"; the views are keyed on todo areas), so replacing them would not
+# configure the product, it would break it. Naming one of those — or a set that does not exist — raises, rather
 # than being quietly ignored and leaving an operator to wonder why their
 # vocabulary did not take.
 # The contact roles that make an account's `technical_contact` fact true — the
@@ -868,7 +896,11 @@ OVERRIDABLE = {
     "MATERIAL_TYPES", "PLATFORMS", "TONES", "POST_FORMATS", "POST_TOPICS",
     # the rest of the descriptive vocabulary
     "DECISION_TYPES", "EVENT_TYPES", "WEB_SOURCES", "DEVICES", "LANDING_PAGES",
+    # the operator's call windows (HHMM start times; "other" is added for you)
+    "WINDOWS",
 }
+# structured, not sets: validated separately below
+OVERRIDABLE_SCHEDULE = {"UNAVAILABLE", "WEEKDAY_NOTES"}
 
 
 def default_platform() -> str:
@@ -895,6 +927,7 @@ def _apply_vocabulary() -> None:
     assert isinstance(spec, dict), f"{path} must be a JSON object of SET -> [values]"
 
     g = globals()
+    schedule = {k: spec.pop(k) for k in list(spec) if k in OVERRIDABLE_SCHEDULE}
     for name, values in spec.items():
         assert name in OVERRIDABLE, (
             f"{path}: {name!r} cannot be overridden. "
@@ -907,6 +940,36 @@ def _apply_vocabulary() -> None:
 
     # PLATFORMS has an alias some call sites still use; keep them the same set.
     g["POST_CHANNELS"] = g["PLATFORMS"]
+
+    # windows are times: the brief picks one by the clock, so a name that is not
+    # an HHMM start time would break it, not configure it.
+    import re
+    g["WINDOWS"] = set(g["WINDOWS"]) | {"other"}
+    for w in g["WINDOWS"] - {"other"}:
+        assert re.fullmatch(r"([01]\d|2[0-3])[0-5]\d", w), \
+            f"{path}: WINDOWS entry {w!r} must be a start time as HHMM, e.g. '0830'"
+
+    # the schedule, after WINDOWS so its references can be checked
+    if "UNAVAILABLE" in schedule:
+        rules = schedule["UNAVAILABLE"]
+        assert isinstance(rules, dict), f"{path}: UNAVAILABLE must map weekday -> rule"
+        for day, rule in rules.items():
+            assert day in WEEKDAYS, f"{path}: UNAVAILABLE weekday {day!r} is not one of {WEEKDAYS}"
+            assert isinstance(rule, dict) and isinstance(rule.get("reason"), str) \
+                and rule["reason"].strip(), \
+                f"{path}: UNAVAILABLE.{day} needs a non-empty 'reason'"
+            wins = rule.get("windows")
+            assert wins == "all" or (isinstance(wins, list) and wins and
+                                     all(w in g["WINDOWS"] - {"other"} for w in wins)), \
+                (f"{path}: UNAVAILABLE.{day}.windows must be \"all\" or a list of your "
+                 f"call windows {sorted(g['WINDOWS'] - {'other'})}")
+        g["UNAVAILABLE"] = rules
+    if "WEEKDAY_NOTES" in schedule:
+        notes = schedule["WEEKDAY_NOTES"]
+        assert isinstance(notes, dict) and all(
+            d in WEEKDAYS and isinstance(n, str) for d, n in notes.items()), \
+            f"{path}: WEEKDAY_NOTES must map weekday -> text"
+        g["WEEKDAY_NOTES"] = notes
 
 
 _apply_vocabulary()

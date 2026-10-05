@@ -69,9 +69,9 @@ def test_a_company_brings_its_own_vocabulary(t: bt.TestCaseRun) -> None:
 
 def test_structural_sets_cannot_be_overridden(t: bt.TestCaseRun) -> None:
     t.h1("code branches on these, so replacing them would break, not configure")
-    # a deal is `won` because its stage is closed_won; the brief picks a call
-    # window by the clock; the views are keyed on todo areas.
-    for name in ["DEAL_STAGES", "TODO_AREAS", "WINDOWS", "TODO_STATUS", "USER_ROLES"]:
+    # a deal is `won` because its stage is closed_won; the views are keyed on
+    # todo areas. (WINDOWS used to be here, until the code stopped reading them.)
+    for name in ["DEAL_STAGES", "TODO_AREAS", "TODO_STATUS", "USER_ROLES"]:
         t.tln(f"{name:14} overridable: {name in schema.OVERRIDABLE}")
 
     t.h1("naming one is refused, not quietly ignored")
@@ -103,3 +103,58 @@ def test_defaults_derive_from_the_configured_vocabulary(t: bt.TestCaseRun) -> No
     t.tln(f"the POST_CHANNELS alias tracks it: {s.POST_CHANNELS == s.PLATFORMS}")
     import importlib
     importlib.reload(schema)
+
+
+def test_a_company_brings_its_own_working_week(t: bt.TestCaseRun) -> None:
+    """The call windows and the operator's week used to be hardcoded — "Thursday
+    is unavailable (Sisua)", "Wednesday morning is protected" — which made one
+    person's calendar part of the product."""
+    import importlib
+    from datetime import date
+
+    from company_ai import brief, schedule
+
+    t.h1("as shipped: this repository's operator")
+    t.tln(f"call windows: {schema.call_windows()}")
+    for day in sorted(schema.UNAVAILABLE):
+        t.tln(f"unavailable {day}: {schema.UNAVAILABLE[day]['windows']}")
+
+    t.h1("another company: different windows, no blocked days, its own rhythm")
+    s = _vocab(t, {"WINDOWS": ["0900", "1330", "1530"],
+                   "UNAVAILABLE": {},
+                   "WEEKDAY_NOTES": {"mon": "Monday — pipeline review"}})
+    importlib.reload(schedule)
+    importlib.reload(brief)
+    try:
+        t.tln(f"call windows: {s.call_windows()}  (the catch-all stays: {'other' in s.WINDOWS})")
+        t.tln(f"the brief at 08h, 12h, 16h picks: "
+              f"{[brief.current_window(h) for h in (8, 12, 16)]}")
+        thursday = date(2026, 6, 11)
+        t.tln(f"Thursday 0900 callable: {schedule.availability(thursday, '0900')[0]}")
+        t.tln(f"Monday note: {schedule.weekday_note(date(2026, 6, 8))!r}")
+    finally:
+        importlib.reload(schema)
+        importlib.reload(schedule)
+        importlib.reload(brief)
+
+
+def test_a_malformed_working_week_is_refused(t: bt.TestCaseRun) -> None:
+    import importlib
+    t.h1("each mistake names itself instead of silently doing nothing")
+    cases = {
+        "a window that is not a time": {"WINDOWS": ["morning"]},
+        "a blocked window that does not exist": {"WINDOWS": ["0900"],
+                                                 "UNAVAILABLE": {"wed": {"windows": ["0800"],
+                                                                         "reason": "x"}}},
+        "a weekday that is not one": {"UNAVAILABLE": {"wednesday": {"windows": "all",
+                                                                    "reason": "x"}}},
+        "a block with no reason": {"UNAVAILABLE": {"fri": {"windows": "all"}}},
+    }
+    for label, spec in cases.items():
+        try:
+            _vocab(t, spec)
+            t.tln(f"{label}: accepted (WRONG)")
+        except AssertionError as e:
+            t.tln(f"{label}: {str(e).split(': ', 1)[1][:110]}")
+        finally:
+            importlib.reload(schema)

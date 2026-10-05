@@ -121,7 +121,7 @@ FETCH_PAGE = "fetch_page"
 TOOLS: list[Tool] = [
     Tool("who_to_call",
          "Today's call queue for a window, ranked by Aito's probability of a good outcome.",
-         _obj({"window": {"type": "string", "enum": ["0800", "1215", "1600"]},
+         _obj({"window": {"type": "string", "enum": schema.call_windows()},
                "top_n": {"type": "integer"}}, ["window"]),
          lambda ctx, a: queries.who_to_call(ctx.aito, a["window"], top_n=a.get("top_n", 5), as_of=ctx.as_of).derived),
     Tool("opener_context",

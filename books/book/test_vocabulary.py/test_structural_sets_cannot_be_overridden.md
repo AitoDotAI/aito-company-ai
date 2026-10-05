@@ -2,7 +2,6 @@
 
 DEAL_STAGES    overridable: False
 TODO_AREAS     overridable: False
-WINDOWS        overridable: False
 TODO_STATUS    overridable: False
 USER_ROLES     overridable: False
 

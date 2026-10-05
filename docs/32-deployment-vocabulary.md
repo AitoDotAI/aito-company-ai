@@ -44,13 +44,12 @@ values:
 | how you reach them, why deals stall | `TOUCH_CHANNELS` `DEAL_BLOCKERS` |
 | what you publish, and where | `MATERIAL_TYPES` `PLATFORMS` `TONES` `POST_FORMATS` `POST_TOPICS` |
 | the rest | `DECISION_TYPES` `EVENT_TYPES` `WEB_SOURCES` `DEVICES` `LANDING_PAGES` |
+| when you call | `WINDOWS` — and the schedule below |
 
 **Structural, and refused** — code branches on these values, so replacing them
 would not configure the product, it would break it:
 
 - `DEAL_STAGES` — a deal is `won` *because* its stage is `closed_won`.
-- `WINDOWS` — the brief picks a call window from the clock (`brief.py`), and
-  `schedule.py` has rules keyed to specific windows.
 - `TODO_AREAS` — the dashboard's views are keyed on them.
 - every `*_STATUS`, `USER_ROLES`, `LINKED_TYPES` — lifecycle and permission
   logic.
@@ -60,8 +59,8 @@ ignored and leaving you to wonder why your vocabulary did not take. Same for a
 set that does not exist at all.
 
 Widening this list is a real piece of work, not a config change: it means
-removing the code's dependency on the values first. `WINDOWS` is the clearest
-candidate and the clearest warning — five modules read `"0800"` directly.
+removing the code's dependency on the values first. `WINDOWS` was the example —
+until it was done (below).
 
 ## Defaults derive from your vocabulary
 
@@ -123,3 +122,29 @@ resolved from what is loaded, by an Aito query:
 On the shipped seed these resolve to exactly the values the cards always used,
 so the demo is unchanged. On an empty instance they fall back to *your*
 configured vocabulary rather than to ours.
+
+## Your working week
+
+The call windows and the operator's week used to be hardcoded: six modules read
+`"0800"` directly, and `schedule.py` said *"Thursday is unavailable (Sisua)"* —
+one person's calendar, compiled into the product. They are configuration now:
+
+```json
+{
+  "WINDOWS":       ["0900", "1330", "1530"],
+  "UNAVAILABLE":   {"fri": {"windows": ["1530"], "reason": "Friday afternoon — team time"}},
+  "WEEKDAY_NOTES": {"mon": "Monday — pipeline review"}
+}
+```
+
+- **`WINDOWS`** are named by their start time as `HHMM`; that is what lets the
+  brief pick one by the clock (the nearest window to the hour). `"other"`, the
+  bucket for touches outside any window, is added for you.
+- **`UNAVAILABLE`** maps a weekday to `"all"` or a list of your windows, plus the
+  reason the brief shows instead of a call queue. `{}` means no restrictions.
+- **`WEEKDAY_NOTES`** is soft context in the brief, never enforced.
+
+Unset, all three keep this repository's operator's week, so nothing changes for
+an existing deployment. A window that is not a time, a block on a window you do
+not have, a weekday that is not one, or a block with no reason are each refused
+with a message naming the mistake.

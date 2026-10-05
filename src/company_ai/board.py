@@ -36,7 +36,7 @@ def _funnels(client, as_of):
 
 def _who(client, as_of):
     return {w: queries.who_to_call(client, w, top_n=5, as_of=as_of).derived
-            for w in ("0800", "1215", "1600")}
+            for w in schema.call_windows()}
 
 
 # experiments has its own read (experiment_board), so week prep takes the lanes.

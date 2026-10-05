@@ -24,7 +24,6 @@ GOOD_OUTCOMES = ["conversation", "meeting_booked", "callback_requested"]
 OPENER_OUTCOMES = ["conversation", "meeting_booked"]
 RETOUCH_COOLDOWN_DAYS = 5
 FOLLOWUP_HORIZON_DAYS = 3  # the 72h email->call rule
-CALL_WINDOWS = {"0800", "1215", "1600"}
 
 
 @dataclass
@@ -101,7 +100,7 @@ def who_to_call(
         c for c in contacts
         if c["contact_id"] not in pending
         and c["contact_id"] not in recently_touched
-        and (c["phone_present"] or window not in CALL_WINDOWS)
+        and (c["phone_present"] or window not in schema.call_windows())
     ]
 
     ranked = []
