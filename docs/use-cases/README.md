@@ -24,11 +24,8 @@ look at and one you ask.
 > people, synthetic deals, all of it in [`data/seed`](../../data/seed). No
 > real contacts appear anywhere in this repository.
 
-Run the same thing locally in about a minute:
-
-```sh
-./do install && ./do seed && ./do start     # → http://localhost:8770
-```
+Run the same thing locally in about ten minutes — the steps are on the
+[front page](../../README.md#try-it).
 
 ---
 
