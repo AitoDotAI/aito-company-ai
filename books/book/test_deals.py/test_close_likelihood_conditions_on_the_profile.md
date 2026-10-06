@@ -1,14 +1,14 @@
 # champion_present: the query-string spelling equals the Boolean
 
-True -> 0.584 (n=25);  'true' -> 0.584
+True -> 0.583 (n=25);  'true' -> 0.583
 
 # the champion moves the answer
 
-champion -> 0.584;  no champion -> 0.295 (n=29)
+champion -> 0.583;  no champion -> 0.297 (n=29)
 
 # stage is not evidence: the closed history holds no open stage
 
-  lead=0.584  qualified=0.584  demo=0.584  pilot=0.584  negotiation=0.584
+  lead=0.583  qualified=0.583  demo=0.583  pilot=0.583  negotiation=0.583
 
 # a blocker no closed deal has is left out, and says so
 

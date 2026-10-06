@@ -3,9 +3,9 @@
 DO NEXT (today, all areas)
   P1 Reference ask with Nimbus GmbH  (due 2026-06-16)
   P1 Predictive-DB benchmark  (rnd)
-  P2 Set up the customer-proof experiment  (experiments)  ⚠ slip 61%
-  P3 Ship the customer-proof post  (due 2026-06-12)  ⚠ slip 50%
-  P3 Nimbus GmbH license renewal window  (due 2026-06-15)  ⚠ slip 58%
+  P2 Set up the customer-proof experiment  (experiments)  ⚠ slip 63%
+  P3 Ship the customer-proof post  (due 2026-06-12)
+  P3 Nimbus GmbH license renewal window  (due 2026-06-15)  ⚠ slip 56%
 
 FOLLOW-UPS (due)
   Zara Wells, Genco Oy  call back  due 2026-06-03
