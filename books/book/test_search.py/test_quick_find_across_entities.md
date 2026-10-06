@@ -3,6 +3,5 @@
   [company] 'Genco Oy' -> company/genco-oy
   [note] 'Genco account plan' -> documents/sdc001
   [note] 'Daily note — Genco pilot kickoff' -> documents/sdc002
-  [todo] 'Call Genco Oy before the window closes' -> sales
   [contact] 'Judy Frost' -> company/genco-oy
   [contact] 'Yvonne Snow' -> company/genco-oy

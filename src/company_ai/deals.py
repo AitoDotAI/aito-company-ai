@@ -16,6 +16,7 @@ two can be compared — where they diverge is the interesting signal.
 from dataclasses import dataclass, field
 from datetime import date
 
+from . import clock
 from . import aitowhy, history, schema
 from .aito import AitoClient
 
@@ -208,7 +209,7 @@ def pipeline(client: AitoClient, as_of: date | None = None, predict: bool = True
     over the operator's own probability and touch dates. The dashboard uses it
     to paint the pipeline immediately, then fills each deal's close-likelihood
     in lazily via `close_likelihood` (GET /api/pwin)."""
-    as_of = as_of or date.today()
+    as_of = as_of or clock.today()
     result = Result()
     deals = _fetch_open(client, result)
 

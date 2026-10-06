@@ -4,6 +4,7 @@
 // fabricated data (the repo's weak-and-honest rule). The analytics surfaces
 // we *can* back with Aito today are fully live.
 import React, { useState, useEffect, useRef } from "react";
+import { todayIso } from "./clock.js";
 import { api, pct } from "./api.js";
 import { Block, KpiRow, FunnelChart, QuarterBars, WhyList, Levers, BarRow, Select,
          ActionPipeline, ActionCalendar, WeekCalendar, useAsync, useIsPhone, Loading, ErrorBox } from "./primitives.jsx";
@@ -122,7 +123,7 @@ export function QuickAdd({ defaultArea, onAdded }) {
   const [area, setArea] = useState(defaultArea);
   const areaTouched = useRef(false);
   const [stakeholderId, setStakeholderId] = useState("");
-  const [due, setDue] = useState(() => new Date().toISOString().slice(0, 10));
+  const [due, setDue] = useState(() => todayIso());
   const [slot, setSlot] = useState("10:30");
   const [infer, setInfer] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -522,11 +523,22 @@ function FunnelBody({ name, slice }) {
         <FunnelChart stages={d.stages} leak={d.leak} />
       </Block>
       <Block title="Aito read" ptype="predict">
-        <div className="gauge">
-          <div className={"p " + (d.outlook.p >= 0.5 ? "win" : d.outlook.p >= 0.2 ? "mid" : "low")}>
-            {pct(d.outlook.p)}</div>
-          <div className="lbl">Aito's P({d.deepest_label}) for this slice</div>
-        </div>
+        {/* With no rows at the top of the funnel there is nothing to learn from,
+            and Aito's answer is its uninformed prior — 50%. Shown as a reading
+            (in the "winning" colour, no less) that is a number from nothing. The
+            same happens for any slice that filters down to zero rows. */}
+        {!(d.stages[0] && d.stages[0].count) ? (
+          <div className="gauge">
+            <div className="p none">—</div>
+            <div className="lbl">no data in this slice yet, so no P({d.deepest_label}) to read</div>
+          </div>
+        ) : (
+          <div className="gauge">
+            <div className={"p " + (d.outlook.p >= 0.5 ? "win" : d.outlook.p >= 0.2 ? "mid" : "low")}>
+              {pct(d.outlook.p)}</div>
+            <div className="lbl">Aito's P({d.deepest_label}) for this slice</div>
+          </div>
+        )}
         <div className="section-title">Why it leaks</div>
         <WhyList items={d.causes} />
         {d.lever && (<>
@@ -549,14 +561,28 @@ function PostsBoard() {
   const mats = useAsync(() => api.table("materials"), []);
   const chans = useAsync(() => api.table("channels"), []);
   if (posts.loading || mats.loading || chans.loading) return <Loading label="Loading posts…" />;
-  // a missing table (instance not migrated to the marketing model yet) degrades
-  // to a friendly empty, not a broken view
-  if (posts.err || mats.err || chans.err)
-    return <div className="empty">No posts yet — add materials, channels and posts
-      (or run <code>./do migrate</code> if this instance predates the marketing model).</div>;
+  // An error is NOT an empty state. This board reads raw tables, which the role
+  // guard restricts to the operator, so a viewer without that role was being
+  // shown "nothing published yet" over a full table — the view looked bare and
+  // the real reason was hidden (rule 3: never swallow the surprise).
+  const err = posts.err || mats.err || chans.err;
+  if (err)
+    return /operator only|restricted/i.test(err)
+      ? <div className="empty">
+          <strong>Sign in as the operator to see this board.</strong>
+          <span>Posts, materials and channels are operator-only, so this view is
+            hidden rather than empty — there may well be posts behind it.</span>
+        </div>
+      : <ErrorBox msg={err} />;
   const mt = Object.fromEntries(mats.data.rows.map((m) => [m.material_id, m.title]));
   const ch = Object.fromEntries(chans.data.rows.map((c) => [c.channel_id, c.name]));
   const rows = posts.data.rows;
+  if (!rows.length)
+    return <div className="empty">
+      <strong>Nothing published yet.</strong>
+      <span>This board compares the same material across channels, so what works
+        where becomes visible as soon as a piece runs in more than one place.</span>
+    </div>;
   const by = (s) => rows.filter((r) => r.status === s).length;
   return (
     <>
@@ -1437,7 +1463,7 @@ const NOTE_DRAFT_KEY = "note-draft";
 const blankNote = () => ({
   title: "", body: "", kind: "internal", area: "", company: "",
   stakeholder_id: "", topics: "",
-  noted_on: new Date().toISOString().slice(0, 10),
+  noted_on: todayIso(),
 });
 
 export function NoteCreate() {
@@ -2069,6 +2095,9 @@ function GraphAnswer({ a }) {
   );
 }
 
+// "a CTO", "an IT Manager" — the role is this deployment's, so is its article
+const article = (w) => (w && /^[aeiou]/i.test(w) ? "an " : "a ") + (w || "technical contact");
+
 export function GraphView() {
   const r = useAsync(() => api.graph(), []);
   return (
@@ -2081,11 +2110,12 @@ export function GraphView() {
         {r.data && r.data.conditioned_p != null && r.data.baseline_p != null && (
           <div className="gq-finding">
             And the neighbourhood can condition a <b>prediction</b>: a deal at an
-            account where we know a CTO closes at{" "}
+            account where we know {article(r.data.technical_role)} closes at{" "}
             <b>{Math.round(r.data.conditioned_p * 100)}%</b>, against a{" "}
             {Math.round(r.data.baseline_p * 100)}% base rate across closed deals.
-            Whether a CTO is on file exists nowhere on the deal — only across the
-            link. Both figures come from the queries on this page.
+            Whether {article(r.data.technical_role)} is on file exists nowhere on the
+            deal — only across the link. Both figures come from the queries on this
+            page.
           </div>
         )}
       </div>
@@ -2098,9 +2128,30 @@ export function GraphView() {
               {r.data.failed.length} of {r.data.answers.length} queries failed: {r.data.failed.join(", ")}
             </div>
           )}
-          <div className="gq-grid">
-            {r.data.answers.map((a) => <GraphAnswer key={a.id} a={a} />)}
-          </div>
+          {r.data.answers.length > 0 && r.data.answers.every((a) => !a.total) ? (
+            // An empty instance answered every question with "no rows". That is
+            // honest, but nine cards of query JSON ending in "0 ROWS" read as a
+            // broken page on a first visit. Say what the page needs instead, and
+            // keep the queries one click away — they are the instructive part.
+            <>
+              <div className="empty">
+                <strong>The graph is built from your accounts, people and deals.</strong>
+                <span>There are none yet. Load or add some and every question on this
+                  page answers itself — each one is a single Aito query that walks
+                  the links between them.</span>
+              </div>
+              <details className="gq-preview">
+                <summary>See the {r.data.answers.length} questions and the queries behind them</summary>
+                <div className="gq-grid">
+                  {r.data.answers.map((a) => <GraphAnswer key={a.id} a={a} />)}
+                </div>
+              </details>
+            </>
+          ) : (
+            <div className="gq-grid">
+              {r.data.answers.map((a) => <GraphAnswer key={a.id} a={a} />)}
+            </div>
+          )}
         </>
       )}
     </>
@@ -2323,12 +2374,34 @@ function usePwin(deals) {
   });
 }
 
-function WhoToReach() {
+// A rate over nothing is not zero. 0 of 0 closed deals is "no data yet", and
+// showing 0% tells someone who has simply not loaded anything that they never
+// win — confident-and-fabricated, the one thing CLAUDE.md calls a defect.
+function winRateKpi(t) {
+  if (!t) return { label: "win rate", value: "…", sub: "" };
+  if (!t.closed) return { label: "win rate", value: "—", sub: "no closed deals yet" };
+  return { label: "win rate", value: pct(t.win_rate), sub: `${t.won}/${t.closed} closed` };
+}
+function cycleKpi(t) {
+  if (!t) return { label: "avg cycle", value: "…", sub: "won deals" };
+  if (!t.won) return { label: "avg cycle", value: "—", sub: "no won deals yet" };
+  return { label: "avg cycle", value: t.avg_cycle_days + "d", sub: "won deals" };
+}
+
+function WhoToReach({ openDeals }) {
   const r = useAsync(() => api.whoToReach(), []);
   const rows = usePwin(r.data?.rows);   // fill p_win lazily from the shared cache
   if (r.loading) return <Loading />;
   if (r.err) return <ErrorBox msg={r.err} />;
-  if (!rows.length) return <div className="empty">No stalled deals — the pipeline is warm.</div>;
+  if (!rows.length)
+    return openDeals === 0
+      ? <div className="empty">
+          <strong>No open deals yet.</strong>
+          <span>Once deals are in the pipeline, the ones going cold surface here,
+            ranked by how likely they still are to close.</span>
+        </div>
+      : <div className="empty">Nothing has gone cold — every open deal was touched
+          in the last two weeks.</div>;
   const ranked = [...rows].sort((a, b) => (b.p_win ?? -1) - (a.p_win ?? -1)).slice(0, 8);
   return (
     <div className="co-list">
@@ -2369,10 +2442,10 @@ function SalesAnalytics() {
   return (
     <>
       <KpiRow items={[
-        { label: "win rate", value: t ? pct(t.win_rate) : "…", sub: t ? `${t.won}/${t.closed} closed` : "" },
+        winRateKpi(t),
         { label: "weighted pipeline (own %)", value: eur(kpis.weighted_pipeline), sub: "Σ value × your probability, not Aito's" },
         { label: "open value", value: eur(kpis.open_value), sub: `${kpis.open_deals} open` },
-        { label: "avg cycle", value: t ? t.avg_cycle_days + "d" : "…", sub: "won deals" },
+        cycleKpi(t),
         { label: "stalled", value: kpis.stalled, sub: "no touch > 14d" },
       ]} />
       {t && t.quarters.length > 0 && (
@@ -2382,6 +2455,7 @@ function SalesAnalytics() {
       )}
       <div className="cols">
         <Block title="Pipeline by stage" ptype="predict">
+          {!stages.length && <div className="empty">No open deals yet.</div>}
           <div className="list">
             {stages.map((s) => (
               <BarRow key={s.stage} name={`${s.stage} · ${s.count}`} p={s.frac}
@@ -2391,7 +2465,7 @@ function SalesAnalytics() {
           </div>
         </Block>
         <Block title="Who to reach now" ptype="who_to_reach">
-          <WhoToReach />
+          <WhoToReach openDeals={kpis.open_deals} />
         </Block>
       </div>
       <FunnelView only="sales" />
@@ -2415,9 +2489,9 @@ function Overview() {
     <>
       <KpiRow items={[
         { label: "weighted pipeline (own %)", value: eur(kpis.weighted_pipeline), sub: "Σ value × your probability, not Aito's" },
-        { label: "win rate", value: t ? pct(t.win_rate) : "…", sub: t ? `${t.won}/${t.closed} closed` : "" },
+        winRateKpi(t),
         { label: "open deals", value: kpis.open_deals, sub: eur(kpis.open_value) },
-        { label: "avg cycle", value: t ? t.avg_cycle_days + "d" : "…", sub: "won deals" },
+        cycleKpi(t),
         { label: "paid conversions", value: paid ?? "…", sub: "website funnel" },
         { label: "stalled", value: kpis.stalled, sub: "no touch > 14d" },
       ]} />
@@ -2426,6 +2500,7 @@ function Overview() {
       )}
       <div className="cols">
         <Block title="Pipeline by stage" ptype="predict">
+          {!stages.length && <div className="empty">No open deals yet.</div>}
           <div className="list">
             {stages.map((s) => (
               <BarRow key={s.stage} name={`${s.stage} · ${s.count}`} p={s.frac}
@@ -2434,7 +2509,7 @@ function Overview() {
             ))}
           </div>
         </Block>
-        <Block title="Who to reach now" ptype="who_to_reach"><WhoToReach /></Block>
+        <Block title="Who to reach now" ptype="who_to_reach"><WhoToReach openDeals={kpis.open_deals} /></Block>
       </div>
     </>
   );
@@ -2452,7 +2527,7 @@ export const VIEWS = {
            prims: ["action-pipeline"],
            data: [{ table: "todos", label: "all todos" }],
            render: () => <Block title="Do next" ptype="action-pipeline"><NowAction /></Block> },
-  sales: { title: "Sales", desc: "The sales to-do list, the pipeline, the companies behind it, this week's calls, and the funnel.",
+  sales: { title: "Sales", desc: "The sales to-do list, the pipeline, the companies behind it, this week's calls, and the analytics over all of it.",
            prims: ["action-pipeline", "action-calendar", "kpi-row", "chart"],
            data: [{ table: "deals" }, { table: "contacts" }, { table: "touches" }],
            docsArea: "sales",
@@ -2465,18 +2540,23 @@ export const VIEWS = {
                render: () => <Companies /> },
              { id: "calls", label: "Calls",
                render: () => <Block title="This week" ptype="action-calendar"><AreaAction area="sales" lens="calendar" /></Block> },
-             { id: "funnel", label: "Funnel",
-               render: () => <FunnelView only="sales" /> },
+             { id: "analytics", label: "Analytics",
+               render: () => <SalesAnalytics /> },
            ] },
-  marketing: { title: "Marketing", desc: "What to ship to which channel, the go/no-go board, then the formula behind reach.",
+  marketing: { title: "Marketing", desc: "What to ship this week, how the same material performed across channels, where the website funnel leaks, and how a draft is likely to do before you publish it.",
            prims: ["action-calendar", "kpi-row", "chart", "optimizer"],
            data: [{ table: "posts" }, { table: "materials" }, { table: "channels" }, { table: "sessions" }],
            docsArea: "marketing",
-           render: () => (<>
-             <Block title="This week" ptype="action-calendar"><AreaAction area="marketing" lens="calendar" /></Block>
-             <Block title="Posts — material × channel" ptype="kpi-row"><PostsBoard /></Block>
-             <FunnelView only="website" />
-             <Block title="Post scorer" ptype="optimizer"><Scorer /></Block></>) },
+           tabs: [
+             { id: "todo", label: "To do",
+               render: () => <Block title="This week"><AreaAction area="marketing" lens="calendar" /></Block> },
+             { id: "posts", label: "Posts",
+               render: () => <Block title="Posts — material × channel"><PostsBoard /></Block> },
+             { id: "analytics", label: "Analytics",
+               render: () => <FunnelView only="website" /> },
+             { id: "scorer", label: "Scorer",
+               render: () => <Block title="Score a draft before you post it"><Scorer /></Block> },
+           ] },
   mywork: { title: "My work", desc: "The leads, deals, and tasks assigned to you — your focused lane over the shared CRM. Reassign here; the operator or the agent can assign to anyone.",
            prims: ["kpi-row", "action-pipeline"],
            render: () => <MyWork /> },
@@ -2525,7 +2605,7 @@ export const VIEWS = {
   search: { title: "Search", desc: "Smart search across content — docs, contacts, and deals — ranked by Aito text-match relevance. The same index the assistant grounds on.",
            prims: ["document-tree"],
            render: (param) => <SearchView initial={param} /> },
-  salesanalytics: { title: "Sales analytics", desc: "Pipeline health, close-likelihood by stage, who to reach, and the sales funnel with its lever — the sales counterpart to the marketing metrics.",
+  salesanalytics: { title: "Sales analytics", desc: "Pipeline health, close-likelihood by stage, who to reach, and the sales funnel with its lever. Also the Analytics tab of the Sales view, which is where it is normally reached.",
            prims: ["kpi-row", "predict", "chart"],
            data: [{ table: "deals" }, { table: "contacts" }],
            render: () => <SalesAnalytics /> },

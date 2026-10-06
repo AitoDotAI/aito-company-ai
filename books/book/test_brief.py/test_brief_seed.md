@@ -1,11 +1,11 @@
 # brief --no-llm, seed, window 0800
 
 DO NEXT (today, all areas)
-  P1 Call Delos Ab before the window closes  (overdue)
-  P3 Follow-up call with Lumon Oy  (overdue)  ⚠ slip 73%
-  P3 Repurpose customer-proof for LinkedIn  (overdue)
-  P1 Follow-up call with Pied Oy  (due 2026-06-15)
+  P3 Call Pied Oy before the window closes  (overdue)  ⚠ slip 72%
+  P1 Repurpose product for LinkedIn  (due 2026-06-15)
   P1 Ship the customer-proof post  (due 2026-06-16)
+  P1 Send pricing context to Pymt Oy  (due 2026-06-18)
+  P1 pg_infer extension  (rnd)
 
 FOLLOW-UPS (due)
   Frank Knight, Rekall BV  send one-pager  due 2026-04-17

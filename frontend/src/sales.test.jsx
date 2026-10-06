@@ -49,9 +49,9 @@ describe("TabbedView", () => {
 });
 
 describe("Sales view", () => {
-  it("declares To do · Pipeline · Companies · Calls · Funnel tabs", () => {
+  it("declares To do · Pipeline · Companies · Calls · Analytics tabs", () => {
     expect(VIEWS.sales.tabs.map((t) => t.label))
-      .toEqual(["To do", "Pipeline", "Companies", "Calls", "Funnel"]);
+      .toEqual(["To do", "Pipeline", "Companies", "Calls", "Analytics"]);
   });
 
   it("Companies tab rolls up companies with contact count + pipeline", async () => {
@@ -154,8 +154,56 @@ describe("Sales analytics view", () => {
     await waitFor(() => expect(screen.getByText(/Lever: source/)).toBeInTheDocument());
   });
 
-  it("is registered as its own view in the analytics lane", () => {
+  it("on an empty instance, says 'no data yet' instead of 0% and a warm pipeline", async () => {
+    // A rate over nothing is not zero: 0 of 0 closed deals rendered as "0%"
+    // tells a newcomer they never win, and "the pipeline is warm" over zero
+    // deals is a claim. This is the first screen someone sees after install.
+    api.deals.mockResolvedValue({
+      kpis: { weighted_pipeline: 0, open_value: 0, open_deals: 0, stalled: 0 }, deals: [] });
+    api.whoToReach.mockResolvedValue({ as_of: "2026-10-04", count: 0, rows: [] });
+    api.salesTrend.mockResolvedValue({
+      win_rate: 0, avg_cycle_days: 0, won: 0, closed: 0, quarters: [] });
+    // funnel definitions live in code, so an empty instance still serves them
+    api.funnelCatalog.mockResolvedValue({ funnels: [
+      { key: "sales", label: "Sales funnel", dimensions: ["segment"], values: { segment: [] } }] });
+    api.funnel.mockResolvedValue({
+      deepest_label: "meeting", outlook: { p: 0.5, why: [] }, causes: [], leak: null, lever: null,
+      stages: [{ key: "all", label: "Contacts", count: 0, rate_of_top: null }] });
+
+    render(VIEWS.salesanalytics.render());
+    expect(await screen.findByText("no closed deals yet")).toBeInTheDocument();
+    expect(screen.getByText("no won deals yet")).toBeInTheDocument();
+    expect(screen.queryByText("0%")).toBeNull();
+    expect(screen.queryByText("0d")).toBeNull();
+    await waitFor(() => expect(screen.getAllByText("No open deals yet.").length).toBeGreaterThan(0));
+    expect(screen.queryByText(/pipeline is warm/)).toBeNull();
+    // and the funnel does not present Aito's zero-row prior as a 50% reading
+    expect(await screen.findByText(/no data in this slice yet/)).toBeInTheDocument();
+    expect(screen.queryByText("50%")).toBeNull();
+  });
+
+  it("is still routable on its own, for deep links", () => {
     expect(VIEWS.salesanalytics).toBeTruthy();
     expect(VIEWS.salesanalytics.title).toBe("Sales analytics");
+  });
+});
+
+describe("an area view owns its own analytics", () => {
+  // The rule this encodes: marketing analytics used to sit inline in the
+  // Marketing page while sales analytics was a separate nav entry, so the two
+  // work areas were shaped differently and the sales funnel appeared twice.
+  // Each area now carries an Analytics tab, and the ANALYTICS nav group is for
+  // cross-area views only.
+  it("gives Sales and Marketing the same tab shape", () => {
+    for (const key of ["sales", "marketing"]) {
+      const labels = VIEWS[key].tabs.map((t) => t.label);
+      expect(labels[0]).toBe("To do");
+      expect(labels).toContain("Analytics");
+    }
+  });
+
+  it("declares Marketing tabs, so the page is not one long scroll", () => {
+    expect(VIEWS.marketing.tabs.map((t) => t.label))
+      .toEqual(["To do", "Posts", "Analytics", "Scorer"]);
   });
 });

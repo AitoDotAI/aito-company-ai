@@ -22,15 +22,16 @@ from company_ai.config import SEED_DIR, Config
 
 AS_OF = date(2026, 6, 14)
 SLIP_KEY = ("sales", "high", "prep_needed")
-# Engine v2.11.1: a nested `from` restricts single-feature evidence exactly, but
-# with two features (here area & prep_status) part of the joint statistic is
-# still counted over the whole table, so rows outside the population move P a
-# little (0.5630 -> 0.5662 on the seed). Reported to core; listed, not hidden.
-# The graph's two link questions cannot use a nested `from` on v2.11.1 at all (a
-# link path inside one is a 400, graph.LINK_IN_NESTED_FROM), so they still learn
-# from every deal, and an open deal read as False moves them.
-ENGINE_LEAK = {f"todos slip {'/'.join(SLIP_KEY)}",
-               "graph conditioned_p (CTO on file)", "graph explained-odds p"}
+# Engine v2.11.1 had a two-feature leak: with a nested `from`, part of the joint
+# statistic (area & prep_status here) was still counted over the whole table,
+# so open todos moved slip-risk a little. Reported to core; FIXED in v2.11.4 —
+# this canary caught the fix on 2026-10-06 and the entry was removed, as the
+# assertion below asks. (Instances still on 2.11.2 keep the leak.)
+# The graph's two link questions still cannot use a nested `from` (a link path
+# inside one is a 400, graph.LINK_IN_NESTED_FROM), so they learn from every
+# deal, and an open deal read as False moves them. That is a workaround's
+# limit, not the leak, and it stays listed until the graph can restrict.
+ENGINE_LEAK = {"graph conditioned_p (CTO on file)", "graph explained-odds p"}
 
 
 def _client() -> AitoClient:

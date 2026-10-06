@@ -1,5 +1,5 @@
 event_id,name,type,starts,location,cost_eur,status,decided,outcome,notes,created
-yv001,ML Connect 2026,conference,2026-05-15,Helsinki,300,candidate,,,,2026-04-02
 yv004,Indie Hackers 2026,conference,2026-08-17,Berlin,300,candidate,,,,2026-03-23
+yv002,DevMeetup 2026,webinar,2026-09-10,online,0,attended,2026-09-05,neutral,post-event notes,2026-05-09
+yv001,Postgres Conf 2026,conference,2026-09-17,online,0,no_go,2026-08-28,,low fit for the cost,2026-02-27
 yv003,ML Connect 2026,webinar,2026-10-04,Helsinki,600,candidate,,,,2026-03-27
-yv002,DevMeetup 2026,webinar,2026-10-07,Stockholm,0,attended,2026-10-02,neutral,post-event notes,2026-05-09

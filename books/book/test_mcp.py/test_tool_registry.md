@@ -6,7 +6,7 @@
 params: ['top_n', 'window']
 required: ['window']
 Today's call queue for a window (0800, 1215, 1600), ranked by Aito's
-    calibrated probability of a good outcome. Weak $p on small data is
+    probability of a good outcome. Weak $p on small data is
     expected and shown as-is.
 
 ## opener_context
@@ -80,11 +80,11 @@ Add a new opportunity to the pipeline (writes to the live Aito
 
 ## add_todo
 
-params: ['action_type', 'area', 'due_date', 'linked_id', 'linked_type', 'owner', 'prep_status', 'priority', 'role', 'stakeholder_id', 'status', 'title', 'window']
+params: ['action_type', 'area', 'detail', 'due_date', 'linked_id', 'linked_type', 'owner', 'prep_status', 'priority', 'role', 'slot', 'stakeholder_id', 'status', 'title', 'window']
 required: ['area', 'priority', 'title']
-Add an action to the todos table (live Aito). area: sales/distribution/
+Add an action to the todos table (live Aito). area: sales/marketing/
     operations/rnd/experiments (operations is the catch-all). priority
-    1=highest. Sales/distribution need a due_date (ISO) + window; the others
+    1=highest. Sales/marketing need a due_date (ISO) + window; the others
     must not. action_type: call/email/meeting/message/research/admin/post/ship.
     A todo may link a deal (linked_type='deal', linked_id=<deal_id>) and a
     stakeholder (stakeholder_id=<contact_id>); both are validated live.
@@ -94,6 +94,11 @@ Add an action to the todos table (live Aito). area: sales/distribution/
     inside that lane ('core-a'), for a role run by several agents: assignment
     is up front, because there is no safe self-service claim on this instance
     (see docs/12). Leave it null for a lane worked by a single agent.
+
+    `detail` is the body of the ticket: the title is the headline, the detail is
+    the brief that lets another agent pick the work up cold. Set it HERE — it
+    used to be reachable only through update_todo, which cost two calls for
+    every ticket and left briefs unwritten.
 
     When an agent finishes, it sets status='review', not 'done' — a person
     closes the todo, so agent work does not self-certify.
@@ -149,7 +154,7 @@ The go/no-go on an event (live Aito). status: go / no_go / attended (or
 
 ## update_todo
 
-params: ['append_detail', 'changes', 'todo_id']
+params: ['append_detail', 'changes', 'return_detail', 'todo_id']
 required: ['todo_id']
 Edit an existing todo (live Aito). `changes` maps field→value for any of
     area, title, action_type, status, priority, due_date, window, linked_id,
@@ -168,15 +173,22 @@ Edit an existing todo (live Aito). `changes` maps field→value for any of
     ClaimTaken: a takeover is release-then-claim, two deliberate steps.
 
     Safe to call from several agents at once: only the changed fields of this
-    one row are written, version-checked, so concurrent edits compose. Returns
-    the todo as read back after the write; an error means it did not persist.
+    one row are written, version-checked, so concurrent edits compose.
+
+    RETURNS `{todo_id, rev, status}` — deliberately small. A long ticket's
+    `detail` runs to thousands of words, and echoing it back on every append
+    cost the agent lanes 3-6k tokens per call for a response they only needed
+    in order to confirm. `rev` is the version the write landed on, so a
+    non-error return still proves it persisted; a failed write RAISES and
+    never returns. Pass `return_detail=True` for the full row when you
+    actually want to read the todo back.
 
 ## classify_todo
 
 params: ['given', 'title']
 required: ['title']
 Suggest a new todo's blank fields from its title: Aito predicts `area`
-    and `action_type` (with calibrated $p) from the title's words, and a
+    and `action_type` (with its $p) from the title's words, and a
     literal scan offers candidate stakeholders (contacts named/companied in
     the title). Advisory — confirm before add_todo; weak on thin data.
 
@@ -236,7 +248,7 @@ params: []
 required: []
 The open sales pipeline ranked by weighted value (value × the
     operator's probability), with KPIs (weighted pipeline, open value,
-    stalled count) and, per deal, Aito's calibrated close-likelihood
+    stalled count) and, per deal, Aito's close-likelihood
     (P(won) learned from closed-deal history) with its $why, plus a
     stalled flag. Where Aito's p_win diverges from the operator's own
     probability is the signal to look at.
@@ -348,7 +360,7 @@ A predictive funnel. name is 'website' (acquisition: visitor → signup
     conversation → meeting). `slice` filters by the funnel's dimensions
     (website: source/campaign/device/country/landing_page; sales: segment/
     tier/ai_lifecycle/source). Returns stage counts and step conversion, the
-    biggest-drop leak, Aito's calibrated outlook for the deepest stage, the
+    biggest-drop leak, Aito's outlook for the deepest stage, the
     causes of the leak (_relate), and the lever that moves it (_recommend).
 
 ## documents_list
@@ -420,9 +432,17 @@ The team roster (docs/27): each user's id, name, email, role, active. Use
 
 params: ['entity', 'entity_id', 'user_id']
 required: ['entity', 'entity_id']
-Assign a work item to a user (docs/27). `entity` is contacts|todos|deals;
+Assign a work item to a USER (docs/27). `entity` is contacts|todos|deals;
     `user_id` from list_users, or omit/null to unassign. Ownership lives in a
     join table, so the CRM tables are untouched. Validated (rule 3).
+
+    NOT the same thing as a todo's `owner`, and this tool never touches it.
+    Two separate concepts, deliberately:
+      * `assign` / `my_work`  — which PERSON a work item belongs to (join table)
+      * `claim_todo` / `owner` — which AGENT INSTANCE is working it (row column)
+    So `assign(..., None)` does NOT release an agent's claim. To release a
+    claim use `update_todo(todo_id, {"owner": ""})`; to hand work to a lane
+    rather than an instance, set `role`.
 
 ## my_work
 
@@ -438,15 +458,15 @@ required: []
 The cross-area action surface: the most urgent open todos right now,
     ranked by overdue-ness, then priority, then due-date proximity. This is
     the 'Now' view and the action core of the morning brief — what to do
-    next across sales, distribution, operations, and R&D.
+    next across sales, marketing, operations, and R&D.
 
 ## todos_area
 
 params: ['area']
 required: ['area']
-Todos for one area. Sales and distribution come back laid out by date
+Todos for one area. Sales and marketing come back laid out by date
     (the calendar lens); operations and R&D come back ranked by priority
-    (the pipeline lens). area: sales, distribution, operations, rnd.
+    (the pipeline lens). area: sales, marketing, operations, rnd, experiments.
 
 ## score_post
 

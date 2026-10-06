@@ -624,6 +624,36 @@ OUTCOMES = {
     "no_reply",
 }
 WEEKDAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+
+# The operator's week. These defaults are THIS repository's operator
+# (operator-ground-truth.md §1): Thursdays away, Wednesday mornings protected.
+# They used to be hardcoded in schedule.py and brief.py, which made one
+# person's calendar part of the product. They apply only when no vocabulary
+# file is configured; any deployment that brings one starts from an empty week
+# and sets its own (docs/32).
+#
+# Call windows are named by their start time as HHMM; "other" is the catch-all
+# bucket for touches outside any window and is always present.
+UNAVAILABLE = {    # weekday -> windows the brief must not queue calls into
+    "thu": {"windows": "all", "reason": "Thursday — unavailable (Sisua), no calls today"},
+    "wed": {"windows": ["0800"],
+            "reason": "Wednesday morning — protected (Aito deep work), no calls before noon"},
+}
+WEEKDAY_NOTES = {  # soft context shown in the brief, never enforced
+    "mon": "Monday — historically the weakest call day",
+    "tue": "Tuesday — booking day",
+    "fri": "Friday — conversation day",
+}
+
+
+def call_windows() -> list[str]:
+    """The call windows in time order: WINDOWS without the catch-all."""
+    return sorted(w for w in WINDOWS if w != "other")
+
+
+def window_minutes(window: str) -> int:
+    """'1215' -> 735. Call windows are named by their start time."""
+    return int(window[:2]) * 60 + int(window[2:])
 DECISION_TYPES = {"call_priority", "opener_choice", "followup_timing"}
 HUMAN_ACTIONS = {"accepted", "overridden", "ignored"}
 
@@ -831,3 +861,125 @@ def contact_funnel_flags(outcomes: list[str]) -> dict[str, bool]:
         "ever_conversation": any(f["good_outcome"] for f in flags),
         "ever_meeting": any(f["booked"] for f in flags),
     }
+
+
+# ---- deployment vocabulary (docs/32) -------------------------------------
+#
+# Everything above is this repository's own business written down. Another
+# company's customers are not segmented into {accounting, erp, ecommerce,
+# analytics, consultancy}, and their losses are not blocked by
+# `consultant_lock`. Rule 3 makes every one of those a hard gate, so without
+# this their first CSV row raises and the product is unusable on their data.
+#
+# The gate stays strict — it is the vocabulary that moves. Point
+# COMPANY_AI_VOCABULARY at a JSON file naming the sets you want replaced:
+#
+#     {"SEGMENTS": ["public", "retail", "industry"], "TIERS": ["1", "2"]}
+#
+# Only the sets listed in OVERRIDABLE may be replaced. The rest are STRUCTURAL:
+# code branches on their values (a deal is `won` because its stage is
+# "closed_won"; the views are keyed on todo areas), so replacing them would not
+# configure the product, it would break it. Naming one of those — or a set that does not exist — raises, rather
+# than being quietly ignored and leaving an operator to wonder why their
+# vocabulary did not take.
+# The contact roles that make an account's `technical_contact` fact true — the
+# fact the knowledge graph's headline card conditions on. Job titles are the
+# most local vocabulary there is ("CTO" here, "IT-johtaja" or "Head of
+# Technology" elsewhere), so it is a deployment's to set.
+TECHNICAL_ROLES = {"CTO"}
+
+OVERRIDABLE = {
+    # who you sell to, and how you grade them
+    "SEGMENTS", "TIERS", "SOURCES", "LIFECYCLES", "TECHNICAL_ROLES",
+    # how you reach them, and why deals stall
+    "TOUCH_CHANNELS", "DEAL_BLOCKERS",
+    # what you publish, and where
+    "MATERIAL_TYPES", "PLATFORMS", "TONES", "POST_FORMATS", "POST_TOPICS",
+    # the rest of the descriptive vocabulary
+    "DECISION_TYPES", "EVENT_TYPES", "WEB_SOURCES", "DEVICES", "LANDING_PAGES",
+    # the operator's call windows (HHMM start times; "other" is added for you)
+    "WINDOWS",
+}
+# structured, not sets: validated separately below
+OVERRIDABLE_SCHEDULE = {"UNAVAILABLE", "WEEKDAY_NOTES"}
+
+
+def default_platform() -> str:
+    """The platform a surface scores when the caller names none. Derived, because
+    a deployment may not publish to LinkedIn at all; stable, so snapshots do not
+    wobble between runs."""
+    return "linkedin" if "linkedin" in PLATFORMS else sorted(PLATFORMS)[0]
+
+
+def _apply_vocabulary() -> None:
+    import json
+    import os
+    from pathlib import Path
+
+    path = (os.environ.get("COMPANY_AI_VOCABULARY") or "").strip()
+    if not path:
+        return
+    file = Path(path)
+    assert file.is_file(), f"COMPANY_AI_VOCABULARY={path!r} is not a file"
+    try:
+        spec = json.loads(file.read_text())
+    except json.JSONDecodeError as e:
+        raise AssertionError(f"{path} is not valid JSON: {e}") from e
+    assert isinstance(spec, dict), f"{path} must be a JSON object of SET -> [values]"
+
+    g = globals()
+    schedule = {k: spec.pop(k) for k in list(spec) if k in OVERRIDABLE_SCHEDULE}
+    for name, values in spec.items():
+        assert name in OVERRIDABLE, (
+            f"{path}: {name!r} cannot be overridden. "
+            f"Overridable: {', '.join(sorted(OVERRIDABLE))}"
+            + ("" if name in g else f" ({name!r} is not a vocabulary set at all)"))
+        assert isinstance(values, list) and values and all(
+            isinstance(v, str) and v.strip() for v in values), \
+            f"{path}: {name} must be a non-empty list of non-empty strings"
+        g[name] = set(values)
+
+    # PLATFORMS has an alias some call sites still use; keep them the same set.
+    g["POST_CHANNELS"] = g["PLATFORMS"]
+
+    # windows are times: the brief picks one by the clock, so a name that is not
+    # an HHMM start time would break it, not configure it.
+    import re
+    g["WINDOWS"] = set(g["WINDOWS"]) | {"other"}
+    assert g["WINDOWS"] - {"other"}, \
+        f"{path}: WINDOWS needs at least one call window; 'other' is only the catch-all"
+    for w in g["WINDOWS"] - {"other"}:
+        assert re.fullmatch(r"([01]\d|2[0-3])[0-5]\d", w), \
+            f"{path}: WINDOWS entry {w!r} must be a start time as HHMM, e.g. '0830'"
+
+    # The operator's week is PERSONAL — the defaults are this repository's own
+    # operator ("Thursday — unavailable (Sisua)"). A deployment that brings a
+    # vocabulary file is someone else, so it starts from no blocked days and no
+    # notes unless it says otherwise. Inheriting ours was not a cosmetic slip: a
+    # company that only renamed its segments had its Thursday call queue
+    # suppressed by our calendar.
+    g["UNAVAILABLE"], g["WEEKDAY_NOTES"] = {}, {}
+    # the schedule, after WINDOWS so its references can be checked
+    if "UNAVAILABLE" in schedule:
+        rules = schedule["UNAVAILABLE"]
+        assert isinstance(rules, dict), f"{path}: UNAVAILABLE must map weekday -> rule"
+        for day, rule in rules.items():
+            assert day in WEEKDAYS, f"{path}: UNAVAILABLE weekday {day!r} is not one of {WEEKDAYS}"
+            assert isinstance(rule, dict) and isinstance(rule.get("reason"), str) \
+                and rule["reason"].strip(), \
+                f"{path}: UNAVAILABLE.{day} needs a non-empty 'reason'"
+            wins = rule.get("windows")
+            assert wins == "all" or (isinstance(wins, list) and wins and
+                                     all(w in g["WINDOWS"] - {"other"} for w in wins)), \
+                (f"{path}: UNAVAILABLE.{day}.windows must be \"all\" or a list of your "
+                 f"call windows {sorted(g['WINDOWS'] - {'other'})}")
+        g["UNAVAILABLE"] = rules
+    if "WEEKDAY_NOTES" in schedule:
+        notes = schedule["WEEKDAY_NOTES"]
+        assert isinstance(notes, dict) and all(
+            d in WEEKDAYS and isinstance(n, str) for d, n in notes.items()), \
+            f"{path}: WEEKDAY_NOTES must map weekday -> text"
+        g["WEEKDAY_NOTES"] = notes
+
+
+_apply_vocabulary()

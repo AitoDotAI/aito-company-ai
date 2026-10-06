@@ -16,11 +16,13 @@ DO_NEXT_SHOWN = 5
 
 
 def current_window(hour: int) -> str:
-    if hour < 11:
-        return "0800"
-    if hour < 15:
-        return "1215"
-    return "1600"
+    """The call window nearest the hour. Windows are named by their start
+    time, so this follows whatever windows the deployment configures; for the
+    default 0800/1215/1600 it reproduces the old hardcoded boundaries (before
+    11 -> 0800, before 15 -> 1215, else 1600) for every hour of the day."""
+    now = hour * 60
+    return min(schema.call_windows(),
+               key=lambda w: (abs(schema.window_minutes(w) - now), w))
 
 
 def render_brief(

@@ -1,194 +1,139 @@
 # Company AI
 
-**An open-source agentic OS for a small company — go-to-market, R&D, and the
-knowledge underneath, in one store an agent can read end to end.**
-
-"OS" is meant literally rather than as a flourish: the pipeline, the funnel,
-the experiments, the decisions, the events, the recurring work and the notes
-are not separate tools glued together — they are one schema in one database,
-and every surface is a query over it. A Claude session works that data
-directly through MCP. The dashboard is a window on the same queries, for when
-you would rather look than ask. Neither is the system of record; the database
-is, and both read it.
-
-What that buys is an agent with the whole company in scope. It can see that a
-deal went quiet, that the experiment meant to unblock it was decided last
-week, and that the note explaining why sits on the account — without anyone
-wiring those three things together.
-
-And agents do not only read it — they **work in it**. They file todos and claim
-them, record decisions, log outcomes and touches, write notes, tick routines
-and add contacts and deals. Twenty-eight of the MCP tools write. That is the
-point of calling it an OS rather than a dashboard: it is the shared workspace
-several agents operate in at once, which is also why there is a claim protocol
-so two of them do not build the same thing twice.
-
-What is gated is the *outside world* — no email, no LinkedIn, no calendar
-writes. An agent with the run of the company's own store and no way to send
-anything from it is the deliberate shape here, not a missing feature.
-
-What makes it different from a CRM or a wiki is where the numbers come from.
-Nobody configures a scoring rule. Every rate, ranking and likelihood is worked
-out from **this company's own history**, so when the history changes the
-answers change by themselves. A deal looks promising because deals that looked
-like it were won before.
+**An open-source agentic OS for a small company.** Sales, marketing, R&D and
+everything the company knows live in one database that learns from its own
+history. AI agents work in it the way a team would — filing tasks, recording
+decisions, writing notes — and anyone can ask it what to do next and get an
+answer grounded in what actually happened.
 
 [![Overview](docs/assets/dashboard-overview.png)](docs/use-cases/README.md)
 
-*The Overview screen, on this repository's public demo data — invented
-companies, invented people, no real contacts anywhere.*
+*The Overview screen on the public demo data — invented companies, invented
+people.*
 
-**→ [Take the tour](docs/use-cases/README.md)** — what it does, one screen at
-a time, in pictures.
+**[Take the tour →](docs/use-cases/README.md)** &nbsp;·&nbsp;
+**[Run it in ten minutes ↓](#try-it)** &nbsp;·&nbsp;
+**[Make it yours ↓](#make-it-yours)**
 
-## The kind of question it answers
+## What it answers
 
 **Going to market**
 
-- **Who should I call today, and what do I say?** Ranked by who is most likely
-  to move, with the reason attached.
+- **Who should I call today?** Ranked by who is most likely to move, with the
+  reason attached.
 - **What is in the pipeline, and what has gone quiet?** Deals by stage and
-  value, with how long each has been cold. There is also a model probability
-  per deal; treat it as an experiment rather than an input — on a pipeline of
-  ~20 deals it is sparse-data noise, and the operator's own number is what
-  gets used.
-- **Where is the funnel leaking, and what should I post?** The stage costing
-  the most, and how a draft is likely to do before you publish it.
+  value, how long each has been cold, and a close-likelihood learned from the
+  deals that closed before.
+- **Where is the funnel leaking, and which channel works for this material?**
+  The stage costing the most, and how the same piece did in each place it ran.
 
 **Building and learning**
 
 - **Did that experiment pay off?** What was tried, what was expected, what
-  happened — so a logged outcome visibly moves the next answer.
-- **What did we decide, and did it hold up?** Decisions recorded with their
-  outcomes, including the ones where the agent was overruled.
-- **What is actually on the R&D list, and what is late?** The same action
-  surface as sales, ranked by priority rather than by date.
+  happened — and a logged outcome visibly moves the next answer.
+- **What did we decide, and did it hold up?** Decisions kept with their
+  outcomes, including the ones where the recommendation was overruled.
+- **What is R&D working on, and what is late?** The same action list as sales,
+  ranked by priority instead of by date.
 
 **Knowing**
 
-- **What do we already know about this account?** Notes and meetings filed
-  against the company and the people, not in a folder someone has to find.
-- **What kind of company is this, judged only by who works there?** Accounts,
-  people, deals and notes are linked, so a question can be answered from an
-  account's *neighbourhood* rather than from its own record.
-- **Where did we discuss pricing?** — asked in Finnish, over notes written in
-  English. Search matches on meaning as well as words, so a result need share
-  no term with the question.
+- **Everything we have on this person and this company.** One search across
+  notes, contacts and deals, ranked by relevance and sharpened by what people
+  click.
+- **What kind of company is this, judged by who works there?** Accounts,
+  people and deals are linked, so a question can be answered from an account's
+  neighbourhood rather than from its own record.
 
-Alongside those: events as a go/no-go board, recurring work as routines that
-prepare themselves, and an append-only log of everything that changed.
+Alongside those: events as a go/no-go board, recurring work that prepares
+itself, and a log of everything that changed.
 
-It is honest when it does not know. Early on, with little history, the
-probabilities are weak and look weak. A confident number from four data
-points would be the bug, not the feature.
+## Why it works differently
 
-## Two ways to use it
+**The numbers come from your history, not from rules.** Nobody configures a
+lead score. Every rate, ranking and likelihood is learned from what this
+company has already done — by [Aito](https://aito.ai), a predictive database —
+so when the history changes, the answers change with it.
 
-**As a conversation.** Ask in plain language — the assistant answers from the
-same data, and shows which query produced each number, so an answer can
-always be checked rather than trusted.
+**Agents work in it, not just read it.** Twenty-eight of its tools write: agents
+file and claim tasks, record decisions, log outcomes, add notes, contacts and
+deals. Several can work at once, which is why claiming a task before starting
+it is part of the protocol.
 
-**As a dashboard.** A set of read-only screens over the same numbers, for
-when you want to look rather than ask.
+**Answers show their working.** The assistant lists the tool calls behind every
+reply, and the knowledge graph shows the exact query behind each card, so an
+answer can be checked rather than taken on trust.
 
-In practice the split falls along who is asking: the agent lanes work it
-entirely through MCP and never open the dashboard, and the operator mostly
-uses the screens. Same queries either way — neither side is a summary of the
-other.
+**Prediction proposes; people decide.**
 
-## How it is actually used
+> **Prediction may propose, with its reasons attached. Only a deterministic
+> check or a named human writes state.**
 
-This repository is not a demo with a story attached — it runs Aito's own
-go-to-market and R&D, worked daily by several Claude lanes at once. What
-follows is quoted from those lanes, including the parts that do not flatter the
-software.
+A ranked shortlist someone confirms is cheap when it is wrong; a field a model
+filled in is not. So approvals, ownership and measured numbers stay with people
+and hard checks, and the model's job is to put the right three things in front
+of someone.
 
-**The load-bearing use turned out to be recall, not prediction.**
+## What it deliberately does not do
 
-> *"'Everything we have on `<person> <company>`' before a meeting: one semantic
-> search, then `document_read` on the 2–4 hits. This is THE load-bearing use.
-> Today it found the right contact even though the name was misspelled in the
-> request (one letter off), and pulled the intro email context, the prior call
-> outcome and a misread we had corrected weeks ago."*
-> — the CRO lane
+- **It does not send anything.** No email, no LinkedIn, no calendar invites.
+  Agents draft; a person sends.
+- **It does not let a model decide.** Predictions are suggestions with reasons;
+  approvals and ownership are deterministic or human.
+- **It does not fake confidence.** Search and linking work as soon as there is
+  data. Forecasts such as close-likelihood need enough closed deals behind
+  them, and say so plainly until they have them.
+- **It is not a hosted service, or built for a large sales floor.** One small
+  company, one instance, run by you: a database container and this repository.
+- **It is not an agent framework.** The reasoning is a Claude session, the
+  statistics are Aito, and this repository is the thin layer between them.
 
-**The R&D lanes use it in a completely different shape.** Where the GtM side
-reads broadly, the product side writes narrowly to one place:
+## Make it yours
 
-> *"Mine is 'append this finding to the ticket that owns it' — the ticket as a
-> running lab notebook. Reads are almost always a single todo by id, not
-> search."*
-> — the CPO lane
+It ships speaking our language — our customer segments, our reasons deals
+stall, our working week. Each of those is a setting, not code:
 
-A todo's `detail` is therefore not a description but an append-only log, and
-corrections are appended rather than edited away, so a wrong claim stays
-visible next to the correction that overturned it. Promoting work to `review`
-requires a handoff block (`CLAIM / VERIFY / SCOPE / RISK / PUSHED`), which is
-checked rather than merely conventional:
+- **Your vocabulary, in one file.** Customer segments and tiers, why deals
+  stall, where you publish, which job titles count as technical, your call
+  times and when you are unavailable. → [`docs/32`](docs/32-deployment-vocabulary.md)
+- **Your data, checked before it loads.** `./do validate` reads an export and
+  lists every problem at once, grouped into the handful of fixes it really is —
+  no database needed.
+- **Your own tables, views and routines.** The data model is the product, and
+  extending it is a [checklist](docs/19-extending.md).
 
-> *"The validator rejected a review I tried to set without it, and the forced
-> CLAIM line twice exposed that the work wasn't finished."*
-> — the CPO lane
-
-**The strongest property is one nobody designed for: shared memory between
-agents.**
-
-> *"Several Claude sessions (CRO, CPO, demo lanes) write notes and todos, and
-> any of them can reconstruct a relationship's history cold. Without it, a lane
-> re-derives or contradicts another lane's facts. One concrete failure it
-> prevents: an agent 'verifying' a thread as dropped, when the meeting actually
-> happened and was recorded by another lane."*
-> — the CRO lane
-
-The product side reports the same property from the other end:
-
-> *"One ERP-accuracy regression ticket carried a week of history across four
-> sessions — found by one lane, released in writing, picked up by a second,
-> measured by a third, corrected by me — and any of us could reconstruct where
-> it stood cold, including which earlier claims were retracted and why."*
-> — the CPO lane
-
-A note carries the date it is *about* (`noted_on`), and a correction is filed as
-its own dated entry — so "we misread X, here is what it actually meant" is
-retrievable later, which stops the same error being made twice.
-
-**What is not earning its keep.** The same notes, unedited:
-
-- **Close-likelihood (`p_win`) is not acted on.** *"With ~20 deals it's
-  sparse-data noise… We defer to the operator's own probability."* It is kept
-  as an experiment that should improve as the closed history grows.
-- **`score_post` is unused** — LinkedIn copy is graded against a written
-  checklist instead.
-- **The routines board** *"has been decorative (every routine overdue)"*,
-  because routines are not ticked as the work happens.
-- **Todos go stale.** An honest statement of the limit, from the lane that
-  lives with it: *"the board is only as current as the agents that close
-  tickets."*
-- **Active tickets grow into logs.** Thousands of words of dated appends, with
-  no structured field for current status or next step: *"update_todo echoes the
-  full detail back on every call, which is expensive for an agent and makes the
-  current state hard to find."*
-- **`owner` and `role` are unvalidated free text**, so the same lane appears as
-  `core-2`, `aito-core-2` and `core-a`. The same class of silent drift as the
-  area-name bug these notes turned up, and not yet fixed.
-- **Search does not serve R&D well.** It is tuned on documents, contacts and
-  deals; asked for a ticket it returns sales material, and the lane falls back
-  to remembering ids.
-
-Those four are in the repository because removing a feature that is not working
-is a decision, and pretending it works is a defect. Each is a known gap, not a
-surprise.
+The same pattern fits anything shaped like *records, outcomes, and a question
+you would like answered from them*: support tickets and what resolves them, a
+recruiting pipeline and who accepts, a partner programme and which partners
+deliver.
 
 ## Try it
 
-You need [Docker](https://www.docker.com/) and about a minute. This loads the
-invented demo data, not anything real:
+You need [Docker](https://www.docker.com/) and about ten minutes. This loads
+the invented demo data, not anything real:
 
 ```sh
-docker run -d -p 9005:9005 ghcr.io/aitohq/aito   # the database
-cp .env.example .env                             # point at it
-./do install && ./do seed && ./do start          # → http://localhost:8770
+git clone https://github.com/AitoDotAI/aito-company-ai && cd aito-company-ai
+docker run -d -p 9005:9005 -e AITO_DISABLE_AUTH=true ghcr.io/aitohq/aito
+cp .env.example .env
+./do install && ./do seed && ./do start      # → http://localhost:8770
 ```
+
+The demo data is dated June 2026, and the dashboard says so: everything is
+measured from that date, so you see a working week rather than a backlog.
+
+**With your own data**, after describing your vocabulary in a JSON file and
+pointing `COMPANY_AI_VOCABULARY` at it in `.env`:
+
+```sh
+./do validate path/to/your/export        # every problem at once
+SEED_DIR=path/to/your/export ./do seed   # then load it
+```
+
+To ask in plain language, connect a Claude session to the MCP server —
+[Side 1](#side-1--the-agent-claude-over-mcp) below. Semantic search (a
+misspelled name, or a question in Finnish over notes written in English) is
+optional and needs an embeddings key — see `.env.example`.
 
 ---
 
@@ -224,7 +169,7 @@ Aito instance (docker)               intuition: ranking, similarity,
 One Aito instance is the brain; both sides below read the same tables.
 
 ```sh
-docker run -d -p 9005:9005 ghcr.io/aitohq/aito        # 1. an Aito instance
+docker run -d -p 9005:9005 -e AITO_DISABLE_AUTH=true ghcr.io/aitohq/aito        # 1. an Aito instance
 cp .env.example .env                                   # 2. point at it
 ./do seed                                              # 3. schema + every table
 ```
@@ -234,8 +179,10 @@ cp .env.example .env                                   # 2. point at it
 loads by hand here is how this drifted before: the list named six tables while
 the seed had fifteen, so a fresh clone came up with an empty Routines view and
 no users while looking complete. To load your own data instead of the
-synthetic set, point it at a directory of CSVs with
-`company-ai load-all --dir <dir>`.
+synthetic set, check it with `./do validate <dir>`, then
+`SEED_DIR=<dir> ./do seed`. Going through `./do seed` rather than a bare
+`load-all` matters: it is what clears the demo's reckoning date, so your data
+is measured from today and not from June 2026.
 
 Then pick a side — most days you use both. Full guide:
 [`docs/08-two-sides.md`](docs/08-two-sides.md).

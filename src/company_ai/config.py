@@ -2,6 +2,7 @@
 
 import os
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -38,6 +39,20 @@ def instance_host(instance_url: str) -> str:
     any write so the target is never silent."""
     p = urlparse(instance_url)
     return f"{p.hostname or instance_url}{p.path}".rstrip("/") or instance_url
+
+
+def _parse_as_of(raw: str) -> "date | None":
+    """COMPANY_AI_AS_OF as an ISO date, or None for the real clock. A value
+    that is set but unparseable RAISES rather than silently falling back to
+    today: a demo reckoning from the wrong date looks like working software."""
+    raw = (raw or "").strip()
+    if not raw:
+        return None
+    try:
+        return date.fromisoformat(raw)
+    except ValueError as e:
+        raise AssertionError(
+            f"COMPANY_AI_AS_OF={raw!r} is not an ISO date (YYYY-MM-DD)") from e
 
 
 @dataclass(frozen=True)
@@ -83,6 +98,16 @@ class Config:
     # Auth passes no header (local dev, or a direct API hit) — falls back to this
     # user. Empty = fall back to the first operator in the users table.
     operator_email: str
+    # The date this instance RECKONS FROM — overdue-ness, cold deals, routine
+    # due-state. Empty (the default) = the real clock, which is what any live
+    # instance wants. Set it only for a fixed demo dataset, whose dates would
+    # otherwise rot until every deal reads as stalled and the Now view's
+    # ranking means nothing. It never moves data and never touches write
+    # stamps (created/ts/last_done stay real time, so the audit trail is
+    # honest); it only changes what "now" the READS compare against. Whenever
+    # it is set the UI says so, because an instance quietly reckoning from a
+    # date that is not today is the dishonest version of this.
+    as_of: date | None
     # the public HTTPS origin the app is reached at (e.g. https://ai.example.com),
     # used as the OAuth issuer/resource base for the remote MCP connector
     # (docs/29). Empty = derive from the request at mount time isn't possible, so
@@ -207,6 +232,7 @@ class Config:
             mcp_token=_env_first("COMPANY_AI_MCP_TOKEN"),
             operator_email=_env_first("COMPANY_AI_OPERATOR_EMAIL").strip().lower(),
             public_url=_env_first("COMPANY_AI_PUBLIC_URL").rstrip("/"),
+            as_of=_parse_as_of(_env_first("COMPANY_AI_AS_OF")),
             # embeddings: its own endpoint/deployment; key falls back to the LLM
             # key (shared Azure resource). api-version defaults to the GA embeddings one.
             # Falls back to the CHAT resource's endpoint, the same way the key

@@ -4,6 +4,7 @@ import argparse
 from datetime import date, datetime
 from pathlib import Path
 
+from . import clock
 from . import brief as brief_mod
 from . import loaders
 from . import log as logbook
@@ -40,6 +41,11 @@ def main() -> None:
     sub = parser.add_subparsers(dest="command", required=True)
 
     sub.add_parser("create-schema", help="create missing Aito tables")
+    va = sub.add_parser("validate",
+                        help="check every CSV in a data dir and report ALL problems at once "
+                             "(no Aito instance needed)")
+    va.add_argument("dir", nargs="?", default=None,
+                    help="data directory (default: COMPANY_AI_DATA_DIR, else data/seed)")
     for name, help_text in (
         ("load-companies", "(re)load the companies entity (link target); load BEFORE contacts/deals"),
         ("load-rolodex", "(re)load contacts; drops touches, reload them after"),
@@ -154,6 +160,19 @@ def main() -> None:
     ap.add_argument("todo_id")
 
     args = parser.parse_args()
+    # validate runs BEFORE any config/client: someone checking their export has
+    # not necessarily set up an instance yet, and should not need one.
+    if args.command == "validate":
+        import os
+        from . import validate
+        from .config import SEED_DIR
+        target = Path(args.dir or os.environ.get("COMPANY_AI_DATA_DIR") or SEED_DIR)
+        vocab = os.environ.get("COMPANY_AI_VOCABULARY")
+        print(f"validating {target}" + (f"  (vocabulary: {vocab})" if vocab else
+                                         "  (vocabulary: built-in)"))
+        report = validate.validate_dir(target)
+        print(report.render())
+        raise SystemExit(0 if report.ok else 1)
     config = Config.from_env()
     client = _client(config)
 
@@ -367,12 +386,14 @@ def main() -> None:
             "the LLM brief runs in a Claude session via prompts/morning-brief.md; "
             "this CLI only renders the deterministic core: brief --no-llm"
         )
-        as_of = date.fromisoformat(args.as_of) if args.as_of else date.today()
+        # a read: reckon from the instance's declared date unless one is given
+        as_of = date.fromisoformat(args.as_of) if args.as_of else clock.today()
         window = args.window or brief_mod.current_window(datetime.now().hour)
         print(brief_mod.render_brief(client, window, as_of, top_n=args.top_n))
     elif args.command == "board-run":
         from . import board
-        as_of = date.fromisoformat(args.as_of) if args.as_of else date.today()
+        # None lets the callee split reads (reckoning date) from writes (real day)
+        as_of = date.fromisoformat(args.as_of) if args.as_of else None
         result = board.run(args.prompt, args.mode, client=client, as_of=as_of)
         print(f"# {args.prompt} ({args.mode}) via {result['model']}")
         if result["saved"]:
@@ -380,7 +401,8 @@ def main() -> None:
         print(result["text"])
     elif args.command == "routines-run":
         from . import routines
-        as_of = date.fromisoformat(args.as_of) if args.as_of else date.today()
+        # None lets the callee split reads (reckoning date) from writes (real day)
+        as_of = date.fromisoformat(args.as_of) if args.as_of else None
         only = [s.strip() for s in args.only.split(",")] if args.only else None
         res = routines.run_due(client, as_of=as_of, only=only, force=args.force)
         print(f"# routines-run ({res['as_of']}): ran {res['count']} due routine(s)")

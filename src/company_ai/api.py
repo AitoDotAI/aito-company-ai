@@ -24,6 +24,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from . import clock
 from . import deals, decisions, documents, experiments, funnels, scorer, schema, sheets, todos
 from . import log as logbook
 from .analytics import SEGMENT_DIMENSIONS, segment_360
@@ -267,7 +268,14 @@ def create_app(config: Config | None = None) -> FastAPI:
 
     @app.get("/api/me")
     def me_route(request: Request):
-        return _guarded(lambda: current_user(request) or {"role": "guest", "name": "Guest"})
+        # `as_of` rides along with identity because the UI must SAY when this
+        # instance reckons from a date other than today (clock.py). Null here
+        # is the normal case and means the real clock.
+        def go():
+            who = current_user(request) or {"role": "guest", "name": "Guest"}
+            reckoning = clock.reckoning()
+            return {**who, "as_of": reckoning.isoformat() if reckoning else None}
+        return _guarded(go)
 
     # Role enforcement (docs/27 Phase 2): an SDR gets read + safe writes; the
     # operator-only operations are destructive (delete/remove) and admin (users,
@@ -537,7 +545,8 @@ def create_app(config: Config | None = None) -> FastAPI:
         return {"options": SCORE_OPTIONS, "features": scorer.FEATURES}
 
     @app.get("/api/score")
-    def score_route(request: Request, platform: str = "linkedin"):
+    def score_route(request: Request, platform: str = ""):
+        platform = platform or schema.default_platform()
         q = request.query_params
         feats = {f: q[f] for f in scorer.FEATURES if q.get(f)}
         return _guarded(lambda: scorer.score(client(), platform, feats).derived)

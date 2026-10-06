@@ -1,9 +1,9 @@
 decision_id,ts,decision_type,context_window,context_weekday,context_segment,context_tier,context_ai_lifecycle,chosen,agent_confidence,human_action,human_alternative,outcome_after
-yx007,2026-03-21T08:10:00,opener_choice,0800,tue,consultancy,C,none,yc001,0.36,accepted,,
-yx004,2026-03-22T08:10:00,opener_choice,0800,fri,consultancy,C,none,yc001,0.81,ignored,,
-yx003,2026-03-24T08:10:00,followup_timing,0800,thu,consultancy,C,announced,yc008,0.78,accepted,,good
-yx006,2026-04-18T08:10:00,followup_timing,1600,wed,consultancy,B,shipped,yc007,0.24,accepted,,good
-yx005,2026-04-19T08:10:00,followup_timing,0800,tue,other,A,none,yc006,0.11,accepted,,
-yx002,2026-04-30T08:10:00,opener_choice,1600,tue,other,A,none,yc006,0.44,accepted,,neutral
-yx008,2026-05-02T08:10:00,call_priority,0800,tue,consultancy,C,announced,yc008,0.6,overridden,reordered,
-yx001,2026-05-14T08:10:00,call_priority,1215,fri,other,A,shipped,yc003,0.73,overridden,reordered,
+yx006,2026-03-21T08:10:00,opener_choice,0800,tue,consultancy,C,none,yc001,0.36,accepted,,
+yx003,2026-03-22T08:10:00,opener_choice,0800,fri,consultancy,C,none,yc001,0.81,ignored,,
+yx002,2026-03-24T08:10:00,followup_timing,0800,thu,consultancy,C,announced,yc008,0.78,accepted,,good
+yx008,2026-04-12T08:10:00,opener_choice,1600,fri,other,A,shipped,yc003,0.28,accepted,,
+yx005,2026-04-18T08:10:00,followup_timing,1600,wed,consultancy,B,shipped,yc007,0.24,accepted,,good
+yx004,2026-04-19T08:10:00,followup_timing,0800,tue,other,A,none,yc006,0.11,accepted,,
+yx001,2026-04-29T08:10:00,opener_choice,1215,tue,analytics,B,none,yc009,0.75,accepted,,neutral
+yx007,2026-05-02T08:10:00,call_priority,0800,tue,consultancy,C,announced,yc008,0.6,overridden,reordered,

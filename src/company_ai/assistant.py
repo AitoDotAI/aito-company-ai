@@ -33,6 +33,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import date
 from typing import Callable
 
+from . import clock
 from . import (analytics, changelog, deals, decisions, experiments, funnels, queries,
                schema, scorer, search, todos)
 from .aito import AitoClient
@@ -120,7 +121,7 @@ FETCH_PAGE = "fetch_page"
 TOOLS: list[Tool] = [
     Tool("who_to_call",
          "Today's call queue for a window, ranked by Aito's probability of a good outcome.",
-         _obj({"window": {"type": "string", "enum": ["0800", "1215", "1600"]},
+         _obj({"window": {"type": "string", "enum": schema.call_windows()},
                "top_n": {"type": "integer"}}, ["window"]),
          lambda ctx, a: queries.who_to_call(ctx.aito, a["window"], top_n=a.get("top_n", 5), as_of=ctx.as_of).derived),
     Tool("opener_context",
@@ -304,7 +305,7 @@ def run_turn(history: list[dict], *, client: AitoClient | None = None,
         search = make_search_client(config)
     if fetch == "__default__":
         fetch = make_fetcher(config)
-    as_of = as_of or date.today()
+    as_of = as_of or clock.today()
 
     ctx = ToolContext(aito=client, as_of=as_of, search=search, fetch=fetch)
     tools = active_tools(ctx, allow=config.assistant_tools or None)

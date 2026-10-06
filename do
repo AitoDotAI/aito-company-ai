@@ -27,6 +27,7 @@
 #   ./do image                build the deployable container (app + synthetic seed)
 #   ./do smoke [config]       build + boot the image locally, check it serves
 #   ./do reindex [config]     rebuild the search index (+ embeddings if configured)
+#   ./do validate [dir]       check a data dir, report ALL problems at once (no instance needed)
 #   ./do maintenance <s> [cfg]  run .ai/maintenance/<s>.py against an instance
 #   ./do clean                wipe build artifacts and PID/log files
 #
@@ -62,6 +63,16 @@ resolve() {
   fi
   PIDFILE=".dashboard.${PORT}.pid"
   LOGFILE=".dashboard.${PORT}.log"
+  # The reckoning date of the dataset last seeded into THIS instance (keyed by
+  # port, like the pidfile). A seed carries the date it is about; without it a
+  # fixed demo rots until every deal reads as stalled. An explicit
+  # COMPANY_AI_AS_OF always wins, and loading a directory with no anchor clears
+  # it, so real data never inherits a sample's date. The dashboard says so in a
+  # banner whenever it is in effect (clock.py).
+  ASOF_FILE=".seeded-as-of.${PORT}"
+  if [ -z "${COMPANY_AI_AS_OF:-}" ] && [ -f "$ASOF_FILE" ]; then
+    export COMPANY_AI_AS_OF="$(tr -dc '0-9-' < "$ASOF_FILE")"
+  fi
   HEALTH="http://127.0.0.1:${PORT}/api/score-options"  # static, needs no Aito
 }
 
@@ -131,6 +142,12 @@ cmd_seed() {
   # drifted and silently skipped routines + users, so those shipped empty in the
   # public demo even though data/seed carries both.
   uv run company-ai load-all --dir "$dir"
+  if [ -f "$dir/AS_OF" ]; then
+    cp "$dir/AS_OF" "$ASOF_FILE"
+    say "this dataset is about $(cat "$dir/AS_OF") — the dashboard will reckon from that date"
+  else
+    rm -f "$ASOF_FILE"
+  fi
 }
 
 cmd_seed_tiny() { SEED_DIR=data/seed_tiny cmd_seed "${1:-}"; }
@@ -139,6 +156,10 @@ cmd_doctor() { resolve "${1:-}"; uv run company-ai doctor; }
 
 # rebuild the search index (and its embeddings, when configured)
 cmd_reindex() { resolve "${1:-}"; uv run company-ai reindex-search; }
+
+# check a data directory before loading it: every problem at once, grouped, and
+# no Aito instance required — the first thing to run on your own export.
+cmd_validate() { uv run company-ai validate "$@"; }
 
 # Run a one-off operator script against a configured instance:
 #     ./do maintenance apply aito
@@ -267,6 +288,7 @@ case "${1:-help}" in
   migrate)        shift; cmd_migrate "$@" ;;
   doctor)         shift; cmd_doctor "$@" ;;
   reindex)        shift; cmd_reindex "$@" ;;
+  validate)       shift; cmd_validate "$@" ;;
   maintenance)    shift; cmd_maintenance "$@" ;;
   start)          shift; cmd_start "$@" ;;
   stop)           shift; cmd_stop "$@" ;;

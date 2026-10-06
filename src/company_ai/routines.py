@@ -17,6 +17,7 @@ monthly+day) and a `prep` recipe. Two jobs:
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 
+from . import clock
 from . import queries, schema
 from .aito import AitoClient
 
@@ -58,7 +59,7 @@ class Result:
 
 def board(client: AitoClient, as_of: date | None = None) -> Result:
     """The active routines, each with its due state; due ones first."""
-    as_of = as_of or date.today()
+    as_of = as_of or clock.today()
     result = Result()
     request = {"from": "routines", "where": {"active": True}, "limit": 1000}
     response = client.query(request)
@@ -74,7 +75,10 @@ def board(client: AitoClient, as_of: date | None = None) -> Result:
 def _prospect_pack(client: AitoClient, result: Result, routine: dict, as_of: date) -> dict:
     """Aito-ranked candidates for the next outreach batch + a Claude-Desktop
     prompt to load them (e.g. into your outreach tool) and draft openers."""
-    q = queries.who_to_call(client, "1215", top_n=10, as_of=as_of)
+    # the middle of the day's call windows (1215 for the default 0800/1215/1600):
+    # outreach prep ranks for midday, between the morning and late slots
+    windows = schema.call_windows()
+    q = queries.who_to_call(client, windows[len(windows) // 2], top_n=10, as_of=as_of)
     result.calls.extend(q.calls)
     candidates = q.derived
     lines = "\n".join(
@@ -96,7 +100,7 @@ def prepare(client: AitoClient, routine: dict, as_of: date | None = None) -> Res
     """Build the run pack for a routine: the Aito-grounded data + a prompt to
     run in Claude (Desktop, which has the MCP tools). The app prepares; Claude
     runs (rule 1)."""
-    as_of = as_of or date.today()
+    as_of = as_of or clock.today()
     result = Result()
     prep = routine["prep"]
     if prep == "prospects":
@@ -116,7 +120,7 @@ def prepare(client: AitoClient, routine: dict, as_of: date | None = None) -> Res
 
 
 def _execute(client: AitoClient, routine: dict, *, llm=None,
-             as_of: date | None = None) -> dict:
+             as_of: date | None = None, stamp: date | None = None) -> dict:
     """Run ONE routine through the assistant loop and record it. Shared by the
     scheduled/CLI batch (`run_due`) and the on-demand single run (`run_routine`).
 
@@ -130,7 +134,13 @@ def _execute(client: AitoClient, routine: dict, *, llm=None,
     provider in llm.py.
     """
     from . import assistant, log      # local import: assistant pulls heavier deps
-    as_of = as_of or date.today()
+    # Two dates, deliberately. READS reckon from the instance's declared date
+    # (clock.py) so a demo's routine sees a working week. WRITES — the
+    # document's noted_on and the routine's last_done — stamp the real day
+    # unless a caller explicitly asked for one (a backfill), because the audit
+    # trail must never be back-dated to a demo's reckoning date.
+    as_of = as_of or clock.today()
+    stamp = stamp or date.today()
     pack = prepare(client, routine, as_of=as_of).derived
     # search=None, fetch=None: the routines runner is UNATTENDED, so it gets the
     # Aito read tools but NOT the outbound web tools. That removes the exfiltration
@@ -143,9 +153,9 @@ def _execute(client: AitoClient, routine: dict, *, llm=None,
     area = routine.get("area")
     entry = log.add_document(
         client, title=f"Routine: {routine.get('title') or routine['routine_id']}",
-        body=turn.reply, kind="internal", noted_on=as_of.isoformat(),
+        body=turn.reply, kind="internal", noted_on=stamp.isoformat(),
         topics="routine" + (f";{area}" if area else ""))
-    log.tick_routine(client, routine["routine_id"], as_of=as_of)
+    log.tick_routine(client, routine["routine_id"], as_of=stamp)
     return {"routine_id": routine["routine_id"], "title": routine.get("title"),
             "reply": turn.reply, "document_id": entry["doc_id"],
             "tool_calls": len(turn.trace), "rounds": turn.rounds}
@@ -161,14 +171,14 @@ def run_due(client: AitoClient, *, llm=None, as_of: date | None = None,
     scheduler. `only` limits the run to those routine_ids; `force` runs them
     even when not due (a deliberate re-run — the timer never sets it).
     """
-    as_of = as_of or date.today()
+    stamp, as_of = as_of, as_of or clock.today()      # an explicit date is a backfill
     ran = []
     for r in board(client, as_of=as_of).derived["routines"]:
         if only is not None and r["routine_id"] not in only:
             continue
         if not force and not r.get("due"):
             continue
-        ran.append(_execute(client, r, llm=llm, as_of=as_of))
+        ran.append(_execute(client, r, llm=llm, as_of=as_of, stamp=stamp))
     return {"as_of": as_of.isoformat(), "count": len(ran), "ran": ran}
 
 
@@ -178,7 +188,7 @@ def run_routine(client: AitoClient, routine_id: str, *, llm=None,
     Defaults to `force=True` — an explicit click/call means run it now, even if
     it isn't due. With `force=False` a not-due routine is skipped (ran=None),
     so the caller can honour due-ness. Returns the `_execute` record (or None)."""
-    as_of = as_of or date.today()
+    stamp, as_of = as_of, as_of or clock.today()      # an explicit date is a backfill
     match = [r for r in board(client, as_of=as_of).derived["routines"]
              if r["routine_id"] == routine_id]
     assert match, f"unknown routine_id {routine_id!r}"
@@ -186,4 +196,4 @@ def run_routine(client: AitoClient, routine_id: str, *, llm=None,
     if not force and not routine.get("due"):
         return {"routine_id": routine_id, "title": routine.get("title"),
                 "ran": None, "skipped": "not due"}
-    return {**_execute(client, routine, llm=llm, as_of=as_of), "ran": True}
+    return {**_execute(client, routine, llm=llm, as_of=as_of, stamp=stamp), "ran": True}

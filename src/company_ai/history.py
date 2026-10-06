@@ -39,8 +39,17 @@ def finished(table: str) -> dict:
 
 
 def is_empty_population(error: AitoError) -> bool:
+    """Was this 400 the engine saying "no finished rows to learn from yet"?
+
+    Recognised by the structured code where the engine sends one (2.11.4+:
+    `query.empty_population`), and by the message on builds that predate it.
+    Matching the message alone broke on 2.11.4, which reworded it ("the
+    population is empty — no row of 'deals' matches…"): a company with no
+    closed deals got an error where it should have got "not enough history"."""
     text = str(error)
-    return "-> 400" in text and "matched no rows" in text
+    return "-> 400" in text and (
+        "query.empty_population" in text      # 2.11.4+: the code, stable
+        or "matched no rows" in text)          # earlier builds: the message
 
 
 def predict(client: AitoClient, request: dict) -> dict | None:

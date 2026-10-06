@@ -1,7 +1,7 @@
 # Before
 
-todo sd005 (Follow-up call with Lumon Oy) links deal se019
-deal stage=demo probability=40
+todo sd010 (Call Pied Oy before the window closes) links deal se026
+deal stage=lead probability=65
 
 # Archive the todo
 
@@ -9,4 +9,4 @@ todo status -> archived
 
 # After: todo gone from the lens; the linked deal is untouched
 
-confirmed: todo archived & off the lens; deal still demo @ 40%
+confirmed: todo archived & off the lens; deal still lead @ 65%

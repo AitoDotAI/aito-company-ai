@@ -2,6 +2,7 @@
 // (Now · Work · Knowledge · Analytics), a hash-routed view area, and the
 // agent-status footer. Views are composed from primitives in views.jsx.
 import React, { useEffect, useState } from "react";
+import { setReckoning } from "./clock.js";
 import { VIEWS, ScopedData, Documents, QuickFind } from "./views.jsx";
 import { Assistant } from "./assistant.jsx";
 import { conversations, useConversations } from "./conversations.js";
@@ -11,7 +12,7 @@ const NAV = [
   { group: "NOW", items: [["now", "Today"], ["overview", "Overview"], ["mywork", "My work"], ["chat", "Chat"], ["routines", "Routines"]] },
   { group: "WORK", items: [["sales", "Sales"], ["marketing", "Marketing"], ["events", "Events"], ["ops", "Operations"], ["rnd", "R&D"], ["exp", "Learning"]] },
   { group: "KNOWLEDGE", items: [["graph", "Knowledge graph"], ["search", "Search"], ["activity", "Activity"], ["documents", "Documents"]] },
-  { group: "ANALYTICS", items: [["salesanalytics", "Sales analytics"], ["analytics", "Metrics"], ["decisions", "Decisions"], ["data", "Data"]] },
+  { group: "ANALYTICS", items: [["analytics", "Metrics"], ["decisions", "Decisions"], ["data", "Data"]] },
   { group: "ADMIN", items: [["admin", "Admin"]] },
 ];
 
@@ -81,7 +82,9 @@ export default function App() {
   const active = conversations.active();
   // who's signed in (Entra Easy Auth identity, resolved to a user + role)
   const [me, setMe] = useState(null);
-  useEffect(() => { api.me().then(setMe).catch(() => {}); }, []);
+  useEffect(() => {
+    api.me().then((m) => { setReckoning(m?.as_of); setMe(m); }).catch(() => {});
+  }, []);
   // the nav is a fixed sidebar on desktop; on phones it's an off-canvas drawer
   const [navOpen, setNavOpen] = useState(false);
   // desktop: the sidebar can be collapsed away to hand its width to the editor
@@ -145,6 +148,22 @@ export default function App() {
       </nav>
 
       <main>
+        {/* When this instance reckons from a date other than today (clock.py),
+            it has to say so. Dates on screen are relative to that date, and an
+            instance that quietly compared against the wrong "now" would be the
+            dishonest version of a fixed demo dataset. */}
+        {me?.as_of && (
+          <div className="asof-banner">
+            <strong>Sample data</strong>
+            <span>
+              Everything on screen is reckoned from{" "}
+              <b>{new Date(me.as_of + "T00:00:00").toLocaleDateString("en-GB",
+                   { day: "numeric", month: "long", year: "numeric" })}</b>
+              {" "}— what was due, overdue or going cold is measured against that
+              date, not today.
+            </span>
+          </div>
+        )}
         <div className="view-head">
           <div>
             <h1>{view.title}</h1>
@@ -164,13 +183,7 @@ export default function App() {
             </div>
           )}
         </div>
-        {view.prims && (
-          <div className="composed">
-            <span className="lbl">composed of</span>
-            {view.prims.map((p) => <span className="prim-tag" key={p}>{p}</span>)}
-          </div>
-        )}
-        <div className="view" key={route}><TabbedView view={view} param={param} /></div>
+        <div className="view" key={route + ":" + (me?.as_of || "live")}><TabbedView view={view} param={param} /></div>
       </main>
 
       {chat && route !== "chat" && (

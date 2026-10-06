@@ -16,6 +16,7 @@ next_action not yet due" would be unimplementable.
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 
+from . import clock
 from . import schema
 from .aito import AitoClient
 
@@ -23,7 +24,6 @@ GOOD_OUTCOMES = ["conversation", "meeting_booked", "callback_requested"]
 OPENER_OUTCOMES = ["conversation", "meeting_booked"]
 RETOUCH_COOLDOWN_DAYS = 5
 FOLLOWUP_HORIZON_DAYS = 3  # the 72h email->call rule
-CALL_WINDOWS = {"0800", "1215", "1600"}
 
 
 @dataclass
@@ -79,7 +79,7 @@ def who_to_call(
 ) -> Result:
     """Query 1: contacts ranked by Aito's $p of a good outcome now."""
     assert window in schema.WINDOWS, f"unknown window {window!r}"
-    as_of = as_of or date.today()
+    as_of = as_of or clock.today()
     weekday = schema.WEEKDAYS[as_of.weekday()]
     result = Result()
     contacts = _fetch_all(client, result, "contacts")
@@ -100,7 +100,7 @@ def who_to_call(
         c for c in contacts
         if c["contact_id"] not in pending
         and c["contact_id"] not in recently_touched
-        and (c["phone_present"] or window not in CALL_WINDOWS)
+        and (c["phone_present"] or window not in schema.call_windows())
     ]
 
     ranked = []
@@ -211,7 +211,7 @@ def opener_context(client: AitoClient, contact_id: str, top_n: int = 3) -> Resul
 
 def what_changed(client: AitoClient, as_of: date | None = None) -> Result:
     """Query 3: yesterday's touches plus open follow-ups due within 72h."""
-    as_of = as_of or date.today()
+    as_of = as_of or clock.today()
     result = Result()
 
     since = (as_of - timedelta(days=1)).isoformat() + "T00:00:00"

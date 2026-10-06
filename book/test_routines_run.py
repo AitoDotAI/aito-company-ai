@@ -151,3 +151,38 @@ def test_run_routine_forces_a_not_due_routine(t: bt.TestCaseRun) -> None:
                                 as_of=AS_OF, force=False)
     t.tln(f"ran: {skip['ran']} · skipped: {skip.get('skipped')}")
     assert skip["ran"] is None and skip["skipped"] == "not due"
+
+
+def test_a_reckoning_date_never_back_dates_what_a_routine_writes(t: bt.TestCaseRun) -> None:
+    """With COMPANY_AI_AS_OF set (a demo dataset), a routine must READ as of that
+    date — so it sees the dataset's working week — but WRITE with the real day:
+    its document and its last_done are the audit trail. An earlier version
+    stamped both with the reckoning date, back-dating them by months."""
+    import os
+
+    client = _client()
+    _load(client)
+    llm = ScriptedLLM([
+        _tool_call("c1", "who_to_call", {"window": "1215", "top_n": 3}),
+        {"role": "assistant", "content": "Top 3 prospects queued."},
+    ])
+    before = os.environ.get("COMPANY_AI_AS_OF")
+    os.environ["COMPANY_AI_AS_OF"] = AS_OF.isoformat()
+    try:
+        res = routines.run_due(client, llm=llm, only=["so01"])   # no explicit date
+    finally:
+        if before is None:
+            os.environ.pop("COMPANY_AI_AS_OF", None)
+        else:
+            os.environ["COMPANY_AI_AS_OF"] = before
+
+    today = date.today().isoformat()
+    doc = next(d for d in client.query({"from": "documents", "limit": 200})["hits"]
+               if "routine" in (d.get("topics") or ""))
+    after = _routine(client, "so01")
+    t.h1("reads reckon from the declared date")
+    t.tln(f"the run reckoned from the declared date: {res['as_of'] == AS_OF.isoformat()}")
+    t.h1("writes stamp the real day")
+    t.tln(f"document noted_on is today, not the reckoning date: {doc['noted_on'] == today}")
+    t.tln(f"routine last_done is today, not the reckoning date: {after['last_done'] == today}")
+    assert doc["noted_on"] == today and after["last_done"] == today
