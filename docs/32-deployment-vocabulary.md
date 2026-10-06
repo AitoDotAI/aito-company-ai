@@ -144,7 +144,11 @@ one person's calendar, compiled into the product. They are configuration now:
   reason the brief shows instead of a call queue. `{}` means no restrictions.
 - **`WEEKDAY_NOTES`** is soft context in the brief, never enforced.
 
-Unset, all three keep this repository's operator's week, so nothing changes for
-an existing deployment. A window that is not a time, a block on a window you do
+Without a vocabulary file you get this repository's operator's week, so
+nothing changes for an existing deployment. **With one, you start from no
+blocked days and no notes** unless the file sets them: the week is personal,
+and a company that only renamed its segments should not have its Thursday calls
+suppressed by someone else's calendar. `WINDOWS` must keep at least one call
+window. A window that is not a time, a block on a window you do
 not have, a weekday that is not one, or a block with no reason are each refused
 with a message naming the mistake.

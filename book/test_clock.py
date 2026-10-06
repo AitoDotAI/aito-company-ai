@@ -81,3 +81,34 @@ def test_write_stamps_keep_the_real_clock(t: bt.TestCaseRun) -> None:
         mod = __import__(f"company_ai.{mod_name}", fromlist=[mod_name])
         src = inspect.getsource(mod)
         t.tln(f"{mod_name}: reads reckon from clock = {'clock.today()' in src}")
+
+
+def test_agents_over_mcp_see_the_same_now_as_the_dashboard(t: bt.TestCaseRun) -> None:
+    """who_to_call and what_changed used to pass date.today() explicitly, so with
+    a reckoning date set an agent over MCP compared against a different "now"
+    than the dashboard showed. Checked by capturing the date each tool passes."""
+    from company_ai import queries, server
+
+    seen = {}
+
+    class _Derived:
+        derived = {}
+
+    def capture(name):
+        def fn(*args, **kwargs):
+            seen[name] = kwargs.get("as_of")
+            return _Derived()
+        return fn
+
+    originals = (queries.who_to_call, queries.what_changed, server._client)
+    queries.who_to_call, queries.what_changed = capture("who_to_call"), capture("what_changed")
+    server._client = lambda: None
+    try:
+        def call(tool, *a):
+            return getattr(server, tool).fn(*a) if hasattr(getattr(server, tool), "fn") \
+                else getattr(server, tool)(*a)
+        _with_env("2026-06-12", lambda: (call("who_to_call", "1215"), call("what_changed")))
+    finally:
+        queries.who_to_call, queries.what_changed, server._client = originals
+    for name in ("who_to_call", "what_changed"):
+        t.tln(f"{name:12} reckons from: {seen.get(name)}")

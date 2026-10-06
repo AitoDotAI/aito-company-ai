@@ -8,6 +8,7 @@ from datetime import date
 
 from mcp.server.fastmcp import FastMCP
 
+from . import clock
 from . import analytics
 from . import deals
 from . import decisions
@@ -39,7 +40,7 @@ def who_to_call(window: str, top_n: int = 5) -> list:
     """Today's call queue for a window (0800, 1215, 1600), ranked by Aito's
     probability of a good outcome. Weak $p on small data is
     expected and shown as-is."""
-    return queries.who_to_call(_client(), window, top_n=top_n, as_of=date.today()).derived
+    return queries.who_to_call(_client(), window, top_n=top_n, as_of=clock.today()).derived
 
 
 @mcp.tool()
@@ -94,7 +95,7 @@ def reindex_search() -> dict:
 def what_changed() -> dict:
     """Touches since yesterday plus open follow-ups due within 72h,
     due-first. Follow-ups go at the top of the brief."""
-    return queries.what_changed(_client(), as_of=date.today()).derived
+    return queries.what_changed(_client(), as_of=clock.today()).derived
 
 
 @mcp.tool()

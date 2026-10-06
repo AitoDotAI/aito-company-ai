@@ -628,8 +628,9 @@ WEEKDAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 # The operator's week. These defaults are THIS repository's operator
 # (operator-ground-truth.md §1): Thursdays away, Wednesday mornings protected.
 # They used to be hardcoded in schedule.py and brief.py, which made one
-# person's calendar part of the product. A deployment replaces them in its
-# vocabulary file (docs/32) — `"UNAVAILABLE": {}` for no restrictions at all.
+# person's calendar part of the product. They apply only when no vocabulary
+# file is configured; any deployment that brings one starts from an empty week
+# and sets its own (docs/32).
 #
 # Call windows are named by their start time as HHMM; "other" is the catch-all
 # bucket for touches outside any window and is always present.
@@ -945,10 +946,19 @@ def _apply_vocabulary() -> None:
     # an HHMM start time would break it, not configure it.
     import re
     g["WINDOWS"] = set(g["WINDOWS"]) | {"other"}
+    assert g["WINDOWS"] - {"other"}, \
+        f"{path}: WINDOWS needs at least one call window; 'other' is only the catch-all"
     for w in g["WINDOWS"] - {"other"}:
         assert re.fullmatch(r"([01]\d|2[0-3])[0-5]\d", w), \
             f"{path}: WINDOWS entry {w!r} must be a start time as HHMM, e.g. '0830'"
 
+    # The operator's week is PERSONAL — the defaults are this repository's own
+    # operator ("Thursday — unavailable (Sisua)"). A deployment that brings a
+    # vocabulary file is someone else, so it starts from no blocked days and no
+    # notes unless it says otherwise. Inheriting ours was not a cosmetic slip: a
+    # company that only renamed its segments had its Thursday call queue
+    # suppressed by our calendar.
+    g["UNAVAILABLE"], g["WEEKDAY_NOTES"] = {}, {}
     # the schedule, after WINDOWS so its references can be checked
     if "UNAVAILABLE" in schedule:
         rules = schedule["UNAVAILABLE"]

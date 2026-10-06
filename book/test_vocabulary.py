@@ -158,3 +158,36 @@ def test_a_malformed_working_week_is_refused(t: bt.TestCaseRun) -> None:
             t.tln(f"{label}: {str(e).split(': ', 1)[1][:110]}")
         finally:
             importlib.reload(schema)
+
+
+def test_a_vocabulary_file_does_not_inherit_our_calendar(t: bt.TestCaseRun) -> None:
+    """The operator's week is personal. Inheriting it was not cosmetic: a company
+    that only renamed its segments had its Thursday call queue suppressed by
+    "Thursday — unavailable (Sisua)"."""
+    import importlib
+    from datetime import date
+
+    from company_ai import schedule
+
+    thursday = date(2026, 10, 8)
+    t.h1("no vocabulary file: this repository's operator, as before")
+    t.tln(f"Thursday callable: {schedule.availability(thursday, '1215')}")
+
+    t.h1("a company that only renamed its segments starts from an empty week")
+    s = _vocab(t, {"SEGMENTS": ["public-sector", "retail", "other"]})
+    importlib.reload(schedule)
+    try:
+        t.tln(f"blocked days: {s.UNAVAILABLE or 'none'}   notes: {s.WEEKDAY_NOTES or 'none'}")
+        t.tln(f"Thursday callable: {schedule.availability(thursday, '1215')}")
+    finally:
+        importlib.reload(schema)
+        importlib.reload(schedule)
+
+    t.h1("and a vocabulary with no call windows is refused rather than crashing the brief")
+    try:
+        _vocab(t, {"WINDOWS": ["other"]})
+        t.tln("accepted (WRONG)")
+    except AssertionError as e:
+        t.tln(str(e).split(": ", 1)[1])
+    finally:
+        importlib.reload(schema)

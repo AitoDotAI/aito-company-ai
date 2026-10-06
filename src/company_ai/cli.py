@@ -4,6 +4,7 @@ import argparse
 from datetime import date, datetime
 from pathlib import Path
 
+from . import clock
 from . import brief as brief_mod
 from . import loaders
 from . import log as logbook
@@ -385,12 +386,14 @@ def main() -> None:
             "the LLM brief runs in a Claude session via prompts/morning-brief.md; "
             "this CLI only renders the deterministic core: brief --no-llm"
         )
-        as_of = date.fromisoformat(args.as_of) if args.as_of else date.today()
+        # a read: reckon from the instance's declared date unless one is given
+        as_of = date.fromisoformat(args.as_of) if args.as_of else clock.today()
         window = args.window or brief_mod.current_window(datetime.now().hour)
         print(brief_mod.render_brief(client, window, as_of, top_n=args.top_n))
     elif args.command == "board-run":
         from . import board
-        as_of = date.fromisoformat(args.as_of) if args.as_of else date.today()
+        # None lets the callee split reads (reckoning date) from writes (real day)
+        as_of = date.fromisoformat(args.as_of) if args.as_of else None
         result = board.run(args.prompt, args.mode, client=client, as_of=as_of)
         print(f"# {args.prompt} ({args.mode}) via {result['model']}")
         if result["saved"]:
@@ -398,7 +401,8 @@ def main() -> None:
         print(result["text"])
     elif args.command == "routines-run":
         from . import routines
-        as_of = date.fromisoformat(args.as_of) if args.as_of else date.today()
+        # None lets the callee split reads (reckoning date) from writes (real day)
+        as_of = date.fromisoformat(args.as_of) if args.as_of else None
         only = [s.strip() for s in args.only.split(",")] if args.only else None
         res = routines.run_due(client, as_of=as_of, only=only, force=args.force)
         print(f"# routines-run ({res['as_of']}): ran {res['count']} due routine(s)")

@@ -39,6 +39,7 @@
      * [test_classify.py::test_given_fields_are_left_alone](book/test_classify.py::test_given_fields_are_left_alone.md)
      * [test_classify.py::test_stakeholder_mention_scan](book/test_classify.py::test_stakeholder_mention_scan.md)
      * [test_clock.py::test_a_bad_value_raises_rather_than_falling_back](book/test_clock.py::test_a_bad_value_raises_rather_than_falling_back.md)
+     * [test_clock.py::test_agents_over_mcp_see_the_same_now_as_the_dashboard](book/test_clock.py::test_agents_over_mcp_see_the_same_now_as_the_dashboard.md)
      * [test_clock.py::test_off_unless_configured](book/test_clock.py::test_off_unless_configured.md)
      * [test_clock.py::test_write_stamps_keep_the_real_clock](book/test_clock.py::test_write_stamps_keep_the_real_clock.md)
      * [test_companies.py::test_company_detail_is_the_graph_drill_in](book/test_companies.py::test_company_detail_is_the_graph_drill_in.md)
@@ -115,6 +116,7 @@
      * [test_routines.py::test_board_and_tick](book/test_routines.py::test_board_and_tick.md)
      * [test_routines.py::test_due_state_by_cadence](book/test_routines.py::test_due_state_by_cadence.md)
      * [test_routines.py::test_prepare_prospects_pack](book/test_routines.py::test_prepare_prospects_pack.md)
+     * [test_routines_run.py::test_a_reckoning_date_never_back_dates_what_a_routine_writes](book/test_routines_run.py::test_a_reckoning_date_never_back_dates_what_a_routine_writes.md)
      * [test_routines_run.py::test_run_due_executes_and_records](book/test_routines_run.py::test_run_due_executes_and_records.md)
      * [test_routines_run.py::test_run_due_skips_when_not_due](book/test_routines_run.py::test_run_due_skips_when_not_due.md)
      * [test_routines_run.py::test_run_routine_forces_a_not_due_routine](book/test_routines_run.py::test_run_routine_forces_a_not_due_routine.md)
@@ -183,6 +185,7 @@
      * [test_vocabulary.py::test_a_company_brings_its_own_vocabulary](book/test_vocabulary.py::test_a_company_brings_its_own_vocabulary.md)
      * [test_vocabulary.py::test_a_company_brings_its_own_working_week](book/test_vocabulary.py::test_a_company_brings_its_own_working_week.md)
      * [test_vocabulary.py::test_a_malformed_working_week_is_refused](book/test_vocabulary.py::test_a_malformed_working_week_is_refused.md)
+     * [test_vocabulary.py::test_a_vocabulary_file_does_not_inherit_our_calendar](book/test_vocabulary.py::test_a_vocabulary_file_does_not_inherit_our_calendar.md)
      * [test_vocabulary.py::test_defaults_derive_from_the_configured_vocabulary](book/test_vocabulary.py::test_defaults_derive_from_the_configured_vocabulary.md)
      * [test_vocabulary.py::test_structural_sets_cannot_be_overridden](book/test_vocabulary.py::test_structural_sets_cannot_be_overridden.md)
 
