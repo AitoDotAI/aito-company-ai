@@ -5,6 +5,7 @@
 // we *can* back with Aito today are fully live.
 import React, { useState, useEffect, useRef } from "react";
 import { todayIso } from "./clock.js";
+import { publicDemo } from "./session.js";
 import { api, pct } from "./api.js";
 import { Block, KpiRow, FunnelChart, QuarterBars, WhyList, Levers, BarRow, Select,
          ActionPipeline, ActionCalendar, WeekCalendar, useAsync, useIsPhone, Loading, ErrorBox } from "./primitives.jsx";
@@ -118,6 +119,12 @@ function AreaAction({ area, lens }) { return <EditableTodos lens={lens} area={ar
 // (area) and fills the relevant blanks ~half a second after you stop typing;
 // only a couple of fields are shown — the full editor (row click) has the rest.
 export function QuickAdd({ defaultArea, onAdded }) {
+  // no add row where nothing can be added: a public demo refuses every write
+  if (publicDemo()) return null;
+  return <QuickAddForm defaultArea={defaultArea} onAdded={onAdded} />;
+}
+
+function QuickAddForm({ defaultArea, onAdded }) {
   const opts = useAsync(() => api.todoOptions(), []);
   const [title, setTitle] = useState("");
   const [area, setArea] = useState(defaultArea);
@@ -2550,7 +2557,9 @@ export const VIEWS = {
            tabs: [
              { id: "todo", label: "To do",
                render: () => <Block title="This week"><AreaAction area="marketing" lens="calendar" /></Block> },
-             { id: "posts", label: "Posts",
+             // reads the raw posts/materials/channels tables, which are
+             // operator-only — hidden for a public-demo visitor (docs/33)
+             { id: "posts", label: "Posts", operatorOnly: true,
                render: () => <Block title="Posts — material × channel"><PostsBoard /></Block> },
              { id: "analytics", label: "Analytics",
                render: () => <FunnelView only="website" /> },

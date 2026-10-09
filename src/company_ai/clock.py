@@ -23,12 +23,25 @@ It is deliberately narrow:
 
 from datetime import date
 
-from .config import Config
+from .config import SEED_DIR, Config
 
 
 def reckoning() -> date | None:
-    """The configured as-of date, or None when the real clock is in use."""
-    return Config.from_env().as_of
+    """The configured as-of date, or None when the real clock is in use.
+
+    A PUBLIC DEMO serves the shipped synthetic seed by definition (it refuses
+    the internal instance, docs/33), and has no `./do seed` to record the seed's
+    date — it runs in a container. So unless COMPANY_AI_AS_OF says otherwise it
+    reckons from the seed's own anchor (data/seed/AS_OF); without that, every
+    visitor would see a pipeline where every deal is stalled. The banner shows
+    it either way."""
+    config = Config.from_env()
+    if config.as_of:
+        return config.as_of
+    anchor = SEED_DIR / "AS_OF"
+    if config.public_demo and anchor.exists():
+        return date.fromisoformat(anchor.read_text().strip())
+    return None
 
 
 def today() -> date:

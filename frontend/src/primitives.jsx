@@ -4,6 +4,7 @@
 // action/document primitives arrive with the todos/library tables.
 import React, { useEffect, useRef, useState } from "react";
 import { now as clockNow } from "./clock.js";
+import { publicDemo } from "./session.js";
 import { pct } from "./api.js";
 
 export function Block({ title, ptype, note, children }) {
@@ -254,7 +255,18 @@ function useSwipe({ onDone, onArchive }) {
 // hit area on mobile, not just the little pencil) and shows a pencil
 // affordance. The inline buttons stopPropagation so ✓/✎ still do their own job.
 // onDone/onArchive also enable swipe-right/left on touch.
-export function ActionRow({ t, showArea, showDue, onEdit, onDone, onArchive, drag, renderAssignee }) {
+export function ActionRow(props) {
+  // A public demo refuses every write, so a row there carries none of the
+  // controls that make one: no done box, no swipe, no edit pencil or row tap,
+  // no assignee picker, no drag (docs/33). Each control only renders when its
+  // handler is given, so withholding the handlers is the whole change.
+  const ro = publicDemo();
+  const { t, showArea, showDue } = props;
+  const onEdit = ro ? undefined : props.onEdit;
+  const onDone = ro ? undefined : props.onDone;
+  const onArchive = ro ? undefined : props.onArchive;
+  const drag = ro ? undefined : props.drag;
+  const renderAssignee = ro ? undefined : props.renderAssignee;
   const stop = (fn) => (e) => { e.stopPropagation(); fn(); };
   const sw = useSwipe({ onDone: onDone && (() => onDone(t)),
                         onArchive: onArchive && (() => onArchive(t)) });
