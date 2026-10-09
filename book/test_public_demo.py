@@ -65,9 +65,26 @@ def test_reads_have_no_write_side_effects(t: bt.TestCaseRun) -> None:
 
 
 def test_no_model_is_a_message_not_a_500(t: bt.TestCaseRun) -> None:
+    """The assistant builds its model client from the ENVIRONMENT, not from the
+    app's config object, so clearing keys on the config proved nothing: on a
+    machine whose test env carries a real key, this test called the model and
+    got a 200. The guarantee that matters is the production one — the container
+    sets COMPANY_AI_PUBLIC_DEMO, and then no model is called even with a live
+    key lying in the environment — so that is what this sets."""
+    import os
     client = _app(llm_api_key="", llm_azure_endpoint="", llm_base_url="")
-    t.h1("the assistant with no model configured answers 503 with an explanation")
-    r = client.post("/api/assistant/chat", json={"messages": [{"role": "user", "content": "hi"}]})
+    saved = {k: os.environ.get(k) for k in ("COMPANY_AI_PUBLIC_DEMO", "COMPANY_AI_PUBLIC_DEMO_LLM")}
+    os.environ["COMPANY_AI_PUBLIC_DEMO"] = "1"
+    os.environ.pop("COMPANY_AI_PUBLIC_DEMO_LLM", None)
+    try:
+        t.h1("the assistant in a public demo answers 503 with an explanation")
+        r = client.post("/api/assistant/chat", json={"messages": [{"role": "user", "content": "hi"}]})
+    finally:
+        for k, v in saved.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
     t.tln(f"-> {r.status_code} llm_unavailable={r.json().get('llm_unavailable')}")
     t.tln(f"   {r.json().get('error')}")
     assert r.status_code == 503 and r.json()["llm_unavailable"] is True
