@@ -3,10 +3,15 @@
 // agent-status footer. Views are composed from primitives in views.jsx.
 import React, { useEffect, useState } from "react";
 import { setReckoning } from "./clock.js";
+import { publicDemo, setPublicDemo } from "./session.js";
 import { VIEWS, ScopedData, Documents, QuickFind } from "./views.jsx";
 import { Assistant } from "./assistant.jsx";
 import { conversations, useConversations } from "./conversations.js";
 import { api } from "./api.js";
+
+// Views a public-demo visitor cannot use: My work and Admin need an identity,
+// and Data's sheets read operator-only routes (docs/33).
+const PUBLIC_DEMO_HIDDEN = new Set(["mywork", "data", "admin"]);
 
 const NAV = [
   { group: "NOW", items: [["now", "Today"], ["overview", "Overview"], ["mywork", "My work"], ["chat", "Chat"], ["routines", "Routines"]] },
@@ -29,9 +34,12 @@ export function TabbedView({ view, param }) {
   const withDocs = view.docsArea
     ? [...base, { id: "documents", label: "Documents", render: () => <Documents area={view.docsArea} /> }]
     : base;
-  const tabs = view.data
+  const all = view.data
     ? [...withDocs, { id: "data", label: "Data", render: () => <ScopedData specs={view.data} /> }]
     : withDocs;
+  // a public-demo visitor gets no tab that can only answer 403: the Data sheets
+  // and any tab marked operatorOnly read operator-only routes (docs/33)
+  const tabs = publicDemo() ? all.filter((t) => t.id !== "data" && !t.operatorOnly) : all;
   const [tab, setTab] = useState(tabs[0].id);
   if (tabs.length === 1) return tabs[0].render();
   const active = tabs.find((t) => t.id === tab) || tabs[0];
@@ -83,7 +91,8 @@ export default function App() {
   // who's signed in (Entra Easy Auth identity, resolved to a user + role)
   const [me, setMe] = useState(null);
   useEffect(() => {
-    api.me().then((m) => { setReckoning(m?.as_of); setMe(m); }).catch(() => {});
+    api.me().then((m) => { setReckoning(m?.as_of); setPublicDemo(m?.public_demo); setMe(m); })
+      .catch(() => {});
   }, []);
   // the nav is a fixed sidebar on desktop; on phones it's an off-canvas drawer
   const [navOpen, setNavOpen] = useState(false);
@@ -130,7 +139,9 @@ export default function App() {
           <button className="nav-collapse" aria-label="collapse navigation"
                   title="collapse navigation" onClick={() => setNavCollapsed(true)}>«</button>
         </div>
-        {NAV.map((g) => (
+        {NAV.map((g) => ({ ...g, items: g.items.filter(([id]) =>
+            !(me?.public_demo && PUBLIC_DEMO_HIDDEN.has(id))) }))
+          .filter((g) => g.items.length).map((g) => (
           <div className="nav-group" key={g.group}>
             <div className="gl">{g.group}</div>
             {g.items.map(([id, label]) => (
@@ -152,16 +163,20 @@ export default function App() {
             it has to say so. Dates on screen are relative to that date, and an
             instance that quietly compared against the wrong "now" would be the
             dishonest version of a fixed demo dataset. */}
-        {me?.as_of && (
+        {(me?.as_of || me?.public_demo) && (
           <div className="asof-banner">
-            <strong>Sample data</strong>
-            <span>
+            <strong>{me?.public_demo ? "Public demo" : "Sample data"}</strong>
+            {me?.public_demo && (
+              <span>Read-only: the companies and people here are invented, and
+                changes are switched off.</span>
+            )}
+            {me?.as_of && <span>
               Everything on screen is reckoned from{" "}
               <b>{new Date(me.as_of + "T00:00:00").toLocaleDateString("en-GB",
                    { day: "numeric", month: "long", year: "numeric" })}</b>
               {" "}— what was due, overdue or going cold is measured against that
               date, not today.
-            </span>
+            </span>}
           </div>
         )}
         <div className="view-head">
@@ -172,7 +187,7 @@ export default function App() {
           {route !== "chat" && (
             <div className="head-actions">
               <QuickFind />
-              {viewKey !== "note" && (
+              {viewKey !== "note" && !me?.public_demo && (
                 <button className="note-btn" onClick={() => navTo("note")}>＋ Note</button>
               )}
               {!chat && (
@@ -183,7 +198,7 @@ export default function App() {
             </div>
           )}
         </div>
-        <div className="view" key={route + ":" + (me?.as_of || "live")}><TabbedView view={view} param={param} /></div>
+        <div className="view" key={route + ":" + (me?.as_of || "live") + (me?.public_demo ? ":demo" : "")}><TabbedView view={view} param={param} /></div>
       </main>
 
       {chat && route !== "chat" && (

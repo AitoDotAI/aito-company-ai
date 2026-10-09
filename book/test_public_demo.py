@@ -1,4 +1,4 @@
-"""Public demo mode (COMPANY_AI_PUBLIC_DEMO, docs/32-public-demo.md).
+"""Public demo mode (COMPANY_AI_PUBLIC_DEMO, docs/33-public-demo.md).
 
 The contract for anonymous visitors on a public host: they read, never write;
 a read has no write side effects; the internal ops instance is refused at
@@ -102,3 +102,34 @@ def test_inherited_model_keys_stay_off(t: bt.TestCaseRun) -> None:
     assert off.public_demo and not off.llm_api_key and not off.embed_enabled
     assert not off.fetch_enabled and not off.mcp_token
     assert opted_in.llm_api_key and not opted_in.embed_enabled
+
+
+def test_a_public_demo_shows_the_seeds_working_week(t: bt.TestCaseRun) -> None:
+    """A public demo serves the shipped seed and runs in a container, with no
+    `./do seed` to record the seed's date. Reckoning from the real clock, every
+    visitor would see a pipeline where every deal is stalled."""
+    import os
+
+    from company_ai import clock
+    from company_ai.config import SEED_DIR
+
+    def reckon(env):
+        saved = {k: os.environ.get(k) for k in env}
+        try:
+            for k, v in env.items():
+                if v is None:
+                    os.environ.pop(k, None)
+                else:
+                    os.environ[k] = v
+            return clock.reckoning()
+        finally:
+            for k, v in saved.items():
+                if v is None:
+                    os.environ.pop(k, None)
+                else:
+                    os.environ[k] = v
+
+    t.tln(f"the seed is about: {(SEED_DIR / 'AS_OF').read_text().strip()}")
+    t.tln(f"public demo, nothing set:   {reckon({'COMPANY_AI_PUBLIC_DEMO': '1', 'COMPANY_AI_AS_OF': None})}")
+    t.tln(f"public demo, a date set:    {reckon({'COMPANY_AI_PUBLIC_DEMO': '1', 'COMPANY_AI_AS_OF': '2026-07-01'})}")
+    t.tln(f"not a demo, nothing set:    {reckon({'COMPANY_AI_PUBLIC_DEMO': None, 'COMPANY_AI_AS_OF': None})}")

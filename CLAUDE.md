@@ -145,4 +145,5 @@ names, numbers, or non-public company data anywhere in tracked files.
   Knowledge graph view shows each question beside the query that answered it):
   `docs/31-knowledge-graph.md`
 - Running it on your own data (deployment vocabulary): `docs/32-deployment-vocabulary.md`
+- Public demo mode (read-only, anonymous visitors, `COMPANY_AI_PUBLIC_DEMO`): `docs/33-public-demo.md`
 - Extending it (add a table / view / routine — the checklist): `docs/19-extending.md`; contributor setup in `CONTRIBUTING.md`
