@@ -5,6 +5,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { TabbedView } from "./App.jsx";
 import { QuickAdd } from "./views.jsx";
+import { ActionRow } from "./primitives.jsx";
 import { setPublicDemo } from "./session.js";
 
 vi.mock("./api.js", () => ({
@@ -40,5 +41,21 @@ describe("public demo", () => {
     setPublicDemo(true);
     const { container } = render(<QuickAdd defaultArea="sales" />);
     expect(container).toBeEmptyDOMElement();
+  });
+
+  it("gives a todo row no done box, edit pencil or assignee picker", () => {
+    const t = { todo_id: "td-1", title: "Call Acme", priority: 1, status: "ready",
+                prep_status: "ready", area: "sales" };
+    const handlers = { onEdit: () => {}, onDone: () => {}, onArchive: () => {},
+                       renderAssignee: () => <select aria-label="assignee" /> };
+    const { unmount } = render(<ActionRow t={t} {...handlers} />);
+    expect(screen.getByTitle("mark done")).toBeInTheDocument();      // the control exists normally
+    unmount();
+    setPublicDemo(true);
+    render(<ActionRow t={t} {...handlers} />);
+    expect(screen.getByText("Call Acme")).toBeInTheDocument();       // still readable
+    expect(screen.queryByTitle("mark done")).toBeNull();
+    expect(screen.queryByTitle("edit")).toBeNull();
+    expect(screen.queryByLabelText("assignee")).toBeNull();
   });
 });
