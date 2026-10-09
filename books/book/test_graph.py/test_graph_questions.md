@@ -1,6 +1,6 @@
 # Each question is one Aito query — request, then what came back
 
-  8/8 queries answered; failed: none
+  9/9 queries answered; failed: none
 
 ## What kind of company is this, judged only by who works there?
 
@@ -66,3 +66,10 @@
     {'deal_count': 24, 'mrr_eur': 21250, 'name': 'Delos Ab', 'relationship': 'customer'}
     {'deal_count': 19, 'mrr_eur': 0, 'name': 'Pendant Oy', 'relationship': 'prospect'}
     {'deal_count': 17, 'mrr_eur': 8750, 'name': 'Vertex GmbH', 'relationship': 'customer'}
+
+## How likely is any closed deal to have been won?
+
+  request:  {'from': {'from': 'deals', 'where': {'stage': {'$or': ['closed_lost', 'closed_won']}}}, 'predict': 'won', 'select': ['$value', '$p']}
+  total:    2
+    {'$p': 0.743801652892562, '$value': False}
+    {'$p': 0.256198347107438, '$value': True}

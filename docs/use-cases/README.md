@@ -2,9 +2,11 @@
 
 What this actually does, one screen at a time.
 
-Company AI runs a one-person company's sales and marketing: what to do today,
-which deals will close, where the funnel leaks, what to post, what to read
-before a call. The thing that makes it different from a CRM is that **every
+Company AI runs a small company end to end: what to do today, what is in the
+pipeline and what has gone quiet, where the funnel leaks, what to post, which
+experiments paid off, what was decided and why — and the notes and accounts
+underneath all of it. The
+thing that makes it different from a CRM is that **every
 rate, ranking and likelihood on these screens is a prediction from the
 company's own history** — not a rule someone wrote, not a weight someone
 tuned. When the history changes, the numbers change by themselves.
@@ -12,15 +14,18 @@ tuned. When the history changes, the numbers change by themselves.
 You don't need to know how that works to read this tour. The last two
 chapters are there if you want to change it.
 
+One thing the screenshots cannot show: **these screens are the operator's half
+of it.** The agents that work this data daily never open the dashboard —
+they go through MCP from a Claude session, calling the same functions these
+views render. So read each screen as a question with two front doors, one you
+look at and one you ask.
+
 > Every screenshot is the public demo — synthetic companies, synthetic
 > people, synthetic deals, all of it in [`data/seed`](../../data/seed). No
 > real contacts appear anywhere in this repository.
 
-Run the same thing locally in about a minute:
-
-```sh
-./do install && ./do seed && ./do start     # → http://localhost:8770
-```
+Run the same thing locally in about ten minutes — the steps are on the
+[front page](../../README.md#try-it).
 
 ---
 
@@ -51,6 +56,9 @@ The point is that nothing here is a static list: a deal going cold, an
 experiment coming due, or a todo aging past its window changes what floats to
 the top, without anyone re-prioritising by hand.
 
+The honest limit: sorting is not closing. A board stays current only as long
+as the work on it gets closed out.
+
 ## 2 · "Where does the business stand?"
 
 ![Overview](../assets/dashboard-overview.png)
@@ -74,10 +82,15 @@ long each has been cold. That ranking is the shortlist for the day.
 *Sales analytics — the pipeline, the win-rate trend, and each deal's
 predicted close likelihood.*
 
-Every open deal carries two probabilities: the operator's own gut number, and
-Aito's, computed from what happened to similar deals before. **Where the two
-diverge is the interesting part** — a deal you are confident about that the
-history says is weak, or the reverse, is the one to look at this week.
+Every open deal carries two probabilities: the operator's own number, and one
+computed from what happened to similar deals before.
+
+**And be honest about the second one.** Its quality tracks the number of deals
+that have already closed: early on it is a weak signal next to an experienced
+guess, and it sharpens as the history fills in. That is why it is shown beside
+the operator's number rather than in place of it — and why the view earns its
+keep on the plain facts too: what is open, how big, and how long since anyone
+touched it.
 
 The prediction conditions on the things you know *before* the outcome — stage,
 what is blocking it, whether there is a champion — so it is honest about deals
@@ -133,7 +146,53 @@ contacts and deals together by relevance, and it learns: results that get
 clicked for a given query rise for similar queries later, so the ranking
 sharpens with use instead of staying frozen.
 
-## 7 · "What do I do every week?"
+This chapter is the one that gets used most. *Everything we have on this person
+and this company* is asked before every meeting, and answered by a single
+search followed by reading the two to four hits it returns.
+
+It is worth being clear about what that means for the rest of the tour. This
+is not the non-predictive corner of the product — the ranking is Aito's, over
+an index trained by which results people click, which is why it survives a
+misspelled name and a query in the wrong language. **The prediction people
+reach for most is a match, not a forecast.** The next most common question has
+the same shape — *what did we last promise this company, and what is still
+open?* — and is answered the same way: search, then read.
+
+## 7 · "What kind of company is this, judged by who works there?"
+
+[![Knowledge graph](../assets/dashboard-graph-hero.png)](../31-knowledge-graph.md)
+
+*The Knowledge graph — each question beside the single query that answered it.*
+
+Accounts, people, deals and notes are linked, and those links can be walked in
+both directions: forward from a deal to its account, and backwards from an
+account to its people. That turns questions that would otherwise need a join
+into one query — "who works at the accounts that pay us", "which accounts have
+a CTO on file", "what is in play across an industry".
+
+Two of the cards do something a relational database cannot. One infers an
+account's **industry from the people linked to it**, never reading the
+account's own industry at all. The other predicts whether a deal will be won
+from a fact that exists nowhere on the deal — whether a CTO is on file at that
+account — and returns **what each fact did to the number**, as a multiplier.
+The answer arrives with its reasons rather than as a bare probability.
+
+## 8 · "Where did we discuss pricing?" — asked in the wrong language
+
+![Search](../assets/dashboard-search-semantic.png)
+
+*A French query returning English documents, none sharing a word with it.*
+
+Search ranks documents, contacts and deals together, and it learns: a result
+clicked for one query rises for similar queries later. With embeddings
+configured it also matches on **meaning**, so a question asked in Finnish or
+French finds a note written in English — which matters when the notes are
+written in whichever language the meeting happened in.
+
+Without embeddings it degrades to plain text matching rather than breaking;
+the semantic layer is additive, not required.
+
+## 9 · "What do I do every week?"
 
 ![Routines](../assets/dashboard-routines.png)
 
@@ -145,7 +204,10 @@ the part worth looking at: it assembles the candidates from the data and hands
 over a filled-in prompt, so the weekly task starts from a ranked shortlist
 rather than a blank page.
 
-## 8 · "Is this event worth going to?"
+The honest part: a cadence only means something if the work is ticked off as
+it happens, and that habit is easier to design than to keep.
+
+## 10 · "Is this event worth going to?"
 
 ![Events](../assets/dashboard-events.png)
 
@@ -156,7 +218,7 @@ and a go or skip recorded against it — so the question gets answered
 deliberately once, and the answer is still there next year when the same
 event comes round.
 
-## 9 · "Did that experiment pay off?"
+## 11 · "Did that experiment pay off?"
 
 ![Learning](../assets/dashboard-learning.png)
 
@@ -168,6 +230,41 @@ outcome is exactly what changes tomorrow's predictions, so recording a result
 is not bookkeeping, it is how the system gets better at its job.
 
 ---
+
+## 12 · "What is R&D actually working on?" — the ticket as a lab notebook
+
+The same todos table carries the product side, and it is used in a shape the
+sales side never touches. R&D work arrives ranked by priority instead of laid
+out by date, and a ticket is not a line item to be checked off — it is the
+running record of the work:
+
+> *"The ticket as a running lab notebook — append the finding to the ticket
+> that owns it."*
+
+Appends are dated and additive, so a claim that turns out to be wrong is
+**corrected in place by a later entry rather than edited away**. That is the
+property that makes the history worth keeping:
+
+One accuracy-regression ticket carried a week of history across four sessions:
+found by one agent, released in writing, picked up by a second, measured by a
+third, corrected by a fourth. Any of them could reconstruct where it stood from
+a cold start, including which earlier claims had been retracted and why.
+
+**The review gate.** Moving R&D work to `review` requires a handoff block —
+`CLAIM`, `VERIFY`, `SCOPE`, `RISK`, `PUSHED` — and the requirement is checked,
+not merely written down somewhere. Agent-completed work therefore cannot
+self-certify as done; it waits for a human.
+
+In practice the validator earns its keep by refusing: the forced `CLAIM` line
+has more than once revealed that work being handed back was not actually
+finished.
+
+**What the ticket is not.** An agent that loses its context does not resume
+engineering work from the ticket — it resumes from the git log, the branch, the
+committed design notes and its own records. So the claim here is the narrow
+one: a ticket carries the brief, the claim and the handoff, which is what
+*coordination* needs. The resumable state of the work itself is the commits,
+because that is what a build and a review actually check.
 
 ## How it works: the Aito calls
 
@@ -188,7 +285,7 @@ who-to-reach, and the post scorer:
 }
 ```
 
-`$p` is the calibrated probability; `$why` is the breakdown of which features
+`$p` is Aito's probability; `$why` is the breakdown of which features
 pushed it up or down, which is what lets the UI explain a number instead of
 merely printing it.
 
@@ -213,6 +310,17 @@ Segment 360 and the funnel:
   "goal": { "reached_deepest": true },
   "limit": 8
 }
+```
+
+**`$refs` — walk the link backwards.** Everything above reads *from* a row
+towards what it points at. `$refs` goes the other way: on a company,
+`$refs.contacts.company_id` is the set of contacts pointing at it, which is how
+"which accounts have a CTO on file" is one query:
+
+```json
+{ "from": "companies",
+  "where": { "$refs.contacts.company_id": { "$exists": { "role": "CTO" } } },
+  "select": ["name", "industry", "relationship"] }
 ```
 
 **`$match` + `orderBy` — smart search.** The query is tokenised and OR'd so an

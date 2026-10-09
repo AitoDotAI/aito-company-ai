@@ -3,6 +3,7 @@
 // data today are implemented (kpi-row, chart→funnel, optimizer); the
 // action/document primitives arrive with the todos/library tables.
 import React, { useEffect, useRef, useState } from "react";
+import { now as clockNow } from "./clock.js";
 import { pct } from "./api.js";
 
 export function Block({ title, ptype, note, children }) {
@@ -10,7 +11,6 @@ export function Block({ title, ptype, note, children }) {
     <section className="block">
       <div className="block-head">
         <h2>{title}</h2>
-        {ptype && <span className="ptype">{ptype}</span>}
         {note && <span className="note">{note}</span>}
       </div>
       {children}
@@ -372,11 +372,11 @@ function _ymd(d) {
 }
 export function WeekCalendar({ todos, events, onEdit }) {
   const [offset, setOffset] = useState(0);
-  const base = new Date();
+  const base = clockNow();
   base.setHours(0, 0, 0, 0);
   base.setDate(base.getDate() - ((base.getDay() + 6) % 7) + offset * 7);  // Monday + offset weeks
   const days = [...Array(7)].map((_, i) => { const d = new Date(base); d.setDate(base.getDate() + i); return d; });
-  const today = _ymd(new Date());
+  const today = _ymd(clockNow());
   const byDay = {};
   (todos || []).forEach((t) => { if (t.due_date) (byDay[t.due_date] = byDay[t.due_date] || []).push(t); });
   Object.values(byDay).forEach((l) => l.sort((a, b) => (a.slot || "99:99").localeCompare(b.slot || "99:99")));

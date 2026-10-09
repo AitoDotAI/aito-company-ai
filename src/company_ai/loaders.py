@@ -7,6 +7,7 @@ duplicates. Because touches links to contacts, reloading the rolodex
 drops touches first; run load-rolodex before load-touches.
 """
 
+import contextvars
 import csv
 import re
 from datetime import date, datetime
@@ -41,8 +42,19 @@ TABLE_FILES = {
 }
 
 
+# validate.py sets this to a list to COLLECT every failed check in a row rather
+# than stop at the first, so one pass over an export shows all of a row's
+# problems. Unset (every load path) keeps rule 3 exactly: the first surprise
+# raises, with the row attached.
+_COLLECT: contextvars.ContextVar = contextvars.ContextVar("_collect", default=None)
+
+
 def _require(condition: bool, message: str, row: dict) -> None:
     if not condition:
+        sink = _COLLECT.get()
+        if sink is not None:
+            sink.append(message)
+            return
         raise AssertionError(f"{message}; offending row: {row}")
 
 
@@ -256,7 +268,6 @@ def derive_contact_funnel(contact_rows: list[dict], data_dir: Path) -> None:
 # Roles that count as a technical buyer for `companies.technical_contact`.
 # Kept next to the harvest because it is a property OF THE HARVEST, not of the
 # contact: the generator plants the effect on "we know a CTO there".
-TECHNICAL_CONTACT_ROLES = {"CTO"}
 
 
 def companies_from_csvs(data_dir: Path) -> list[dict]:
@@ -329,7 +340,7 @@ def companies_from_csvs(data_dir: Path) -> list[dict]:
                               if schema.deal_won(d.get("stage", "")) is None),
             "contact_count": len(ccs),
             # companies <- contacts, walked at load time
-            "technical_contact": any(r.get("role") in TECHNICAL_CONTACT_ROLES
+            "technical_contact": any(r.get("role") in schema.TECHNICAL_ROLES
                                      for r in ccs),
         })
     return rows
@@ -978,7 +989,15 @@ def export_all(client: AitoClient, out_dir: Path) -> list[tuple[str, int]]:
 def load_all(client: AitoClient, data_dir: Path) -> list[tuple[str, int]]:
     """Load every table whose CSV is present in data_dir, in dependency order
     (contacts before touches). The second step of a migration, after
-    create_schema on the target instance."""
+    create_schema on the target instance.
+
+    Validates the WHOLE directory first (validate.py) and writes nothing if any
+    row fails — the same all-or-nothing as before, but the refusal lists every
+    problem at once instead of the first one."""
+    from . import validate
+    report = validate.validate_dir(data_dir)
+    if not report.ok:
+        raise validate.DataProblems(f"{data_dir} does not load:\n{report.render()}")
     done = []
     # companies has no CSV of its own — it is derived from the distinct companies
     # in the rolodex + deals + documents CSVs (.ai/tasks/15). It is the

@@ -655,6 +655,11 @@ DIST_ACTIONS = ["Ship the {topic} post", "Draft the {topic} narrative",
 DIST_TOPICS = ["agent-inference", "positioning", "oss-tool", "customer-proof", "product"]
 OPS_ITEMS = ["{co} instance isolation check", "{co} license renewal window",
              "{co} usage anomaly review", "{co} uptime report"]
+# Kept deliberately short. Widening this pool (tried: 10 titles) halves the
+# evidence per title in the closed history, and the title -> area/action_type
+# classifier drops from p~0.87 to p~0.44 — below the threshold
+# test_classify_seed asserts. Variety here costs inference quality, so the
+# pool grows only alongside n_todo_history.
 RND_ITEMS = ["Rep2 stabilization", "pg_infer extension", "Booktest end-to-end verify",
              "Predictive-DB benchmark", "Schema migration tooling"]
 EXP_ACTIONS = ["Analyze the {topic} test results", "Set up the {topic} experiment",
@@ -674,7 +679,7 @@ def _infer_action(title, area):
         return "call"
     if t.startswith(("reference ask", "reposition", "send", "email", "follow-up")):
         return "email"
-    if t.startswith(("meet", "book", "demo")):
+    if t.startswith(("meet", "book ", "demo")):   # "book " — not "Booktest"
         return "meeting"
     if t.startswith(("ship", "post", "draft", "repurpose", "propagate", "publish")):
         return "post"
@@ -739,9 +744,20 @@ def make_todos(rng, contacts, deals, n, prefix):
                 "linked_id": "", "linked_type": "", "stakeholder_id": "",
                 "role": "", "owner": ""}
 
+    # Every area must carry open work: a weighted draw alone left Operations
+    # empty (~3% of seeds), and a view with nothing in it demos nothing. Floor
+    # each area, then fill the remainder by weight.
+    _AREAS = ["sales", "marketing", "operations", "rnd", "experiments"]
+    _WEIGHTS = [4, 3, 2, 3, 2]
+    # the floor adapts to the dataset: seed_tiny is deliberately sparse (6 open
+    # todos) to keep cold-start behaviour honest, so it gets 1 per area, not 2.
+    _FLOOR = min(2, n // len(_AREAS))
+    area_plan = [a for a in _AREAS for _ in range(_FLOOR)]
+    area_plan += rng.choices(_AREAS, weights=_WEIGHTS, k=n - len(area_plan))
+    rng.shuffle(area_plan)
+
     for i in range(n):
-        area = rng.choices(["sales", "marketing", "operations", "rnd", "experiments"],
-                           weights=[4, 3, 2, 3, 2])[0]
+        area = area_plan[i]
         tid = f"{prefix}{i + 1:03d}"
         if area == "sales":
             deal = rng.choice(open_deals)
@@ -1111,6 +1127,11 @@ def generate(out_dir: Path, n_contacts: int, n_touches: int, n_sessions: int,
     events = make_events(rng, n_events, f"{prefix}v")
     routines = make_routines(n_routines, f"{prefix}o")
     documents = make_documents(rng, accounts, contacts, f"{prefix}dc")
+    # the date this dataset is ABOUT. Without it a fixed seed rots: four months
+    # later every deal reads as stalled. `./do seed` hands it to the instance as
+    # its reckoning date (clock.py), so a fresh install shows a working week.
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / "AS_OF").write_text(AS_OF.isoformat() + "\n")
     write_csv(out_dir / "rolodex.csv", contacts)
     write_csv(out_dir / "touches.csv", touches)
     write_csv(out_dir / "sessions.csv", sessions)

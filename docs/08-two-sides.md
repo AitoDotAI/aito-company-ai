@@ -1,6 +1,6 @@
 # Two sides of the same brain
 
-One Aito instance holds the intuition — the ranking, the calibrated
+One Aito instance holds the intuition — the ranking, the
 probabilities, the causes and levers learned from outcome history. It is
 exposed two ways, to two kinds of user:
 
@@ -30,7 +30,7 @@ surfaces only compose and render what Aito returns.
 ## Shared setup (do once)
 
 ```sh
-docker run -d -p 9005:9005 ghcr.io/aitohq/aito   # 1. the Aito instance
+docker run -d -p 9005:9005 -e AITO_DISABLE_AUTH=true ghcr.io/aitohq/aito   # 1. the Aito instance
 cp .env.example .env                              # 2. point at it (AITO_INSTANCE_URL)
 uv run company-ai create-schema                   # 3. the tables
 uv run company-ai load-rolodex --seed             # 4. data (omit --seed for the
@@ -143,7 +143,7 @@ Slices are shareable by URL, e.g. `/?segment=erp&tier=A`.
 The dashboard's **Funnels** tab visualizes two predictive funnels: the
 website/acquisition funnel (visitor → signup → trial → paid, over
 `sessions`) and the sales funnel (contact → … → meeting). Each shows the
-funnel shape, the biggest-drop leak, Aito's calibrated outlook for the
+funnel shape, the biggest-drop leak, Aito's outlook for the
 deepest stage, why the slice leaks, and the lever that moves it. Spec in
 `docs/09-funnels.md`.
 

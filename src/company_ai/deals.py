@@ -16,10 +16,26 @@ two can be compared — where they diverge is the interesting signal.
 from dataclasses import dataclass, field
 from datetime import date
 
-from . import aitowhy, schema
+from . import clock
+from . import aitowhy, history, schema
 from .aito import AitoClient
 
 STALL_DAYS = 14  # no touch in this many days flags a stalled deal
+# Fewer closed deals than this share a feature's value, and its lift is a guess:
+# the feature is left out of the evidence, and the answer says so (`thin`).
+MIN_PROFILE_EVIDENCE = 8
+
+
+def _as_bool(value) -> bool:
+    """champion_present as the Boolean the column holds. The dashboard sends it
+    through a query string ('true'/'false'); a string in a Boolean where-clause
+    matches nothing, and Aito silently drops evidence it cannot match, so every
+    profile read the same number (the 45% of td-20260928211407945642)."""
+    if isinstance(value, bool):
+        return value
+    text = str(value).strip().lower()
+    assert text in ("true", "false"), f"champion_present must be true/false, got {value!r}"
+    return text == "true"
 
 
 @dataclass
@@ -41,37 +57,78 @@ def _fetch_open(client: AitoClient, result: Result) -> list[dict]:
 
 
 def close_likelihood(client: AitoClient, stage: str, blocker: str,
-                     champion_present: str, result: Result | None = None) -> dict:
-    """Aito's P(won) + $why for a deal's profile. Conditions ONLY on
-    (stage, blocker, champion_present) — the pre-outcome features the closed
-    history carries — so many open deals share one answer. Keyed on exactly
-    those, it is the unit the dashboard resolves lazily and caches (one HTTP
-    call per distinct profile, GET /api/pwin)."""
-    request = {
-        "from": "deals",
-        "where": {"stage": stage, "blocker": blocker, "champion_present": champion_present},
-        "predict": "won",
-        "select": ["$p", "$value", "$why"],
-    }
-    response = client.predict(request)
+                     champion_present, result: Result | None = None,
+                     segment: str | None = None) -> dict:
+    """Aito's P(won) + $why for a deal's profile (blocker, champion, and its
+    segment when given), learned from CLOSED deals. Keyed on the profile, it is
+    the unit the dashboard resolves lazily and caches (one HTTP call per
+    profile, GET /api/pwin).
+
+    `stage` is NOT evidence, deliberately: a closed deal's stage is
+    closed_won/closed_lost, so no closed row carries an open stage and the
+    history holds nothing about how, say, a pilot converts. Putting it in the
+    where only looked like conditioning: Aito dropped it, and deals at five
+    stages read one number. Stage-aware odds need the stage a deal closed from,
+    which the pipeline does not record (see the ticket's follow-up).
+
+    Each feature is evidence when at least MIN_PROFILE_EVIDENCE closed deals
+    share its value; Aito combines the features, so the deal needs no exact
+    look-alikes (on the seed, 37 of 40 open deals have fewer than 8 closed
+    deals matching all three). A thinner value is listed in `thin` with its
+    count and left out. Returns `evidence` (the features used), `thin`, `n`
+    (closed deals sharing the whole evidence profile) and `basis`: 'profile'
+    (every feature used), 'partial' (some thin), 'base_rate' (none: the win
+    rate over all closed deals), or 'no_history' when no deal has closed yet
+    (no `p_win` at all).
+
+    The history is a nested `from` over closed deals (history.finished): an
+    open deal never trains the model, even one whose `won` reads False."""
+    features = {"blocker": blocker, "champion_present": _as_bool(champion_present)}
+    if segment is not None:
+        features["segment"] = segment
+    evidence, thin = {}, []
+    for feature, value in features.items():
+        count_request, count = history.count(client, "deals", {feature: value})
+        if result is not None:
+            result.calls.append(("_query", count_request, count))
+        support = int(count.get("total", 0))
+        if support >= MIN_PROFILE_EVIDENCE:
+            evidence[feature] = value
+        else:
+            thin.append({"feature": feature, "value": value, "n": support})
+    n = 0
+    if evidence:
+        count_request, count = history.count(client, "deals", evidence)
+        if result is not None:
+            result.calls.append(("_query", count_request, count))
+        n = int(count.get("total", 0))
+    basis = ("base_rate" if not evidence else "partial" if thin else "profile")
+    request = {"from": history.finished("deals"), "predict": "won",
+               "select": ["$p", "$value", "$why"]}
+    if evidence:
+        request["where"] = evidence
+    response = history.predict(client, request)
+    if response is None:
+        return {"p_win": None, "why": [], "n": 0, "basis": history.NO_HISTORY,
+                "evidence": [], "thin": []}
     if result is not None:
         result.calls.append(("_predict", request, response))
     hit = next((h for h in response["hits"] if h["$value"] is True), None)
+    out = {"n": n, "basis": basis, "evidence": sorted(evidence), "thin": thin}
     if hit is None:
-        return {"p_win": None, "why": []}
-    why = [
-        {"label": _why_label(f["proposition"]), "lift": f["value"]}
-        for f in aitowhy.lift_factors(hit)
-    ]
+        return {"p_win": None, "why": [], **out}
+    why = [{"label": _why_label(f["proposition"]), "lift": f["value"]}
+           for f in aitowhy.lift_factors(hit)]
     why.sort(key=lambda w: -abs(w["lift"] - 1.0))
-    return {"p_win": hit["$p"], "why": why}
+    return {"p_win": hit["$p"], "why": why, **out}
 
 
 def _close_likelihood(client: AitoClient, result: Result, deal: dict, as_of: date) -> dict:
     days = (as_of - date.fromisoformat(deal["last_touch_date"])).days
     cl = close_likelihood(client, deal["stage"], deal["blocker"],
-                          deal["champion_present"], result)
-    return {"p_win": cl["p_win"], "why": cl["why"], "days_since_touch": days}
+                          deal["champion_present"], result, segment=deal["segment"])
+    return {"p_win": cl["p_win"], "why": cl["why"], "n": cl["n"], "basis": cl["basis"],
+            "thin": cl["thin"], "days_since_touch": days}
 
 
 def _why_label(prop: dict) -> str:
@@ -90,6 +147,11 @@ def _why_label(prop: dict) -> str:
         return f"{key} exists"
     value = inner.get("$has") if isinstance(inner, dict) else inner
     return f"{key}={value}"
+
+
+def _by_p_win(deal: dict) -> tuple:
+    """highest P(won) first; deals with no P(won) (no closed history) last"""
+    return (deal["p_win"] is None, -(deal["p_win"] or 0.0))
 
 
 def who_to_reach(client: AitoClient, as_of: date | None = None, top_n: int = 10,
@@ -112,7 +174,7 @@ def who_to_reach(client: AitoClient, as_of: date | None = None, top_n: int = 10,
     pipe = pipeline(client, as_of, predict=predict)
     result.calls.extend(pipe.calls)
     stalled = [d for d in pipe.derived["deals"] if d["stalled"]]
-    stalled = (sorted(stalled, key=lambda d: -d["p_win"])[:top_n] if predict
+    stalled = (sorted(stalled, key=_by_p_win)[:top_n] if predict
                else sorted(stalled, key=lambda d: -d["days_since_touch"]))
     by_slug = {company_slug(d["company"]): d for d in stalled}
     contacts: list[dict] = []
@@ -122,15 +184,17 @@ def who_to_reach(client: AitoClient, as_of: date | None = None, top_n: int = 10,
         response = client.query(request)
         result.calls.append(("_query", request, response))
         contacts = response["hits"]
-    ordered = (sorted(by_slug.items(), key=lambda kv: -kv[1]["p_win"]) if predict
+    ordered = (sorted(by_slug.items(), key=lambda kv: _by_p_win(kv[1])) if predict
                else sorted(by_slug.items(), key=lambda kv: -kv[1]["days_since_touch"]))
     rows = []
     for slug, d in ordered:
         people = [{"contact_id": c["contact_id"], "name": c["name"], "role": c.get("role")}
                   for c in contacts if c.get("company_id") == slug]
         rows.append({"company": d["company"], "deal_id": d["deal_id"], "stage": d["stage"],
+                     "segment": d["segment"],
                      "blocker": d["blocker"], "champion_present": d["champion_present"],
-                     "p_win": d["p_win"], "days_since_touch": d["days_since_touch"],
+                     "p_win": d["p_win"], "n": d["n"], "basis": d["basis"], "thin": d["thin"],
+                     "days_since_touch": d["days_since_touch"],
                      "contacts": people})
     result.derived = {"as_of": pipe.derived["as_of"], "count": len(rows), "rows": rows}
     return result
@@ -145,7 +209,7 @@ def pipeline(client: AitoClient, as_of: date | None = None, predict: bool = True
     over the operator's own probability and touch dates. The dashboard uses it
     to paint the pipeline immediately, then fills each deal's close-likelihood
     in lazily via `close_likelihood` (GET /api/pwin)."""
-    as_of = as_of or date.today()
+    as_of = as_of or clock.today()
     result = Result()
     deals = _fetch_open(client, result)
 
@@ -159,11 +223,12 @@ def pipeline(client: AitoClient, as_of: date | None = None, predict: bool = True
             "probability": d["probability"], "weighted_value": round(weighted),
             "champion_present": d["champion_present"], "blocker": d["blocker"],
             "days_since_touch": days, "stalled": days > STALL_DAYS,
-            "p_win": None, "why": [],
+            "p_win": None, "why": [], "n": None, "basis": None, "thin": [],
         }
         if predict:
             cl = _close_likelihood(client, result, d, as_of)
             row["p_win"], row["why"] = cl["p_win"], cl["why"][:3]
+            row["n"], row["basis"], row["thin"] = cl["n"], cl["basis"], cl["thin"]
         ranked.append(row)
     ranked.sort(key=lambda d: -d["weighted_value"])
 

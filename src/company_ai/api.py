@@ -24,6 +24,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from . import clock
 from . import deals, decisions, documents, experiments, funnels, scorer, schema, sheets, todos
 from . import log as logbook
 from .analytics import SEGMENT_DIMENSIONS, segment_360
@@ -270,12 +271,18 @@ def create_app(config: Config | None = None) -> FastAPI:
 
     @app.get("/api/me")
     def me_route(request: Request):
-        def me():
-            user = current_user(request) or {"role": "guest", "name": "Guest"}
-            return {**user, "public_demo": config.public_demo}
-        return _guarded(me)
+        # `as_of` rides along with identity because the UI must SAY when this
+        # instance reckons from a date other than today (clock.py); null is the
+        # normal case and means the real clock. `public_demo` lets the UI say it
+        # is read-only rather than offer controls that answer 403.
+        def go():
+            who = current_user(request) or {"role": "guest", "name": "Guest"}
+            reckoning = clock.reckoning()
+            return {**who, "as_of": reckoning.isoformat() if reckoning else None,
+                    "public_demo": config.public_demo}
+        return _guarded(go)
 
-    # Public demo (docs/32-public-demo.md): anonymous visitors read, never write.
+    # Public demo (docs/33-public-demo.md): anonymous visitors read, never write.
     # The runtime key is also the database's READ-ONLY key, so this is the
     # second of two locks; it exists to give the visitor a clear 403 instead of
     # Aito's 401 surfacing as a 500. The assistant is a POST but only reads
@@ -292,6 +299,7 @@ def create_app(config: Config | None = None) -> FastAPI:
                     {"error": "read-only public demo: changes are disabled here",
                      "public_demo": True}, status_code=403)
         return await call_next(request)
+
 
     # Role enforcement (docs/27 Phase 2): an SDR gets read + safe writes; the
     # operator-only operations are destructive (delete/remove) and admin (users,
@@ -396,9 +404,10 @@ def create_app(config: Config | None = None) -> FastAPI:
         return _guarded(lambda: deals.pipeline(client(), predict=False).derived)
 
     @app.get("/api/pwin")
-    def pwin_route(stage: str, blocker: str, champion_present: str):
+    def pwin_route(stage: str, blocker: str, champion_present: str, segment: str | None = None):
         # Aito's P(won) for one deal profile — cached per profile in the browser.
-        return _guarded(lambda: deals.close_likelihood(client(), stage, blocker, champion_present))
+        return _guarded(lambda: deals.close_likelihood(
+            client(), stage, blocker, champion_present, segment=segment))
 
     @app.get("/api/who-to-reach")
     def who_to_reach_route():
@@ -581,7 +590,8 @@ def create_app(config: Config | None = None) -> FastAPI:
         return {"options": SCORE_OPTIONS, "features": scorer.FEATURES}
 
     @app.get("/api/score")
-    def score_route(request: Request, platform: str = "linkedin"):
+    def score_route(request: Request, platform: str = ""):
+        platform = platform or schema.default_platform()
         q = request.query_params
         feats = {f: q[f] for f in scorer.FEATURES if q.get(f)}
         return _guarded(lambda: scorer.score(client(), platform, feats).derived)

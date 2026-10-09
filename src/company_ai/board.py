@@ -17,7 +17,9 @@ import json
 from datetime import date, timedelta
 from pathlib import Path
 
-from . import analytics, changelog, deals, decisions, experiments, funnels, queries, scorer, todos
+from . import clock
+from . import (analytics, changelog, deals, decisions, experiments, funnels, queries,
+               schema, scorer, todos)
 from .aito import AitoClient
 from .config import REPO_ROOT, Config
 from .llm import make_client
@@ -34,12 +36,16 @@ def _funnels(client, as_of):
 
 def _who(client, as_of):
     return {w: queries.who_to_call(client, w, top_n=5, as_of=as_of).derived
-            for w in ("0800", "1215", "1600")}
+            for w in schema.call_windows()}
+
+
+# experiments has its own read (experiment_board), so week prep takes the lanes.
+WEEK_PREP_AREAS = tuple(a for a in schema.TODO_AREA_ORDER if a != "experiments")
 
 
 def _todos_area(client, as_of):
     return {area: todos.pipeline(client, area, as_of=as_of).derived
-            for area in ("sales", "distribution", "operations", "rnd")}
+            for area in WEEK_PREP_AREAS}
 
 
 # a read name -> a callable(client, as_of) -> JSON-able Aito facts. The
@@ -53,7 +59,7 @@ READS = {
     "who_to_call": _who,
     "todos_now": lambda c, a: todos.now(c, as_of=a).derived,
     "todos_area": _todos_area,
-    "score_post": lambda c, a: scorer.score(c, "linkedin").derived,
+    "score_post": lambda c, a: scorer.score(c, schema.default_platform()).derived,
     "what_changed": lambda c, a: queries.what_changed(c, as_of=a).derived,
     "recent_changes": lambda c, a: changelog.recent(c, limit=50),
     "last_week": lambda c, a: changelog.recent(
@@ -105,7 +111,7 @@ def run(prompt_name: str, mode: str, *, client: AitoClient | None = None,
     assert prompt_name in COMPOSERS, f"unknown composer {prompt_name!r}; have {sorted(COMPOSERS)}"
     config = Config.from_env()
     client = client or AitoClient(config.instance_url, config.api_key)
-    as_of = as_of or date.today()
+    as_of = as_of or clock.today()
     facts = gather(client, COMPOSERS[prompt_name], as_of)
     system, user = assemble(prompt_name, mode, facts)
     llm = llm or make_client(config)

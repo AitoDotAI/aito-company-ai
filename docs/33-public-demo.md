@@ -1,4 +1,4 @@
-# 32 — Public demo mode (`COMPANY_AI_PUBLIC_DEMO`)
+# 33 — Public demo mode (`COMPANY_AI_PUBLIC_DEMO`)
 
 The Company AI can be shown to anonymous visitors on a public host, as the `company`
 demo in aito-demo-server. The full plan is in aito-demo-server's

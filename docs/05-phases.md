@@ -56,7 +56,7 @@ Done when: `analytics.segment_360` is booktested on both datasets and
 
 Website/acquisition funnel (`sessions`: visitor → signup → trial → paid)
 and the sales funnel (over `contacts`). Each stage shows step conversion,
-the biggest-drop leak, Aito's calibrated outlook (`_predict`), the leak's
+the biggest-drop leak, Aito's outlook (`_predict`), the leak's
 causes (`_relate`), and the lever (`_recommend`). Rendered in the
 dashboard's Funnels tab and exposed as the `funnel` MCP tool. Spec in
 `docs/09-funnels.md`.

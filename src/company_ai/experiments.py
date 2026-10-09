@@ -16,7 +16,7 @@ substrate accrues as bets are logged and resolved.
 
 from dataclasses import dataclass, field
 
-from . import schema
+from . import history, schema
 from .aito import AitoClient
 
 
@@ -34,9 +34,13 @@ def _count(client: AitoClient, result: Result, where: dict) -> int:
 
 
 def _p_validated(client: AitoClient, result: Result, where: dict) -> float | None:
-    request = {"from": "experiments", "where": where, "predict": "validated",
-               "select": ["$p", "$value"]}
-    response = client.predict(request)
+    # learned from decided experiments only (history.finished): a running bet
+    # has no verdict, whatever its `validated` column reads
+    request = {"from": history.finished("experiments"), "where": where,
+               "predict": "validated", "select": ["$p", "$value"]}
+    response = history.predict(client, request)
+    if response is None:
+        return None
     result.calls.append(("_predict", request, response))
     hit = next((h for h in response["hits"] if h["$value"] is True), None)
     return hit["$p"] if hit else None

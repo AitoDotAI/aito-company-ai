@@ -660,7 +660,15 @@ select:focus { outline:none; border-color:var(--purple); }
 .lever { display:flex; align-items:center; gap:10px; font-size:13px; margin:7px 0; }
 .lever .fn { flex:0 0 130px; color:var(--ink-faint); }
 .lever.act .sw { color:var(--ok); font-weight:600; }
-.empty { color:var(--ink-faint); font-style:italic; font-size:13px; }
+/* Empty is a state, not an absence: a bordered panel keeps the page's rhythm
+   where a bare italic line left a hole. `strong` is the headline, `span` the
+   explanation; a plain string still renders correctly on its own. */
+.empty { display:flex; flex-direction:column; gap:5px; align-items:flex-start;
+  color:var(--ink-faint); font-size:13px; line-height:1.55;
+  padding:20px 22px; border:1px dashed var(--line-bright); border-radius:10px;
+  background:var(--tint); }
+.empty strong { color:var(--ink-dim); font-size:14px; font-weight:600; }
+.empty span { max-width:62ch; }
 .placeholder { border:1px dashed var(--line-bright); border-radius:14px; padding:40px 28px;
   text-align:center; color:var(--ink-faint); background:var(--tint); }
 .placeholder h3 { color:var(--ink-dim); font-size:15px; margin-bottom:8px; }
@@ -808,6 +816,7 @@ select:focus { outline:none; border-color:var(--purple); }
 .gq-card { background: var(--card); border: 1px solid var(--line); border-radius: 12px;
            padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
 .gq-q { font-weight: 600; font-size: 15px; color: var(--ink); line-height: 1.35; }
+.gq-endpoint { font-family: 'JetBrains Mono',monospace; font-size: 11px; color: var(--ink-faint); }
 .gq-query { font-family: 'JetBrains Mono',monospace; font-size: 11px; line-height: 1.45; margin: 0;
             background: var(--indigo); color: #cfd3ff; padding: 10px 12px;
             border-radius: 8px; overflow-x: auto; white-space: pre; }
@@ -853,3 +862,23 @@ select:focus { outline:none; border-color:var(--purple); }
 .app.bare .head-actions { display: none !important; }
 .app.bare { grid-template-columns: 1fr !important; }
 .app.bare main { padding-left: 28px; padding-right: 28px; }
+
+/* The as-of declaration (clock.py): shown whenever the instance reckons from a
+   date other than today. Deliberately plain and non-alarming — this is a label
+   on a sample dataset, not an error. */
+.asof-banner { display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 10px;
+  margin:0 0 18px; padding:11px 16px; border-radius:9px;
+  border:1px solid var(--line-bright); background:var(--tint);
+  font-size:12.5px; color:var(--ink-dim); line-height:1.5; }
+.asof-banner strong { font-size:11px; letter-spacing:0.08em; text-transform:uppercase;
+  color:var(--purple); }
+.asof-banner b { color:var(--ink); font-weight:600; }
+
+/* the graph's empty-instance preview: the questions stay inspectable, folded */
+.gq-preview { margin-top:14px; }
+.gq-preview > summary { cursor:pointer; font-size:13px; color:var(--purple);
+  padding:6px 0; list-style:none; }
+.gq-preview > summary::before { content:"▸ "; }
+.gq-preview[open] > summary::before { content:"▾ "; }
+.gq-preview[open] > .gq-grid { margin-top:10px; }
+.gauge .p.none { color:var(--ink-faint); }

@@ -17,8 +17,9 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import date
 
+from . import clock
 from . import schema
-from . import aitowhy
+from . import aitowhy, history
 from .aito import AitoClient
 
 # the open worklist excludes terminal todos: done (completed) and archived
@@ -111,8 +112,10 @@ def _slip_key(todo: dict) -> tuple:
 
 def _slip_request(key: tuple) -> dict:
     area, priority, prep_status = key
+    # learned from done todos only (history.finished): an open todo has not
+    # slipped or kept its date yet, whatever its `slipped` column reads
     return {
-        "from": "todos",
+        "from": history.finished("todos"),
         "where": {"area": area, "priority": priority, "prep_status": prep_status},
         "predict": "slipped",
         "select": ["$p", "$value", "$why"],
@@ -147,10 +150,8 @@ def _annotate_slip_risk(client: AitoClient, result: Result, todos: list[dict]) -
         return
 
     def fetch(key: tuple):
-        try:
-            return key, client.predict(_slip_request(key))
-        except Exception:
-            return key, None
+        # None only for an empty history (no todo done yet); any other error raises
+        return key, history.predict(client, _slip_request(key))
 
     with ThreadPoolExecutor(max_workers=len(keys)) as pool:
         fetched = dict(pool.map(fetch, keys))
@@ -190,7 +191,7 @@ def now(client: AitoClient, as_of: date | None = None, top_n: int = 8,
     Ordering is rule-based urgency; each surfaced todo is then annotated
     with Aito's slip-risk (a prediction, not part of the sort) so the
     operator sees both what's urgent and what's likely to slip."""
-    as_of = as_of or date.today()
+    as_of = as_of or clock.today()
     result = Result()
     names = _company_names(client, result)
     todos = [_decorate(t, names, as_of) for t in _fetch(client, result, "todos")
@@ -206,7 +207,8 @@ def now(client: AitoClient, as_of: date | None = None, top_n: int = 8,
 def pipeline(client: AitoClient, area: str, as_of: date | None = None) -> Result:
     """One area, in the operator's drag order when set, else by priority.
     sort_order (set by reorder) leads; priority stays the importance tag."""
-    as_of = as_of or date.today()
+    assert area in schema.TODO_AREAS, f"unknown area {area!r}"
+    as_of = as_of or clock.today()
     result = Result()
     names = _company_names(client, result)
     todos = [_decorate(t, names, as_of)
@@ -221,7 +223,8 @@ def pipeline(client: AitoClient, area: str, as_of: date | None = None) -> Result
 
 def calendar(client: AitoClient, area: str, as_of: date | None = None) -> Result:
     """One area, laid out by due_date (the time-driven lens)."""
-    as_of = as_of or date.today()
+    assert area in schema.TODO_AREAS, f"unknown area {area!r}"
+    as_of = as_of or clock.today()
     result = Result()
     names = _company_names(client, result)
     todos = [_decorate(t, names, as_of)

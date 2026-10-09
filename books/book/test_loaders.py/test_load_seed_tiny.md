@@ -99,16 +99,16 @@ response: {"ai_made": "manual", "channel_id": "yk01", "format": "show-hn", "lane
 
 ## Sample rows: todos
 
+request:  {"from": "todos", "limit": 1, "where": {"todo_id": "yd003"}}
+response: {"action_type": "research", "area": "experiments", "linked_type": "workstream", "prep_status": "prep_needed", "priority": 2, "rev": "rv-0", "revs": "rv-0", "status": "blocked", "title": "Set up the customer-proof experiment", "todo_id": "yd003"}
 request:  {"from": "todos", "limit": 1, "where": {"todo_id": "yd001"}}
-response: {"action_type": "post", "area": "marketing", "due_date": "2026-06-16", "linked_type": "asset", "prep_status": "ready", "priority": 1, "rev": "rv-0", "revs": "rv-0", "slot": "09:00", "status": "prog", "title": "Repurpose customer-proof for LinkedIn", "todo_id": "yd001", "window": "mon_0800"}
-request:  {"from": "todos", "limit": 1, "where": {"todo_id": "yd002"}}
-response: {"action_type": "research", "area": "rnd", "linked_type": "workstream", "prep_status": "in_progress", "priority": 2, "rev": "rv-0", "revs": "rv-0", "status": "prog", "title": "Schema migration tooling", "todo_id": "yd002"}
-request:  {"from": "todos", "limit": 1, "where": {"todo_id": "yd006"}}
-response: {"action_type": "research", "area": "rnd", "linked_type": "workstream", "prep_status": "in_progress", "priority": 2, "rev": "rv-0", "revs": "rv-0", "status": "prog", "title": "Rep2 stabilization", "todo_id": "yd006"}
-request:  {"from": "todos", "limit": 1, "where": {"todo_id": "yd004"}}
-response: {"action_type": "research", "area": "rnd", "linked_type": "workstream", "prep_status": "in_progress", "priority": 3, "rev": "rv-0", "revs": "rv-0", "status": "blocked", "title": "pg_infer extension", "todo_id": "yd004"}
+response: {"action_type": "post", "area": "marketing", "due_date": "2026-06-12", "linked_type": "asset", "prep_status": "ready", "priority": 3, "rev": "rv-0", "revs": "rv-0", "slot": "14:30", "status": "prog", "title": "Ship the customer-proof post", "todo_id": "yd001", "window": "tue_0800"}
 request:  {"from": "todos", "limit": 1, "where": {"todo_id": "yd005"}}
-response: {"action_type": "email", "area": "sales", "due_date": "2026-06-11", "linked_id": "ye001", "linked_type": "deal", "prep_status": "ready", "priority": 2, "rev": "rv-0", "revs": "rv-0", "slot": "14:30", "stakeholder_id": "yc010", "status": "ready", "title": "Send pricing context to Nimbus GmbH", "todo_id": "yd005", "window": "fri_1530"}
+response: {"action_type": "post", "area": "marketing", "due_date": "2026-06-17", "linked_type": "asset", "prep_status": "ready", "priority": 3, "rev": "rv-0", "revs": "rv-0", "slot": "09:00", "status": "draft", "title": "Propagate the customer-proof demo", "todo_id": "yd005", "window": "mon_0800"}
+request:  {"from": "todos", "limit": 1, "where": {"todo_id": "yd006"}}
+response: {"action_type": "admin", "area": "operations", "due_date": "2026-06-15", "linked_type": "instance", "prep_status": "n_a", "priority": 3, "rev": "rv-0", "revs": "rv-0", "slot": "16:00", "status": "on_track", "title": "Nimbus GmbH license renewal window", "todo_id": "yd006"}
+request:  {"from": "todos", "limit": 1, "where": {"todo_id": "yd004"}}
+response: {"action_type": "research", "area": "rnd", "linked_type": "workstream", "prep_status": "prep_needed", "priority": 1, "rev": "rv-0", "revs": "rv-0", "status": "blocked", "title": "Predictive-DB benchmark", "todo_id": "yd004"}
 
 ## Sample rows: deals
 
@@ -125,40 +125,40 @@ response: {"blocker": "none", "champion_present": true, "company": "Nimbus GmbH"
 
 ## Sample rows: decisions
 
-request:  {"from": "decisions", "limit": 1, "where": {"decision_id": "yx007"}}
-response: {"accepted": true, "agent_confidence": 0.36, "chosen": "yc001", "confidence_bucket": "low", "context_ai_lifecycle": "none", "context_segment": "consultancy", "context_tier": "C", "context_weekday": "tue", "context_window": "0800", "decision_id": "yx007", "decision_type": "opener_choice", "human_action": "accepted", "ts": "2026-03-21T08:10:00"}
-request:  {"from": "decisions", "limit": 1, "where": {"decision_id": "yx004"}}
-response: {"accepted": false, "agent_confidence": 0.81, "chosen": "yc001", "confidence_bucket": "high", "context_ai_lifecycle": "none", "context_segment": "consultancy", "context_tier": "C", "context_weekday": "fri", "context_window": "0800", "decision_id": "yx004", "decision_type": "opener_choice", "human_action": "ignored", "ts": "2026-03-22T08:10:00"}
-request:  {"from": "decisions", "limit": 1, "where": {"decision_id": "yx003"}}
-response: {"accepted": true, "agent_confidence": 0.78, "chosen": "yc008", "confidence_bucket": "high", "context_ai_lifecycle": "announced", "context_segment": "consultancy", "context_tier": "C", "context_weekday": "thu", "context_window": "0800", "decision_id": "yx003", "decision_type": "followup_timing", "human_action": "accepted", "outcome_after": "good", "ts": "2026-03-24T08:10:00"}
 request:  {"from": "decisions", "limit": 1, "where": {"decision_id": "yx006"}}
-response: {"accepted": true, "agent_confidence": 0.24, "chosen": "yc007", "confidence_bucket": "low", "context_ai_lifecycle": "shipped", "context_segment": "consultancy", "context_tier": "B", "context_weekday": "wed", "context_window": "1600", "decision_id": "yx006", "decision_type": "followup_timing", "human_action": "accepted", "outcome_after": "good", "ts": "2026-04-18T08:10:00"}
+response: {"accepted": true, "agent_confidence": 0.36, "chosen": "yc001", "confidence_bucket": "low", "context_ai_lifecycle": "none", "context_segment": "consultancy", "context_tier": "C", "context_weekday": "tue", "context_window": "0800", "decision_id": "yx006", "decision_type": "opener_choice", "human_action": "accepted", "ts": "2026-03-21T08:10:00"}
+request:  {"from": "decisions", "limit": 1, "where": {"decision_id": "yx003"}}
+response: {"accepted": false, "agent_confidence": 0.81, "chosen": "yc001", "confidence_bucket": "high", "context_ai_lifecycle": "none", "context_segment": "consultancy", "context_tier": "C", "context_weekday": "fri", "context_window": "0800", "decision_id": "yx003", "decision_type": "opener_choice", "human_action": "ignored", "ts": "2026-03-22T08:10:00"}
+request:  {"from": "decisions", "limit": 1, "where": {"decision_id": "yx002"}}
+response: {"accepted": true, "agent_confidence": 0.78, "chosen": "yc008", "confidence_bucket": "high", "context_ai_lifecycle": "announced", "context_segment": "consultancy", "context_tier": "C", "context_weekday": "thu", "context_window": "0800", "decision_id": "yx002", "decision_type": "followup_timing", "human_action": "accepted", "outcome_after": "good", "ts": "2026-03-24T08:10:00"}
+request:  {"from": "decisions", "limit": 1, "where": {"decision_id": "yx008"}}
+response: {"accepted": true, "agent_confidence": 0.28, "chosen": "yc003", "confidence_bucket": "low", "context_ai_lifecycle": "shipped", "context_segment": "other", "context_tier": "A", "context_weekday": "fri", "context_window": "1600", "decision_id": "yx008", "decision_type": "opener_choice", "human_action": "accepted", "ts": "2026-04-12T08:10:00"}
 request:  {"from": "decisions", "limit": 1, "where": {"decision_id": "yx005"}}
-response: {"accepted": true, "agent_confidence": 0.11, "chosen": "yc006", "confidence_bucket": "low", "context_ai_lifecycle": "none", "context_segment": "other", "context_tier": "A", "context_weekday": "tue", "context_window": "0800", "decision_id": "yx005", "decision_type": "followup_timing", "human_action": "accepted", "ts": "2026-04-19T08:10:00"}
+response: {"accepted": true, "agent_confidence": 0.24, "chosen": "yc007", "confidence_bucket": "low", "context_ai_lifecycle": "shipped", "context_segment": "consultancy", "context_tier": "B", "context_weekday": "wed", "context_window": "1600", "decision_id": "yx005", "decision_type": "followup_timing", "human_action": "accepted", "outcome_after": "good", "ts": "2026-04-18T08:10:00"}
 
 ## Sample rows: experiments
 
-request:  {"from": "experiments", "limit": 1, "where": {"experiment_id": "yr003"}}
-response: {"area": "referral", "baseline": 0.12, "created": "2026-01-26", "decided": "2026-02-24", "effort": "small", "experiment_id": "yr003", "hypothesis": "A landing_page change lifts referral_rate from 0.12 to 0.148.", "learning": "no lift over baseline; reverted", "metric": "referral_rate", "result": 0.118, "started": "2026-01-26", "status": "invalidated", "target": 0.148, "type": "landing_page", "validated": false}
-request:  {"from": "experiments", "limit": 1, "where": {"experiment_id": "yr002"}}
-response: {"area": "activation", "baseline": 0.379, "created": "2026-03-12", "decided": "2026-04-07", "effort": "medium", "experiment_id": "yr002", "hypothesis": "A onboarding change lifts trial_start_rate from 0.379 to 0.58.", "learning": "trial_start_rate reached 0.662; shipped", "metric": "trial_start_rate", "result": 0.662, "started": "2026-03-12", "status": "validated", "target": 0.58, "type": "onboarding", "validated": true}
-request:  {"from": "experiments", "limit": 1, "where": {"experiment_id": "yr001"}}
-response: {"area": "activation", "baseline": 0.125, "created": "2026-03-28", "decided": "2026-04-14", "effort": "small", "experiment_id": "yr001", "hypothesis": "A onboarding change lifts trial_start_rate from 0.125 to 0.204.", "learning": "trial_start_rate reached 0.217; shipped", "metric": "trial_start_rate", "result": 0.217, "started": "2026-03-28", "status": "validated", "target": 0.204, "type": "onboarding", "validated": true}
-request:  {"from": "experiments", "limit": 1, "where": {"experiment_id": "yr005"}}
-response: {"area": "activation", "baseline": 0.367, "created": "2026-03-31", "effort": "small", "experiment_id": "yr005", "hypothesis": "A onboarding change lifts trial_start_rate from 0.367 to 0.619.", "metric": "trial_start_rate", "started": "2026-03-31", "status": "running", "target": 0.619, "type": "onboarding"}
 request:  {"from": "experiments", "limit": 1, "where": {"experiment_id": "yr004"}}
-response: {"area": "revenue", "baseline": 0.126, "created": "2026-04-28", "decided": "2026-05-16", "effort": "medium", "experiment_id": "yr004", "hypothesis": "A landing_page change lifts trial_to_paid from 0.126 to 0.152.", "learning": "no lift over baseline; reverted", "metric": "trial_to_paid", "result": 0.13, "started": "2026-04-28", "status": "invalidated", "target": 0.152, "type": "landing_page", "validated": false}
+response: {"area": "retention", "baseline": 0.19, "created": "2026-01-26", "effort": "large", "experiment_id": "yr004", "hypothesis": "A content change lifts m1_retention from 0.19 to 0.316.", "metric": "m1_retention", "started": "2026-01-26", "status": "running", "target": 0.316, "type": "content"}
+request:  {"from": "experiments", "limit": 1, "where": {"experiment_id": "yr002"}}
+response: {"area": "retention", "baseline": 0.318, "created": "2026-03-01", "decided": "2026-03-22", "effort": "medium", "experiment_id": "yr002", "hypothesis": "A onboarding change lifts m1_retention from 0.318 to 0.399.", "learning": "no lift over baseline; reverted", "metric": "m1_retention", "result": 0.281, "started": "2026-03-01", "status": "invalidated", "target": 0.399, "type": "onboarding", "validated": false}
+request:  {"from": "experiments", "limit": 1, "where": {"experiment_id": "yr006"}}
+response: {"area": "acquisition", "baseline": 0.345, "created": "2026-03-30", "effort": "large", "experiment_id": "yr006", "hypothesis": "A pricing change lifts signup_rate from 0.345 to 0.584.", "metric": "signup_rate", "started": "2026-03-30", "status": "running", "target": 0.584, "type": "pricing"}
+request:  {"from": "experiments", "limit": 1, "where": {"experiment_id": "yr001"}}
+response: {"area": "retention", "baseline": 0.185, "created": "2026-04-02", "decided": "2026-04-22", "effort": "large", "experiment_id": "yr001", "hypothesis": "A pricing change lifts m1_retention from 0.185 to 0.323.", "learning": "signal within noise; needs a bigger sample", "metric": "m1_retention", "result": 0.32, "started": "2026-04-02", "status": "inconclusive", "target": 0.323, "type": "pricing"}
+request:  {"from": "experiments", "limit": 1, "where": {"experiment_id": "yr003"}}
+response: {"area": "referral", "baseline": 0.061, "created": "2026-04-05", "decided": "2026-05-02", "effort": "medium", "experiment_id": "yr003", "hypothesis": "A onboarding change lifts referral_rate from 0.061 to 0.107.", "learning": "signal within noise; needs a bigger sample", "metric": "referral_rate", "result": 0.105, "started": "2026-04-05", "status": "inconclusive", "target": 0.107, "type": "onboarding"}
 
 ## Sample rows: events
 
-request:  {"from": "events", "limit": 1, "where": {"event_id": "yv001"}}
-response: {"cost_eur": 300, "created": "2026-04-02", "event_id": "yv001", "location": "Helsinki", "name": "ML Connect 2026", "starts": "2026-05-15", "status": "candidate", "type": "conference"}
 request:  {"from": "events", "limit": 1, "where": {"event_id": "yv004"}}
 response: {"cost_eur": 300, "created": "2026-03-23", "event_id": "yv004", "location": "Berlin", "name": "Indie Hackers 2026", "starts": "2026-08-17", "status": "candidate", "type": "conference"}
+request:  {"from": "events", "limit": 1, "where": {"event_id": "yv002"}}
+response: {"cost_eur": 0, "created": "2026-05-09", "decided": "2026-09-05", "event_id": "yv002", "location": "online", "name": "DevMeetup 2026", "notes": "post-event notes", "outcome": "neutral", "starts": "2026-09-10", "status": "attended", "type": "webinar"}
+request:  {"from": "events", "limit": 1, "where": {"event_id": "yv001"}}
+response: {"cost_eur": 0, "created": "2026-02-27", "decided": "2026-08-28", "event_id": "yv001", "location": "online", "name": "Postgres Conf 2026", "notes": "low fit for the cost", "starts": "2026-09-17", "status": "no_go", "type": "conference"}
 request:  {"from": "events", "limit": 1, "where": {"event_id": "yv003"}}
 response: {"cost_eur": 600, "created": "2026-03-27", "event_id": "yv003", "location": "Helsinki", "name": "ML Connect 2026", "starts": "2026-10-04", "status": "candidate", "type": "webinar"}
-request:  {"from": "events", "limit": 1, "where": {"event_id": "yv002"}}
-response: {"cost_eur": 0, "created": "2026-05-09", "decided": "2026-10-02", "event_id": "yv002", "location": "Stockholm", "name": "DevMeetup 2026", "notes": "post-event notes", "outcome": "neutral", "starts": "2026-10-07", "status": "attended", "type": "webinar"}
 
 ## Sample rows: routines
 

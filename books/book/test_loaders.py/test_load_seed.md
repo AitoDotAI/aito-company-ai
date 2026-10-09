@@ -99,16 +99,16 @@ response: {"ai_made": "ai-assisted", "channel_id": "sk02", "format": "text", "la
 
 ## Sample rows: todos
 
-request:  {"from": "todos", "limit": 1, "where": {"todo_id": "sd022"}}
-response: {"action_type": "research", "area": "experiments", "linked_type": "workstream", "prep_status": "prep_needed", "priority": 2, "rev": "rv-0", "revs": "rv-0", "status": "blocked", "title": "Decide go/kill on positioning", "todo_id": "sd022"}
-request:  {"from": "todos", "limit": 1, "where": {"todo_id": "sd016"}}
-response: {"action_type": "research", "area": "experiments", "linked_type": "workstream", "prep_status": "prep_needed", "priority": 3, "rev": "rv-0", "revs": "rv-0", "status": "ready", "title": "Analyze the agent-inference test results", "todo_id": "sd016"}
-request:  {"from": "todos", "limit": 1, "where": {"todo_id": "sd011"}}
-response: {"action_type": "post", "area": "marketing", "due_date": "2026-06-16", "linked_type": "asset", "prep_status": "ready", "priority": 1, "rev": "rv-0", "revs": "rv-0", "slot": "14:30", "status": "prog", "title": "Ship the customer-proof post", "todo_id": "sd011", "window": "fri_1430"}
-request:  {"from": "todos", "limit": 1, "where": {"todo_id": "sd003"}}
-response: {"action_type": "post", "area": "marketing", "due_date": "2026-06-22", "linked_type": "asset", "prep_status": "in_progress", "priority": 2, "rev": "rv-0", "revs": "rv-0", "slot": "10:30", "status": "ready", "title": "Draft the product narrative", "todo_id": "sd003", "window": "mon_0800"}
-request:  {"from": "todos", "limit": 1, "where": {"todo_id": "sd014"}}
-response: {"action_type": "post", "area": "marketing", "due_date": "2026-06-15", "linked_type": "asset", "prep_status": "in_progress", "priority": 2, "rev": "rv-0", "revs": "rv-0", "slot": "14:30", "status": "prog", "title": "Draft the agent-inference narrative", "todo_id": "sd014", "window": "fri_eve"}
+request:  {"from": "todos", "limit": 1, "where": {"todo_id": "sd012"}}
+response: {"action_type": "research", "area": "experiments", "linked_type": "workstream", "prep_status": "ready", "priority": 2, "rev": "rv-0", "revs": "rv-0", "status": "ready", "title": "Decide go/kill on product", "todo_id": "sd012"}
+request:  {"from": "todos", "limit": 1, "where": {"todo_id": "sd006"}}
+response: {"action_type": "research", "area": "experiments", "linked_type": "workstream", "prep_status": "prep_needed", "priority": 3, "rev": "rv-0", "revs": "rv-0", "status": "blocked", "title": "Set up the agent-inference experiment", "todo_id": "sd006"}
+request:  {"from": "todos", "limit": 1, "where": {"todo_id": "sd009"}}
+response: {"action_type": "post", "area": "marketing", "due_date": "2026-06-16", "linked_type": "asset", "prep_status": "ready", "priority": 1, "rev": "rv-0", "revs": "rv-0", "slot": "14:30", "status": "prog", "title": "Ship the customer-proof post", "todo_id": "sd009", "window": "fri_1430"}
+request:  {"from": "todos", "limit": 1, "where": {"todo_id": "sd019"}}
+response: {"action_type": "post", "area": "marketing", "due_date": "2026-06-15", "linked_type": "asset", "prep_status": "prep_needed", "priority": 1, "rev": "rv-0", "revs": "rv-0", "slot": "16:00", "status": "draft", "title": "Repurpose product for LinkedIn", "todo_id": "sd019", "window": "wed_am"}
+request:  {"from": "todos", "limit": 1, "where": {"todo_id": "sd013"}}
+response: {"action_type": "post", "area": "marketing", "due_date": "2026-06-15", "linked_type": "asset", "prep_status": "in_progress", "priority": 3, "rev": "rv-0", "revs": "rv-0", "slot": "16:00", "status": "ready", "title": "Ship the oss-tool post", "todo_id": "sd013", "window": "fri_1530"}
 
 ## Sample rows: deals
 
@@ -125,42 +125,42 @@ response: {"blocker": "no_champion", "champion_present": false, "company": "Pied
 
 ## Sample rows: decisions
 
-request:  {"from": "decisions", "limit": 1, "where": {"decision_id": "sx041"}}
-response: {"accepted": true, "agent_confidence": 0.66, "chosen": "sc037", "confidence_bucket": "medium", "context_ai_lifecycle": "operating", "context_segment": "analytics", "context_tier": "B", "context_weekday": "wed", "context_window": "0800", "decision_id": "sx041", "decision_type": "opener_choice", "human_action": "accepted", "ts": "2026-03-14T08:10:00"}
-request:  {"from": "decisions", "limit": 1, "where": {"decision_id": "sx049"}}
-response: {"accepted": false, "agent_confidence": 0.12, "chosen": "sc030", "confidence_bucket": "low", "context_ai_lifecycle": "announced", "context_segment": "accounting", "context_tier": "B", "context_weekday": "thu", "context_window": "1600", "decision_id": "sx049", "decision_type": "call_priority", "human_action": "overridden", "human_alternative": "reordered", "ts": "2026-03-14T08:10:00"}
-request:  {"from": "decisions", "limit": 1, "where": {"decision_id": "sx014"}}
-response: {"accepted": true, "agent_confidence": 0.83, "chosen": "sc054", "confidence_bucket": "high", "context_ai_lifecycle": "operating", "context_segment": "erp", "context_tier": "C", "context_weekday": "fri", "context_window": "0800", "decision_id": "sx014", "decision_type": "followup_timing", "human_action": "accepted", "outcome_after": "neutral", "ts": "2026-03-20T08:10:00"}
-request:  {"from": "decisions", "limit": 1, "where": {"decision_id": "sx055"}}
-response: {"accepted": true, "agent_confidence": 0.81, "chosen": "sc008", "confidence_bucket": "high", "context_ai_lifecycle": "operating", "context_segment": "accounting", "context_tier": "C", "context_weekday": "fri", "context_window": "0800", "decision_id": "sx055", "decision_type": "followup_timing", "human_action": "accepted", "ts": "2026-03-20T08:10:00"}
-request:  {"from": "decisions", "limit": 1, "where": {"decision_id": "sx032"}}
-response: {"accepted": false, "agent_confidence": 0.38, "chosen": "sc044", "confidence_bucket": "low", "context_ai_lifecycle": "shipped", "context_segment": "erp", "context_tier": "C", "context_weekday": "wed", "context_window": "0800", "decision_id": "sx032", "decision_type": "call_priority", "human_action": "overridden", "human_alternative": "reordered", "ts": "2026-03-23T08:10:00"}
+request:  {"from": "decisions", "limit": 1, "where": {"decision_id": "sx040"}}
+response: {"accepted": true, "agent_confidence": 0.66, "chosen": "sc037", "confidence_bucket": "medium", "context_ai_lifecycle": "operating", "context_segment": "analytics", "context_tier": "B", "context_weekday": "wed", "context_window": "0800", "decision_id": "sx040", "decision_type": "opener_choice", "human_action": "accepted", "ts": "2026-03-14T08:10:00"}
+request:  {"from": "decisions", "limit": 1, "where": {"decision_id": "sx048"}}
+response: {"accepted": false, "agent_confidence": 0.12, "chosen": "sc030", "confidence_bucket": "low", "context_ai_lifecycle": "announced", "context_segment": "accounting", "context_tier": "B", "context_weekday": "thu", "context_window": "1600", "decision_id": "sx048", "decision_type": "call_priority", "human_action": "overridden", "human_alternative": "reordered", "ts": "2026-03-14T08:10:00"}
+request:  {"from": "decisions", "limit": 1, "where": {"decision_id": "sx022"}}
+response: {"accepted": true, "agent_confidence": 0.87, "chosen": "sc015", "confidence_bucket": "high", "context_ai_lifecycle": "shipped", "context_segment": "accounting", "context_tier": "A", "context_weekday": "tue", "context_window": "0800", "decision_id": "sx022", "decision_type": "opener_choice", "human_action": "accepted", "ts": "2026-03-18T08:10:00"}
+request:  {"from": "decisions", "limit": 1, "where": {"decision_id": "sx010"}}
+response: {"accepted": false, "agent_confidence": 0.38, "chosen": "sc038", "confidence_bucket": "low", "context_ai_lifecycle": "operating", "context_segment": "accounting", "context_tier": "B", "context_weekday": "thu", "context_window": "1600", "decision_id": "sx010", "decision_type": "opener_choice", "human_action": "overridden", "human_alternative": "reordered", "ts": "2026-03-20T08:10:00"}
+request:  {"from": "decisions", "limit": 1, "where": {"decision_id": "sx054"}}
+response: {"accepted": true, "agent_confidence": 0.81, "chosen": "sc008", "confidence_bucket": "high", "context_ai_lifecycle": "operating", "context_segment": "accounting", "context_tier": "C", "context_weekday": "fri", "context_window": "0800", "decision_id": "sx054", "decision_type": "followup_timing", "human_action": "accepted", "ts": "2026-03-20T08:10:00"}
 
 ## Sample rows: experiments
 
-request:  {"from": "experiments", "limit": 1, "where": {"experiment_id": "sr046"}}
-response: {"area": "retention", "baseline": 0.085, "created": "2026-01-18", "decided": "2026-02-16", "effort": "small", "experiment_id": "sr046", "hypothesis": "A pricing change lifts m1_retention from 0.085 to 0.122.", "learning": "m1_retention reached 0.151; shipped", "metric": "m1_retention", "result": 0.151, "started": "2026-01-18", "status": "validated", "target": 0.122, "type": "pricing", "validated": true}
-request:  {"from": "experiments", "limit": 1, "where": {"experiment_id": "sr016"}}
-response: {"area": "activation", "baseline": 0.393, "created": "2026-01-20", "effort": "small", "experiment_id": "sr016", "hypothesis": "A onboarding change lifts trial_start_rate from 0.393 to 0.548.", "learning": "killed before a verdict", "metric": "trial_start_rate", "started": "2026-01-20", "status": "abandoned", "target": 0.548, "type": "onboarding"}
-request:  {"from": "experiments", "limit": 1, "where": {"experiment_id": "sr038"}}
-response: {"area": "retention", "baseline": 0.28, "created": "2026-01-20", "decided": "2026-01-28", "effort": "medium", "experiment_id": "sr038", "hypothesis": "A onboarding change lifts m1_retention from 0.28 to 0.439.", "learning": "no lift over baseline; reverted", "metric": "m1_retention", "result": 0.258, "started": "2026-01-20", "status": "invalidated", "target": 0.439, "type": "onboarding", "validated": false}
-request:  {"from": "experiments", "limit": 1, "where": {"experiment_id": "sr067"}}
-response: {"area": "acquisition", "baseline": 0.268, "created": "2026-01-21", "effort": "small", "experiment_id": "sr067", "hypothesis": "A outreach change lifts signup_rate from 0.268 to 0.383.", "learning": "killed before a verdict", "metric": "signup_rate", "started": "2026-01-21", "status": "abandoned", "target": 0.383, "type": "outreach"}
-request:  {"from": "experiments", "limit": 1, "where": {"experiment_id": "sr049"}}
-response: {"area": "retention", "baseline": 0.34, "created": "2026-01-23", "decided": "2026-02-14", "effort": "small", "experiment_id": "sr049", "hypothesis": "A feature change lifts m1_retention from 0.34 to 0.564.", "learning": "m1_retention reached 0.662; shipped", "metric": "m1_retention", "result": 0.662, "started": "2026-01-23", "status": "validated", "target": 0.564, "type": "feature", "validated": true}
+request:  {"from": "experiments", "limit": 1, "where": {"experiment_id": "sr045"}}
+response: {"area": "retention", "baseline": 0.085, "created": "2026-01-18", "decided": "2026-02-16", "effort": "small", "experiment_id": "sr045", "hypothesis": "A pricing change lifts m1_retention from 0.085 to 0.122.", "learning": "m1_retention reached 0.151; shipped", "metric": "m1_retention", "result": 0.151, "started": "2026-01-18", "status": "validated", "target": 0.122, "type": "pricing", "validated": true}
+request:  {"from": "experiments", "limit": 1, "where": {"experiment_id": "sr015"}}
+response: {"area": "activation", "baseline": 0.393, "created": "2026-01-20", "effort": "small", "experiment_id": "sr015", "hypothesis": "A onboarding change lifts trial_start_rate from 0.393 to 0.548.", "learning": "killed before a verdict", "metric": "trial_start_rate", "started": "2026-01-20", "status": "abandoned", "target": 0.548, "type": "onboarding"}
+request:  {"from": "experiments", "limit": 1, "where": {"experiment_id": "sr037"}}
+response: {"area": "retention", "baseline": 0.28, "created": "2026-01-20", "decided": "2026-01-28", "effort": "medium", "experiment_id": "sr037", "hypothesis": "A onboarding change lifts m1_retention from 0.28 to 0.439.", "learning": "no lift over baseline; reverted", "metric": "m1_retention", "result": 0.258, "started": "2026-01-20", "status": "invalidated", "target": 0.439, "type": "onboarding", "validated": false}
+request:  {"from": "experiments", "limit": 1, "where": {"experiment_id": "sr066"}}
+response: {"area": "acquisition", "baseline": 0.268, "created": "2026-01-21", "effort": "small", "experiment_id": "sr066", "hypothesis": "A outreach change lifts signup_rate from 0.268 to 0.383.", "learning": "killed before a verdict", "metric": "signup_rate", "started": "2026-01-21", "status": "abandoned", "target": 0.383, "type": "outreach"}
+request:  {"from": "experiments", "limit": 1, "where": {"experiment_id": "sr048"}}
+response: {"area": "retention", "baseline": 0.34, "created": "2026-01-23", "decided": "2026-02-14", "effort": "small", "experiment_id": "sr048", "hypothesis": "A feature change lifts m1_retention from 0.34 to 0.564.", "learning": "m1_retention reached 0.662; shipped", "metric": "m1_retention", "result": 0.662, "started": "2026-01-23", "status": "validated", "target": 0.564, "type": "feature", "validated": true}
 
 ## Sample rows: events
 
-request:  {"from": "events", "limit": 1, "where": {"event_id": "sv012"}}
-response: {"cost_eur": 300, "created": "2026-04-26", "event_id": "sv012", "location": "Stockholm", "name": "SaaStr Europe 2026", "starts": "2026-04-17", "status": "candidate", "type": "meetup"}
-request:  {"from": "events", "limit": 1, "where": {"event_id": "sv008"}}
-response: {"cost_eur": 0, "created": "2026-03-17", "decided": "2026-04-17", "event_id": "sv008", "location": "Stockholm", "name": "AI Summit 2026", "notes": "post-event notes", "outcome": "neutral", "starts": "2026-05-07", "status": "attended", "type": "meetup"}
 request:  {"from": "events", "limit": 1, "where": {"event_id": "sv002"}}
-response: {"cost_eur": 600, "created": "2026-05-22", "decided": "2026-05-08", "event_id": "sv002", "location": "Helsinki", "name": "DevMeetup 2026", "notes": "low fit for the cost", "starts": "2026-05-20", "status": "no_go", "type": "conference"}
-request:  {"from": "events", "limit": 1, "where": {"event_id": "sv013"}}
-response: {"cost_eur": 0, "created": "2026-05-12", "decided": "2026-05-21", "event_id": "sv013", "location": "online", "name": "AI Summit 2026", "notes": "low fit for the cost", "starts": "2026-05-26", "status": "no_go", "type": "conference"}
+response: {"cost_eur": 0, "created": "2026-03-01", "decided": "2026-03-30", "event_id": "sv002", "location": "online", "name": "Indie Hackers 2026", "notes": "low fit for the cost", "starts": "2026-04-14", "status": "no_go", "type": "conference"}
+request:  {"from": "events", "limit": 1, "where": {"event_id": "sv005"}}
+response: {"cost_eur": 300, "created": "2026-03-09", "decided": "2026-03-15", "event_id": "sv005", "location": "Helsinki", "name": "SaaStr Europe 2026", "notes": "worth a talk / booth", "starts": "2026-04-14", "status": "go", "type": "conference"}
 request:  {"from": "events", "limit": 1, "where": {"event_id": "sv011"}}
-response: {"cost_eur": 0, "created": "2026-03-24", "decided": "2026-05-22", "event_id": "sv011", "location": "Stockholm", "name": "Founders Brunch 2026", "notes": "worth a talk / booth", "starts": "2026-05-27", "status": "go", "type": "talk"}
+response: {"cost_eur": 300, "created": "2026-04-26", "event_id": "sv011", "location": "Stockholm", "name": "SaaStr Europe 2026", "starts": "2026-04-17", "status": "candidate", "type": "meetup"}
+request:  {"from": "events", "limit": 1, "where": {"event_id": "sv007"}}
+response: {"cost_eur": 0, "created": "2026-03-17", "decided": "2026-04-17", "event_id": "sv007", "location": "Stockholm", "name": "AI Summit 2026", "notes": "post-event notes", "outcome": "neutral", "starts": "2026-05-07", "status": "attended", "type": "meetup"}
+request:  {"from": "events", "limit": 1, "where": {"event_id": "sv012"}}
+response: {"cost_eur": 0, "created": "2026-05-12", "decided": "2026-05-21", "event_id": "sv012", "location": "online", "name": "AI Summit 2026", "notes": "low fit for the cost", "starts": "2026-05-26", "status": "no_go", "type": "conference"}
 
 ## Sample rows: routines
 

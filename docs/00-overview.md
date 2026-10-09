@@ -16,7 +16,7 @@ tomorrow's queue.
 
 Most agent stacks have reasoning (an LLM) and memory (retrieval). Almost none
 have a learning layer: nothing in them gets statistically better from
-operational outcomes, and nothing attaches a calibrated probability to
+operational outcomes, and nothing attaches a probability learned from outcomes to
 "call this person first." This repo is the missing third faculty, run on the
 company's own pipeline before it is recommended to anyone else.
 
