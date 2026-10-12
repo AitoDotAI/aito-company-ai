@@ -123,6 +123,30 @@ TOUCHES = {
         "next_action": {"type": "Text", "analyzer": "english", "nullable": True},
         "next_action_due": {"type": "String", "nullable": True},
         "notes": {"type": "Text", "analyzer": "english", "nullable": True},
+        # --- the engagement (docs/34). All nullable: a touch logged before
+        # these existed, or by a caller that does not know them, reads null,
+        # and null means "not recorded", never "none". Categoricals are String
+        # (exact values, no analyzer) so a value is one feature, not words.
+        "deal_id": {"type": "String", "nullable": True, "link": "deals.deal_id"},
+        "direction": {"type": "String", "nullable": True},        # DIRECTIONS
+        "answered_by": {"type": "String", "nullable": True},      # ANSWERED_BY, calls only
+        "linkedin_kind": {"type": "String", "nullable": True},    # LINKEDIN_KINDS
+        "meeting_kind": {"type": "String", "nullable": True},     # MEETING_KINDS
+        "reply_sentiment": {"type": "String", "nullable": True},  # REPLY_SENTIMENTS
+        "source": {"type": "String", "nullable": True},           # SOURCES, per engagement
+        "hook": {"type": "String", "nullable": True},             # the opener's angle, short
+        "template": {"type": "String", "nullable": True},         # copy-pattern id
+        "language": {"type": "String", "nullable": True},         # LANGUAGES
+        "gmail_thread_id": {"type": "String", "nullable": True},
+        "calendar_event_id": {"type": "String", "nullable": True},
+        # derived, never in a CSV: the local hour of `ts`; the company of the
+        # contact (so company-level funnels need no join); and `step`, the
+        # 1-based position of an outbound engagement in its contact's sequence
+        # (recomputed for the whole contact whenever one is added, because a
+        # backfill arrives out of order). Inbound rows have no step.
+        "hour": {"type": "Int", "nullable": True},
+        "company_id": {"type": "String", "nullable": True, "link": "companies.company_id"},
+        "step": {"type": "Int", "nullable": True},
     },
 }
 
@@ -322,11 +346,36 @@ DEALS = {
         # derived at load: terminal state of the deal, the predictor target.
         # true=closed_won, false=closed_lost, null=still open.
         "won": {"type": "Boolean", "nullable": True},
+        # where the deal came from (SOURCES), when its first meeting was, and —
+        # once closed_lost — why (DEAL_BLOCKERS: the same vocabulary as
+        # `blocker`, which is what stops an OPEN deal now, so stalls and losses
+        # count in one set). Nullable: unknown for older deals.
+        "source": {"type": "String", "nullable": True},
+        "first_meeting_date": {"type": "String", "nullable": True},
+        "lost_reason": {"type": "String", "nullable": True},
         # derived at load, for the search view only — see CONTACTS.search_text.
         # Non-nullable (the $text view rejects nullable); adding to a populated
         # instance needs a reload, not create-schema. See CONTACTS + docs/23.
         "search_title": {"type": "Text", "analyzer": "english"},
         "search_text": {"type": "Text", "analyzer": "english"},
+    },
+}
+
+# deal_events — a deal's path through the stages (docs/34): one row each time
+# its stage or blocker changes, written by add_deal / log_deal_update. The
+# deals row holds only where a deal IS; this holds how it got there, so "where
+# do deals stall, and on what" is a query over rows, not a reading of the
+# changelog's prose. App-state, like the changelog: no CSV, starts empty.
+DEAL_EVENTS = {
+    "type": "table",
+    "columns": {
+        "event_id": {"type": "String"},
+        "deal_id": {"type": "String", "link": "deals.deal_id"},
+        "date": {"type": "String"},                       # ISO date of the change
+        "stage": {"type": "String"},                      # the stage it moved INTO
+        "prev_stage": {"type": "String", "nullable": True},   # null for a new deal
+        "blocker": {"type": "String"},                    # DEAL_BLOCKERS at that moment
+        "segment": {"type": "String"},                    # denormalised for slicing
     },
 }
 
@@ -600,7 +649,8 @@ TABLES = {
     "companies": COMPANIES,
     "contacts": CONTACTS, "touches": TOUCHES, "decisions": DECISIONS,
     "sessions": SESSIONS, "materials": MATERIALS, "channels": CHANNELS,
-    "posts": POSTS, "todos": TODOS, "deals": DEALS, "experiments": EXPERIMENTS,
+    "posts": POSTS, "todos": TODOS, "deals": DEALS, "deal_events": DEAL_EVENTS,
+    "experiments": EXPERIMENTS,
     "events": EVENTS, "routines": ROUTINES, "documents": DOCUMENTS,
     "chat_messages": CHAT_MESSAGES,
     "changelog": CHANGELOG,
@@ -612,7 +662,17 @@ TIERS = {"A", "B", "C"}
 LIFECYCLES = {"none", "announced", "shipped", "operating"}
 SOURCES = {"warm", "trigger", "cold", "referral"}
 WINDOWS = {"0800", "1215", "1600", "other"}
-TOUCH_CHANNELS = {"call", "email", "linkedin", "meeting"}
+TOUCH_CHANNELS = {"call", "email", "linkedin", "meeting", "sms"}
+# the engagement's details (docs/34). Fixed: the KPIs and the import's
+# consistency checks read these values ("a call is answered_by", "a linkedin
+# touch has a kind"). LANGUAGES is a deployment's own.
+DIRECTIONS = {"out", "in"}
+ANSWERED_BY = {"person", "voicemail", "switchboard", "gatekeeper", "none"}
+LINKEDIN_KINDS = {"connect", "dm", "comment", "post_engagement"}
+MEETING_KINDS = {"first", "follow_up", "demo", "technical", "pilot", "negotiation"}
+REPLY_SENTIMENTS = {"positive", "neutral", "polite_no", "negative"}
+LANGUAGES = {"fi", "en", "sv"}
+HOOK_MAX = 120   # a hook is an angle, not a message; longer is a notes field
 OUTCOMES = {
     "no_answer",
     "callback_requested",
@@ -654,6 +714,17 @@ def call_windows() -> list[str]:
 def window_minutes(window: str) -> int:
     """'1215' -> 735. Call windows are named by their start time."""
     return int(window[:2]) * 60 + int(window[2:])
+
+
+def window_for(hour: int) -> str:
+    """The call window an hour falls in, for a touch that arrives without one
+    (an import, docs/34): a window covers the two clock hours from its start
+    hour, so 0800 is 08-09, 1215 is 12-13; anything else is "other". This is
+    the convention the hand-logged touches follow."""
+    for w in call_windows():
+        if int(w[:2]) <= hour < int(w[:2]) + 2:
+            return w
+    return "other"
 DECISION_TYPES = {"call_priority", "opener_choice", "followup_timing"}
 HUMAN_ACTIONS = {"accepted", "overridden", "ignored"}
 
@@ -713,9 +784,15 @@ LANDING_PAGES = {"/", "/pricing", "/docs", "/blog", "/demo"}
 DEAL_OPEN_STAGES = {"lead", "qualified", "demo", "pilot", "negotiation"}
 DEAL_CLOSED_STAGES = {"closed_won", "closed_lost"}
 DEAL_STAGES = DEAL_OPEN_STAGES | DEAL_CLOSED_STAGES | {"parked"}
+# What stops an open deal now (`blocker`) and why a closed one was lost
+# (`lost_reason`): ONE vocabulary, so stalls and losses count together. The
+# second line came from the sales lane's review of real stalls (12.10.2026);
+# its "timing" and "price" are the existing timing_mismatch and budget.
 DEAL_BLOCKERS = {
     "none", "consultant_lock", "timing_mismatch", "demo_readiness",
     "budget", "parked_intent", "no_champion",
+    "no_decider", "group_owned", "build_in_house", "no_burning_need", "capacity",
+    "competitor", "gone_silent",
 }
 
 
@@ -892,7 +969,7 @@ OVERRIDABLE = {
     # who you sell to, and how you grade them
     "SEGMENTS", "TIERS", "SOURCES", "LIFECYCLES", "TECHNICAL_ROLES",
     # how you reach them, and why deals stall
-    "TOUCH_CHANNELS", "DEAL_BLOCKERS",
+    "TOUCH_CHANNELS", "DEAL_BLOCKERS", "LANGUAGES",
     # what you publish, and where
     "MATERIAL_TYPES", "PLATFORMS", "TONES", "POST_FORMATS", "POST_TOPICS",
     # the rest of the descriptive vocabulary

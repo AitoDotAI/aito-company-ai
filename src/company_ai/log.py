@@ -11,7 +11,7 @@ from datetime import date, datetime, timezone
 
 from . import changelog, schema, search
 from .aito import AitoClient
-from .loaders import (parse_channel_row, parse_deal_row, parse_event_row,
+from .loaders import (deal_search_columns, parse_channel_row, parse_deal_row, parse_event_row,
                       parse_experiment_row, parse_material_row,
                       parse_post_row, parse_rolodex_row, parse_routine_row,
                       parse_session_row, parse_todo_row, parse_touch_row)
@@ -92,6 +92,8 @@ def add_deal(
     blocker: str = "none",
     created: str | None = None,
     as_of: date | None = None,
+    source: str | None = None,
+    first_meeting_date: str | None = None,
 ) -> dict:
     """Add a new opportunity to the pipeline. Validated like a CSV load
     (parse_deal_row, which derives `won` from the stage), then appended to
@@ -103,9 +105,11 @@ def add_deal(
         "champion_present": "true" if champion_present else "false",
         "blocker": blocker, "last_touch_date": as_of.isoformat(),
         "created": created or as_of.isoformat(),
+        "source": source or "", "first_meeting_date": first_meeting_date or "",
     }
     row = parse_deal_row(raw)
     client.upload_batch("deals", [row])
+    _deal_event(client, row, None, as_of)
     changelog.record(client, "deal", row["deal_id"], "created",
                      f"deal created: {company} ({stage}, €{value_eur:,})")
     search.refresh(client)
@@ -116,42 +120,54 @@ def log_touch(
     client: AitoClient,
     contact_id: str,
     channel: str,
-    window: str,
+    window: str | None,
     outcome: str,
     next_action: str | None = None,
     next_action_due: str | None = None,
     notes: str | None = None,
     ts: datetime | None = None,
+    **engagement: str | None,
 ) -> dict:
+    """Log one engagement. `engagement` takes the optional details of docs/34
+    (deal_id, direction, answered_by, linkedin_kind, meeting_kind,
+    reply_sentiment, source, hook, template, language, gmail_thread_id,
+    calendar_event_id); an unknown name is refused. `window` may be None: it is
+    then the call window `ts` falls in. Afterwards the contact is resequenced,
+    so its step numbers and its funnel flags include this touch."""
+    from . import engagements
+    from .loaders import ENGAGEMENT_COLUMNS
+    unknown = set(engagement) - set(ENGAGEMENT_COLUMNS)
+    assert not unknown, f"unknown engagement field(s) {sorted(unknown)}"
     ts = ts or datetime.now().replace(microsecond=0)
     raw = {
         "touch_id": f"log-{ts.strftime('%Y%m%d%H%M%S')}-{contact_id}",
         "contact_id": contact_id,
         "ts": ts.isoformat(),
         "weekday": schema.WEEKDAYS[ts.weekday()],
-        "window": window,
+        "window": window or schema.window_for(ts.hour),
         "channel": channel,
         "outcome": outcome,
         "next_action": next_action or "",
         "next_action_due": next_action_due or "",
         "notes": notes or "",
+        **{k: v or "" for k, v in engagement.items()},
     }
     contact_ids = {
         hit["contact_id"]
         for hit in client.query({"from": "contacts", "limit": 10000})["hits"]
     }
-    row = parse_touch_row(raw, contact_ids)
-
-    previous = client.query(
-        {"from": "touches", "where": {"contact_id": contact_id}, "limit": 10000}
-    )["hits"]
-    days = None
-    if previous:
-        last = max(datetime.fromisoformat(t["ts"]).date() for t in previous)
-        days = (ts.date() - last).days
-    row["days_since_prev_touch"] = bucket_days_since(days)
-
+    deal_ids = ({d["deal_id"] for d in client.query({"from": "deals", "limit": 10000})["hits"]}
+                if engagement.get("deal_id") else None)
+    row = parse_touch_row(raw, contact_ids, deal_ids)
+    # placeholders; resequence derives the real values from the whole history
+    row.update({"days_since_prev_touch": "first", "step": None, "company_id": None})
     client.upload_batch("touches", [row])
+    client.optimize("touches")
+    engagements.resequence(client, {contact_id})
+    row = client.query({"from": "touches", "where": {"touch_id": row["touch_id"]},
+                        "limit": 2})["hits"]
+    assert len(row) == 1, f"logged touch not readable back: {raw['touch_id']}"
+    row = row[0]
     changelog.record(client, "touch", row["touch_id"], "logged",
                      f"{channel} to {contact_id}: {outcome}")
     return row
@@ -193,6 +209,15 @@ def log_decision(
     return row
 
 
+def _deal_event(client: AitoClient, deal: dict, prev_stage: str | None, on: date) -> None:
+    """One row of a deal's path (docs/34): where it moved, from where, and what
+    was blocking it then."""
+    client.upload_batch("deal_events", [{
+        "event_id": _stamp("de"), "deal_id": deal["deal_id"], "date": on.isoformat(),
+        "stage": deal["stage"], "prev_stage": prev_stage,
+        "blocker": deal["blocker"], "segment": deal["segment"]}])
+
+
 def log_deal_update(
     client: AitoClient,
     deal_id: str,
@@ -201,20 +226,24 @@ def log_deal_update(
     blocker: str | None = None,
     champion_present: bool | None = None,
     as_of: date | None = None,
+    source: str | None = None,
+    first_meeting_date: str | None = None,
+    lost_reason: str | None = None,
 ) -> dict:
     """Advance a deal: the closed loop from the action surface. Resolving a
     deal-linked todo (a call that booked a meeting, a stage that closed)
     updates the deal here, which immediately re-ranks the pipeline and
-    re-derives `won` from the new stage. An Aito upsert by deal_id replaces
-    the row, so this is idempotent."""
+    re-derives `won` from the new stage.
+
+    Updated in place (v2 `_modify`, flushed) and read back. This used to drop
+    and rewrite the whole table, which was safe only while nothing linked to
+    deals; touches and deal_events now do (docs/34). A change of stage or
+    blocker also appends a deal_events row."""
     as_of = as_of or date.today()
-    # Aito exposes no per-row id to target, so update by rewriting the (small)
-    # deals table: read all, swap the one row, reload. Idempotent, no
-    # duplicate deal_ids. Nothing links to deals, so the drop is safe.
-    all_deals = client.query({"from": "deals", "limit": 10000})["hits"]
-    match = [d for d in all_deals if d["deal_id"] == deal_id]
-    assert match, f"unknown deal_id {deal_id!r}"
-    row = dict(match[0])
+    match = client.query({"from": "deals", "where": {"deal_id": deal_id}, "limit": 2})["hits"]
+    assert len(match) == 1, f"deal_id {deal_id!r}: expected one deal, found {len(match)}"
+    before = match[0]
+    row = dict(before)
     if stage is not None:
         assert stage in schema.DEAL_STAGES, f"unknown stage {stage!r}"
         row["stage"] = stage
@@ -226,14 +255,31 @@ def log_deal_update(
         row["blocker"] = blocker
     if champion_present is not None:
         row["champion_present"] = champion_present
+    if source is not None:
+        assert source in schema.SOURCES, f"unknown source {source!r}"
+        row["source"] = source
+    if first_meeting_date is not None:
+        date.fromisoformat(first_meeting_date)
+        row["first_meeting_date"] = first_meeting_date
+    if lost_reason is not None:
+        assert lost_reason in schema.DEAL_BLOCKERS, f"unknown lost_reason {lost_reason!r}"
+        row["lost_reason"] = lost_reason
+    if row.get("lost_reason"):
+        assert row["stage"] == "closed_lost", (
+            f"lost_reason is set on a {row['stage']!r} deal (only on closed_lost)")
     row["last_touch_date"] = as_of.isoformat()
     row["won"] = schema.deal_won(row["stage"])  # re-derive terminal state
+    row.update(deal_search_columns(row["company"], row["segment"], row["stage"], row["blocker"]))
 
-    rewritten = [d for d in all_deals if d["deal_id"] != deal_id] + [row]
-    client.delete_table("deals")
-    client.create_table("deals", schema.DEALS)
-    client.upload_batch("deals", rewritten)
-    assert client.count("deals") == len(rewritten), "deal rewrite row-count mismatch"
+    change = {k: v for k, v in row.items() if before.get(k) != v}
+    if change:
+        client.update_entries("deals", {"deal_id": deal_id}, change)
+        after = client.query({"from": "deals", "where": {"deal_id": deal_id}, "limit": 2})["hits"]
+        assert len(after) == 1, f"deal {deal_id}: {len(after)} rows after the update"
+        wrong = {k: (v, after[0].get(k)) for k, v in change.items() if after[0].get(k) != v}
+        assert not wrong, f"deal {deal_id}: wrote/read back {wrong}"
+    if row["stage"] != before["stage"] or row["blocker"] != before["blocker"]:
+        _deal_event(client, row, before["stage"], as_of)
     action = ("won" if row["stage"] == "closed_won"
               else "lost" if row["stage"] == "closed_lost" else "updated")
     changelog.record(client, "deal", deal_id, action,

@@ -138,15 +138,53 @@ def parse_rolodex_row(row: dict) -> dict:
     }
 
 
-DERIVED_TOUCH_COLUMNS = {"days_since_prev_touch", "good_outcome", "reached", "booked"}
+DERIVED_TOUCH_COLUMNS = {"days_since_prev_touch", "good_outcome", "reached", "booked",
+                         "hour", "company_id", "step"}
+# The engagement's details (docs/34). Optional in a touches CSV, so a seed or an
+# export written before they existed still loads; absent and empty both read
+# null ("not recorded").
+ENGAGEMENT_COLUMNS = ["deal_id", "direction", "answered_by", "linkedin_kind",
+                      "meeting_kind", "reply_sentiment", "source", "hook", "template",
+                      "language", "gmail_thread_id", "calendar_event_id"]
 
 
-def parse_touch_row(row: dict, contact_ids: set[str]) -> dict:
-    expected = set(schema.TOUCHES["columns"]) - DERIVED_TOUCH_COLUMNS
-    _require(set(row) == expected, f"unexpected columns {sorted(set(row) ^ expected)}", row)
-    required = expected - {"next_action", "next_action_due", "notes"}
+def check_engagement(row: dict, deal_ids: set[str] | None) -> None:
+    """The engagement fields of one touch: each value from its vocabulary, and
+    each detail only where it means something. A kind on the wrong channel is
+    refused rather than dropped: it says the row was built wrong upstream."""
+    vocab = {"direction": schema.DIRECTIONS, "answered_by": schema.ANSWERED_BY,
+             "linkedin_kind": schema.LINKEDIN_KINDS, "meeting_kind": schema.MEETING_KINDS,
+             "reply_sentiment": schema.REPLY_SENTIMENTS, "source": schema.SOURCES,
+             "language": schema.LANGUAGES}
+    for field, allowed in vocab.items():
+        if row.get(field):
+            _require(row[field] in allowed, f"unknown {field} {row[field]!r}", row)
+    only_on = {"answered_by": "call", "linkedin_kind": "linkedin",
+               "meeting_kind": "meeting", "gmail_thread_id": "email",
+               "calendar_event_id": "meeting"}
+    for field, channel in only_on.items():
+        if row.get(field):
+            _require(row["channel"] == channel,
+                     f"{field} is set on a {row['channel']!r} touch (only on {channel})", row)
+    if row.get("reply_sentiment"):
+        _require(row.get("direction") == "in" or row["outcome"] == "reply",
+                 "reply_sentiment is set on a touch that is not a reply", row)
+    if row.get("hook"):
+        _require(len(row["hook"]) <= schema.HOOK_MAX,
+                 f"hook is {len(row['hook'])} characters (at most {schema.HOOK_MAX})", row)
+    if row.get("deal_id") and deal_ids is not None:
+        _require(row["deal_id"] in deal_ids, f"unknown deal_id {row['deal_id']!r}", row)
+
+
+def parse_touch_row(row: dict, contact_ids: set[str],
+                    deal_ids: set[str] | None = None) -> dict:
+    core = set(schema.TOUCHES["columns"]) - DERIVED_TOUCH_COLUMNS - set(ENGAGEMENT_COLUMNS)
+    unexpected = set(row) - core - set(ENGAGEMENT_COLUMNS)
+    _require(core <= set(row) and not unexpected,
+             f"unexpected columns {sorted((core - set(row)) | unexpected)}", row)
+    required = core - {"next_action", "next_action_due", "notes"}
     for field in required:
-        _require(bool(row[field]), f"{field} is empty", row)
+        _require(bool(row.get(field)), f"{field} is empty", row)
     _require(row["contact_id"] in contact_ids, f"unknown contact_id {row['contact_id']!r}", row)
     _require(row["window"] in schema.WINDOWS, f"unknown window {row['window']!r}", row)
     _require(row["channel"] in schema.TOUCH_CHANNELS, f"unknown channel {row['channel']!r}", row)
@@ -155,6 +193,9 @@ def parse_touch_row(row: dict, contact_ids: set[str]) -> dict:
         ts = datetime.fromisoformat(row["ts"])
     except ValueError:
         _require(False, f"ts is not an ISO datetime: {row['ts']!r}", row)
+    # local time, no offset: one row in UTC among local ones would shift its
+    # hour and weekday silently, and those are what the call timing learns from
+    _require(ts.tzinfo is None, f"ts carries a time zone: {row['ts']!r} (write local time)", row)
     actual_weekday = schema.WEEKDAYS[ts.weekday()]
     _require(
         row["weekday"] == actual_weekday,
@@ -168,13 +209,32 @@ def parse_touch_row(row: dict, contact_ids: set[str]) -> dict:
     )
     if row["next_action_due"]:
         _parse_date(row["next_action_due"], "next_action_due", row)
+    check_engagement(row, deal_ids)
     return {
         **row,
+        **{c: row.get(c) or None for c in ENGAGEMENT_COLUMNS},
         "next_action": row["next_action"] or None,
         "next_action_due": row["next_action_due"] or None,
         "notes": row["notes"] or None,
+        "hour": ts.hour,
         **schema.kpi_flags(row["outcome"]),
     }
+
+
+def derive_sequence(rows: list[dict], company_of: dict[str, str | None]) -> None:
+    """Stamp each touch with what depends on its contact's WHOLE history: the
+    recency bucket, the outbound `step`, and the contact's company. In place.
+    Called on every touch of every contact a write affects, because a backfill
+    arrives out of order and one older row renumbers everything after it."""
+    derive_recency(rows)
+    step: dict[str, int] = {}
+    for row in sorted(rows, key=lambda r: (r["ts"], r["touch_id"])):
+        if row.get("direction") == "in":
+            row["step"] = None
+        else:  # outbound, or not recorded (the hand log is outbound by habit)
+            step[row["contact_id"]] = step.get(row["contact_id"], 0) + 1
+            row["step"] = step[row["contact_id"]]
+        row["company_id"] = company_of.get(row["contact_id"])
 
 
 def _read_csv(path: Path) -> list[dict]:
@@ -387,10 +447,14 @@ def derive_recency(rows: list[dict]) -> None:
 def load_touches(client: AitoClient, data_dir: Path) -> int:
     contact_ids = {r["contact_id"] for r in _read_csv(data_dir / ROLODEX_FILE)}
     raw = _read_csv(data_dir / TOUCHES_FILE)
-    rows = [parse_touch_row(r, contact_ids) for r in raw]
+    contacts = _read_csv(data_dir / ROLODEX_FILE)
+    deals_path = data_dir / DEALS_FILE
+    deal_ids = ({r["deal_id"] for r in _read_csv(deals_path)} if deals_path.exists()
+                else set())
+    rows = [parse_touch_row(r, contact_ids, deal_ids) for r in raw]
     ids = [r["touch_id"] for r in rows]
     assert len(ids) == len(set(ids)), "duplicate touch_id in touches"
-    derive_recency(rows)
+    derive_sequence(rows, {r["contact_id"]: company_slug(r["company"]) for r in contacts})
     return _reload(client, "touches", rows)
 
 
@@ -878,14 +942,27 @@ def export_table(client: AitoClient, table: str, out_dir: Path) -> tuple[Path, i
 
 
 DERIVED_DEAL_COLUMNS = {"won", "search_title", "search_text", "company_id"}
+# newer deal fields (docs/34): optional in a deals CSV, null when absent
+OPTIONAL_DEAL_COLUMNS = ["source", "first_meeting_date", "lost_reason"]
 
 
 def parse_deal_row(row: dict) -> dict:
     # won derived from stage; search_* derived for the search view
-    expected = set(schema.DEALS["columns"]) - DERIVED_DEAL_COLUMNS
-    _require(set(row) == expected, f"unexpected columns {sorted(set(row) ^ expected)}", row)
+    expected = set(schema.DEALS["columns"]) - DERIVED_DEAL_COLUMNS - set(OPTIONAL_DEAL_COLUMNS)
+    unexpected = set(row) - expected - set(OPTIONAL_DEAL_COLUMNS)
+    _require(expected <= set(row) and not unexpected,
+             f"unexpected columns {sorted((expected - set(row)) | unexpected)}", row)
     for field in expected:
-        _require(bool(row[field]) or row[field] == "0", f"{field} is empty", row)
+        _require(bool(row.get(field)) or row.get(field) == "0", f"{field} is empty", row)
+    if row.get("source"):
+        _require(row["source"] in schema.SOURCES, f"unknown source {row['source']!r}", row)
+    if row.get("first_meeting_date"):
+        _parse_date(row["first_meeting_date"], "first_meeting_date", row)
+    if row.get("lost_reason"):
+        _require(row["lost_reason"] in schema.DEAL_BLOCKERS,
+                 f"unknown lost_reason {row['lost_reason']!r}", row)
+        _require(row["stage"] == "closed_lost",
+                 f"lost_reason is set on a {row['stage']!r} deal (only on closed_lost)", row)
     _require(row["segment"] in schema.SEGMENTS, f"unknown segment {row['segment']!r}", row)
     _require(row["stage"] in schema.DEAL_STAGES, f"unknown stage {row['stage']!r}", row)
     _require(row["blocker"] in schema.DEAL_BLOCKERS, f"unknown blocker {row['blocker']!r}", row)
@@ -895,6 +972,7 @@ def parse_deal_row(row: dict) -> dict:
     _parse_date(row["created"], "created", row)
     return {
         **row,
+        **{c: row.get(c) or None for c in OPTIONAL_DEAL_COLUMNS},
         "value_eur": _parse_int(row["value_eur"], "value_eur", row),
         "probability": probability,
         "champion_present": _parse_bool(row["champion_present"], "champion_present", row),

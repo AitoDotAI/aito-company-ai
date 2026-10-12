@@ -40,10 +40,14 @@ _SET_FOR = {
     ("contacts", "segment"): "SEGMENTS", ("contacts", "tier"): "TIERS",
     ("contacts", "source"): "SOURCES", ("contacts", "ai_lifecycle"): "LIFECYCLES",
     ("touches", "channel"): "TOUCH_CHANNELS", ("touches", "outcome"): "OUTCOMES",
-    ("touches", "window"): "WINDOWS",
+    ("touches", "window"): "WINDOWS", ("touches", "source"): "SOURCES",
+    ("touches", "direction"): "DIRECTIONS", ("touches", "answered_by"): "ANSWERED_BY",
+    ("touches", "linkedin_kind"): "LINKEDIN_KINDS", ("touches", "meeting_kind"): "MEETING_KINDS",
+    ("touches", "reply_sentiment"): "REPLY_SENTIMENTS", ("touches", "language"): "LANGUAGES",
     ("sessions", "source"): "WEB_SOURCES", ("sessions", "device"): "DEVICES",
     ("deals", "segment"): "SEGMENTS", ("deals", "stage"): "DEAL_STAGES",
-    ("deals", "blocker"): "DEAL_BLOCKERS",
+    ("deals", "blocker"): "DEAL_BLOCKERS", ("deals", "lost_reason"): "DEAL_BLOCKERS",
+    ("deals", "source"): "SOURCES",
     ("materials", "material"): "MATERIAL_TYPES",
     ("channels", "platform"): "PLATFORMS",
     ("posts", "tone"): "TONES", ("posts", "format"): "POST_FORMATS",
@@ -141,11 +145,12 @@ def validate_dir(data_dir: Path) -> Report:
         return loaders._read_csv(path) if path.exists() else []
 
     contact_ids = {r.get("contact_id") for r in raw("contacts")}
+    deal_ids = {r.get("deal_id") for r in raw("deals")}
     parsed_by_id: dict[str, dict] = {"materials": {}, "channels": {}}
 
     def parse(table: str, row: dict) -> dict:
         if table == "touches":
-            return loaders.parse_touch_row(row, contact_ids)
+            return loaders.parse_touch_row(row, contact_ids, deal_ids)
         if table == "posts":
             return loaders.parse_post_row(row, parsed_by_id["materials"], parsed_by_id["channels"])
         return {
