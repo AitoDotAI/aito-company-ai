@@ -7,7 +7,7 @@ USER_ROLES     overridable: False
 
 # naming one is refused, not quietly ignored
 
-'DEAL_STAGES' cannot be overridden. Overridable: DEAL_BLOCKERS, DECISION_TYPES, DEVICES, EVENT_TYPES, LANDING_PAGES, LIFECYCLES, MATERIAL_TYPES, PLATF
+'DEAL_STAGES' cannot be overridden. Overridable: DEAL_BLOCKERS, DECISION_TYPES, DEVICES, EVENT_TYPES, LANDING_PAGES, LANGUAGES, LIFECYCLES, MATERIAL_T
 
 # so is a set that does not exist at all
 

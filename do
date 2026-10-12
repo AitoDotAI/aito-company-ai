@@ -28,6 +28,8 @@
 #   ./do smoke [config]       build + boot the image locally, check it serves
 #   ./do reindex [config]     rebuild the search index (+ embeddings if configured)
 #   ./do validate [dir]       check a data dir, report ALL problems at once (no instance needed)
+#   ./do import-engagements <csv> [config] [--apply]
+#                             check + import an engagements CSV (docs/34); plans unless --apply
 #   ./do maintenance <s> [cfg]  run .ai/maintenance/<s>.py against an instance
 #   ./do clean                wipe build artifacts and PID/log files
 #
@@ -168,6 +170,19 @@ cmd_validate() { uv run company-ai validate "$@"; }
 # They are run THROUGH here rather than by hand so the instance is selected the
 # same way every other verb selects it, instead of each script growing its own
 # idea of which dotenv it meant.
+cmd_import_engagements() {
+  local file="${1:-}"
+  [ -n "$file" ] || die "usage: ./do import-engagements <csv> [config] [--apply]"
+  shift
+  local cfg="" apply=""
+  for a in "$@"; do
+    if [ "$a" = "--apply" ]; then apply="--apply"; else cfg="$a"; fi
+  done
+  resolve "$cfg"
+  say "engagements import via $(env_label)${apply:+  (APPLY)}"
+  uv run company-ai import-engagements "$file" $apply
+}
+
 cmd_maintenance() {
   local name="${1:-}"
   [ -n "$name" ] || die "usage: ./do maintenance <script> [config]  (available: $(ls .ai/maintenance/*.py 2>/dev/null | xargs -n1 basename 2>/dev/null | sed 's/\.py$//' | tr '\n' ' '))"
@@ -290,6 +305,7 @@ case "${1:-help}" in
   reindex)        shift; cmd_reindex "$@" ;;
   validate)       shift; cmd_validate "$@" ;;
   maintenance)    shift; cmd_maintenance "$@" ;;
+  import-engagements) shift; cmd_import_engagements "$@" ;;
   start)          shift; cmd_start "$@" ;;
   stop)           shift; cmd_stop "$@" ;;
   restart)        shift; cmd_restart "$@" ;;

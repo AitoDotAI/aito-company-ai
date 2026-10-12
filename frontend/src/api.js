@@ -40,6 +40,7 @@ export const api = {
   deals: () => get("/deals"),
   whoToReach: () => get("/who-to-reach"),
   salesTrend: () => get("/sales-trend"),
+  engagements: (weeks = 8) => get(`/engagements?weeks=${weeks}`),
   pwin: (stage, blocker, champion_present, segment) =>
     get("/pwin", { stage, blocker, champion_present, segment }),
   graph: () => get("/graph"),

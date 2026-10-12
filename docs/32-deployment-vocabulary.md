@@ -41,7 +41,7 @@ values:
 | | |
 |---|---|
 | who you sell to | `SEGMENTS` `TIERS` `SOURCES` `LIFECYCLES` `TECHNICAL_ROLES` |
-| how you reach them, why deals stall | `TOUCH_CHANNELS` `DEAL_BLOCKERS` |
+| how you reach them, why deals stall | `TOUCH_CHANNELS` `DEAL_BLOCKERS` `LANGUAGES` |
 | what you publish, and where | `MATERIAL_TYPES` `PLATFORMS` `TONES` `POST_FORMATS` `POST_TOPICS` |
 | the rest | `DECISION_TYPES` `EVENT_TYPES` `WEB_SOURCES` `DEVICES` `LANDING_PAGES` |
 | when you call | `WINDOWS` — and the schedule below |
@@ -53,6 +53,9 @@ would not configure the product, it would break it:
 - `TODO_AREAS` — the dashboard's views are keyed on them.
 - every `*_STATUS`, `USER_ROLES`, `LINKED_TYPES` — lifecycle and permission
   logic.
+- the engagement details `DIRECTIONS`, `ANSWERED_BY`, `LINKEDIN_KINDS`,
+  `MEETING_KINDS`, `REPLY_SENTIMENTS` — the KPIs and the import's checks read
+  them (docs/34).
 
 Naming one of those raises and lists what *is* available, rather than being
 ignored and leaving you to wonder why your vocabulary did not take. Same for a

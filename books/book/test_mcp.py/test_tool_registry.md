@@ -70,13 +70,13 @@ Add a new person to the rolodex (writes to the live Aito instance).
 
 ## add_deal
 
-params: ['blocker', 'champion_present', 'company', 'probability', 'segment', 'stage', 'value_eur']
+params: ['blocker', 'champion_present', 'company', 'first_meeting_date', 'probability', 'segment', 'source', 'stage', 'value_eur']
 required: ['champion_present', 'company', 'probability', 'segment', 'stage', 'value_eur']
 Add a new opportunity to the pipeline (writes to the live Aito
     instance). stage: lead/qualified/demo/pilot/negotiation/closed_won/
     closed_lost/parked. probability is the operator's own 0–100 estimate.
-    blocker: none/consultant_lock/timing_mismatch/demo_readiness/budget/
-    no_champion. `won` is derived from the stage.
+    blocker: see log_deal_update. source: warm/trigger/cold/referral.
+    `won` is derived from the stage.
 
 ## add_todo
 
@@ -235,12 +235,34 @@ Log a website session to the acquisition funnel (live Aito). source:
 
 ## log_touch
 
-params: ['channel', 'contact_id', 'next_action', 'next_action_due', 'notes', 'outcome', 'window']
-required: ['channel', 'contact_id', 'outcome', 'window']
-Log a contact attempt or event. Channels: call, email, linkedin,
-    meeting. Outcomes: no_answer, callback_requested, conversation,
-    meeting_booked, declined, bounced, reply, no_reply. The logged touch
-    immediately affects the next brief.
+params: ['answered_by', 'calendar_event_id', 'channel', 'contact_id', 'deal_id', 'direction', 'gmail_thread_id', 'hook', 'language', 'linkedin_kind', 'meeting_kind', 'next_action', 'next_action_due', 'notes', 'outcome', 'reply_sentiment', 'source', 'template', 'ts', 'window']
+required: ['channel', 'contact_id', 'outcome']
+Log one engagement (docs/34). channel: call, email, linkedin, meeting,
+    sms. outcome: no_answer, callback_requested, conversation, meeting_booked,
+    declined, bounced, reply, no_reply. `ts` is local ISO time (default now);
+    `window` defaults to the call window ts falls in.
+
+    The details are optional but are what the funnel learns from — set what
+    you know: deal_id (the case), direction (out/in), answered_by on a call
+    (person/voicemail/switchboard/gatekeeper/none), linkedin_kind
+    (connect/dm/comment/post_engagement), meeting_kind (first/follow_up/demo/
+    technical/pilot/negotiation), reply_sentiment on a reply (positive/neutral/
+    polite_no/negative), source (warm/trigger/cold/referral), hook (the angle,
+    ≤120 chars), template, language (fi/en/sv), gmail_thread_id,
+    calendar_event_id. A detail on the wrong channel is refused.
+
+    The touch moves the contact's funnel flags and step numbers at once, and a
+    touch with a deal_id refreshes that deal's last-touch date.
+
+## engagement_kpis
+
+params: ['weeks']
+required: []
+The weekly engagement KPIs (docs/34), the last `weeks` ISO weeks: volume
+    by channel, inbound, new contacts touched, calls answered by a person,
+    email replies, meetings booked and held, meetings per 10 first touches;
+    plus open deals by blocker and lost deals by reason. A rate over nothing
+    is null, never 0.
 
 ## deal_pipeline
 
@@ -324,13 +346,19 @@ Snapshot the database before a risky change — a copy-on-write Aito env
 
 ## log_deal_update
 
-params: ['blocker', 'champion_present', 'deal_id', 'probability', 'stage']
+params: ['blocker', 'champion_present', 'deal_id', 'first_meeting_date', 'lost_reason', 'probability', 'source', 'stage']
 required: ['deal_id']
 Advance a deal — the closed loop from the action surface. After a
     call resolves (meeting booked, stage moved, blocker cleared, deal
     closed_won/closed_lost), update it here; the pipeline re-ranks and the
     risk model re-derives immediately. stage: lead/qualified/demo/pilot/
-    negotiation/closed_won/closed_lost/parked.
+    negotiation/closed_won/closed_lost/parked. blocker (what stops it now) and
+    lost_reason (closed_lost only) share one vocabulary: none, consultant_lock,
+    timing_mismatch, demo_readiness, budget, parked_intent, no_champion,
+    no_decider, group_owned, build_in_house, no_burning_need, capacity,
+    competitor, gone_silent. source: warm/trigger/cold/referral;
+    first_meeting_date: ISO date. A stage or blocker change is recorded in the
+    deal's stage history.
 
 ## log_decision
 

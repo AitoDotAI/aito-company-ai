@@ -15,6 +15,7 @@ schema_drift: False
   posts        present=True rows=120 missing_cols=[]
   todos        present=True rows=102 missing_cols=[]
   deals        present=True rows=280 missing_cols=[]
+  deal_events  present=True rows=1 missing_cols=[]
   experiments  present=True rows=90 missing_cols=[]
   events       present=True rows=14 missing_cols=[]
   routines     present=True rows=7 missing_cols=[]

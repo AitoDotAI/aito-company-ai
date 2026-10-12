@@ -5,6 +5,6 @@ total=8 acceptance=0.7500 trustworthy=False
   followup_timing  3/3 = 1.0000
   opener_choice    3/4 = 0.7500
   calibration (confidence -> P(accepted)):
-    low     n=4 observed=1.0000 aito_p=0.7444
-    medium  n=1 observed=0.0000 aito_p=0.5408
-    high    n=3 observed=0.6667 aito_p=0.6196
+    low     n=4 observed=1.0000 aito_p=0.7648
+    medium  n=1 observed=0.0000 aito_p=0.4563
+    high    n=3 observed=0.6667 aito_p=0.6449

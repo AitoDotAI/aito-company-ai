@@ -416,6 +416,11 @@ def create_app(config: Config | None = None) -> FastAPI:
         # p_win in lazily (shared /api/pwin cache) and ranks client-side.
         return _guarded(lambda: deals.who_to_reach(client(), predict=False).derived)
 
+    @app.get("/api/engagements")
+    def engagements_route(weeks: int = 8):
+        from . import engagements
+        return _guarded(lambda: engagements.weekly(client(), as_of=clock.today(), weeks=weeks))
+
     @app.get("/api/sales-trend")
     def sales_trend_route():
         from . import saleskpi

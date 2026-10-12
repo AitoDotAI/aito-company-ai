@@ -22,19 +22,20 @@ CALL QUEUE  0800  fri
   (Friday — conversation day)
   1. Zara Day, Vance BV   $p=0.31   why: consultancy B operating, 22+d since touch
      opener evidence: none yet (cold segment)
-  2. Zara Pike, Wayne OÜ   $p=0.28   why: ecommerce B none, never touched
+  2. Zara Pike, Wayne OÜ   $p=0.25   why: ecommerce B none, never touched
      opener evidence: conversation: "interested but needs the board"
-  3. Grace Lane, Nakatomi OÜ   $p=0.26   why: erp A operating, 22+d since touch
+  3. Grace Lane, Nakatomi OÜ   $p=0.23   why: erp A operating, 22+d since touch
      opener evidence: meeting_booked: "agreed to a 30min walkthrough"
-  4. Grace Marsh, Wonka Oy   $p=0.23   why: analytics B operating, 22+d since touch
+  4. Grace Marsh, Wonka Oy   $p=0.21   why: analytics B operating, 22+d since touch
      opener evidence: none yet (cold segment)
-  5. Carol Vale, Nakatomi OÜ   $p=0.22   why: erp C operating, 22+d since touch
-     opener evidence: meeting_booked: "agreed to a 30min walkthrough"
+  5. Victor Brooks, Pied Oy   $p=0.19   why: accounting B operating, 8-21d since touch
+     opener evidence: conversation: "interested but needs the board"
 
 SEGMENT READ  conversion vs pipeline 14%
   consultancy  24% ↑   best window 1600
   ecommerce    14% ↓   best window 1600
   erp          22% ↑   best window 1600
   analytics    10% ↓   best window 0800
+  accounting   8% ↓   best window 1600
 
-(36 lines <= 40)
+(37 lines <= 40)

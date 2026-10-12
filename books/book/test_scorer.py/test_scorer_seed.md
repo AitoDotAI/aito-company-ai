@@ -33,9 +33,9 @@
   _recommend: {"from": {"from": "posts", "where": {"outcome": {"$or": ["flop", "modest", "win"]}}}, "goal": {"won": true}, "limit": 8, "recommend": "ai_made", "where": {"lane": "warm", "link_placement": "body", "platform": "linkedin", "tone": "announce", "weekday": "mon"}}
   P(win)=0.0192  base=0.0771
     why $group=[{'link_placement': 'body'}, {'platform': 'linkedin'}]  lift=0.3102
-    why tone=announce  lift=0.3102
+    why tone=announce  lift=0.3438
     why $group=[{'weekday': 'mon'}, {'lane': 'warm'}]  lift=1.3063
-    why ai_made=ai  lift=0.7030
+    why ai_made=ai  lift=0.7057
     why platform=linkedin  lift=1.0000
     why link_placement=body  lift=1.0000
     lever tone: best=builder (SWITCH)  [builder=1.0000, explainer=1.0000, announce=0.9999, narrate=0.9997]
@@ -53,9 +53,9 @@
   _recommend: {"from": {"from": "posts", "where": {"outcome": {"$or": ["flop", "modest", "win"]}}}, "goal": {"won": true}, "limit": 8, "recommend": "tone", "where": {"ai_made": "manual", "format": "show-hn", "platform": "hackernews"}}
   _recommend: {"from": {"from": "posts", "where": {"outcome": {"$or": ["flop", "modest", "win"]}}}, "goal": {"won": true}, "limit": 8, "recommend": "link_placement", "where": {"ai_made": "manual", "format": "show-hn", "platform": "hackernews", "tone": "builder"}}
   _recommend: {"from": {"from": "posts", "where": {"outcome": {"$or": ["flop", "modest", "win"]}}}, "goal": {"won": true}, "limit": 8, "recommend": "ai_made", "where": {"format": "show-hn", "platform": "hackernews", "tone": "builder"}}
-  P(win)=0.0192  base=0.0305
+  P(win)=0.0192  base=0.0444
     why $group=[{'format': 'show-hn'}, {'platform': 'hackernews'}]  lift=0.3102
-    why tone=builder  lift=0.3102
+    why tone=builder  lift=0.3667
     why ai_made=manual  lift=1.0807
     why platform=hackernews  lift=1.0000
     why format=show-hn  lift=1.0000

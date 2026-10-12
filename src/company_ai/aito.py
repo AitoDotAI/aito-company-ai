@@ -202,6 +202,18 @@ class AitoClient:
         self.optimize(table)   # flush: the update is invisible to reads until the next write
         return result
 
+    def update_many(self, table: str, updates: list[tuple[dict, dict]]) -> int:
+        """Several `_modify` updates, then ONE flush. Same contract as
+        `update_entries` (the flush is part of the primitive), for a caller
+        that changes many rows at once and would otherwise compact the
+        collection once per row. Returns how many updates were sent."""
+        for where, set_fields in updates:
+            self._request("POST", "/api/v2/data/_modify",
+                          {"update": table, "where": where, "set": set_fields})
+        if updates:
+            self.optimize(table)
+        return len(updates)
+
     def optimize(self, table: str) -> Any:
         """Compact a collection. Needed as a *flush* after a `_modify` update:
         on this build the update is applied but stays INVISIBLE to reads until

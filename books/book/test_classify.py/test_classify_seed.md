@@ -15,5 +15,5 @@
 
 ## Analyze the onboarding test results
 
-  area -> marketing (p 0.43)
-  action_type -> post (p 0.42)
+  area -> marketing (p 0.54)
+  action_type -> post (p 0.54)

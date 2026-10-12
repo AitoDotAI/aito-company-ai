@@ -2437,6 +2437,62 @@ function WhoToReach({ openDeals }) {
   );
 }
 
+// The weekly engagement numbers (docs/34): counting per ISO week, done server
+// side (engagements.weekly). A rate with no denominator arrives as null and is
+// shown as "—", never as 0%.
+function EngagementWeeks() {
+  const r = useAsync(() => api.engagements(8), []);
+  if (r.loading) return <Loading />;
+  if (r.err) return <ErrorBox msg={r.err} />;
+  const { weeks, open_deals_by_blocker: blockers, in_window, with_engagement_details } = r.data;
+  const rate = (v) => (v == null ? "—" : pct(v));
+  const blockerRows = Object.entries(blockers).filter(([k]) => k !== "none");
+  const maxB = Math.max(1, ...blockerRows.map(([, n]) => n));
+  return (
+    <div className="cols">
+      <Block title="Engagements by week" ptype="trend"
+             note={in_window ? `${with_engagement_details} of ${in_window} with direction recorded` : ""}>
+        {!in_window && <div className="empty">No engagements logged in the last eight weeks.</div>}
+        {in_window > 0 && (
+          <div className="sheetwrap">
+            <table className="sheet">
+              <thead><tr>
+                <th>week</th><th>all</th><th>out by channel</th><th>new contacts</th>
+                <th>calls → person</th><th>email replies</th><th>meetings booked</th>
+                <th>held</th><th>per 10 first</th>
+              </tr></thead>
+              <tbody>
+                {weeks.map((w) => (
+                  <tr key={w.week}>
+                    <td>{w.week}</td>
+                    <td className="num">{w.engagements}</td>
+                    <td>{Object.entries(w.by_channel).map(([c, n]) => `${c} ${n}`).join(" · ")}</td>
+                    <td className="num">{w.new_contacts_touched}</td>
+                    <td className="num">{rate(w.calls_answered_by_person)}
+                      {w.calls ? ` (${w.calls_with_answered_by}/${w.calls})` : ""}</td>
+                    <td className="num">{w.email_replies_in}{w.emails_out ? ` / ${w.emails_out}` : ""}</td>
+                    <td className="num">{w.meetings_booked}</td>
+                    <td className="num">{w.meetings_held}</td>
+                    <td className="num">{w.meetings_per_10_first_touches ?? "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Block>
+      <Block title="What is blocking open deals" ptype="chart">
+        {!blockerRows.length && <div className="empty">No open deal has a blocker recorded.</div>}
+        <div className="list">
+          {blockerRows.map(([k, n]) => (
+            <BarRow key={k} name={k.replace(/_/g, " ")} p={n / maxB} num={String(n)} />
+          ))}
+        </div>
+      </Block>
+    </div>
+  );
+}
+
 function SalesAnalytics() {
   const pipe = useAsync(() => api.deals(), []);
   const trend = useAsync(() => api.salesTrend(), []);
@@ -2475,6 +2531,7 @@ function SalesAnalytics() {
           <WhoToReach openDeals={kpis.open_deals} />
         </Block>
       </div>
+      <EngagementWeeks />
       <FunnelView only="sales" />
     </>
   );
