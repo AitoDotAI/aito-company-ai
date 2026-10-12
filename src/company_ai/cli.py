@@ -140,6 +140,13 @@ def main() -> None:
     rs.add_argument("--force", action="store_true",
                     help="actually promote; without it, show the diff and stop (dry-run)")
 
+    ie = sub.add_parser("import-engagements",
+                        help="import engagements from a CSV (docs/34): checks every row, "
+                             "plans by default, writes only with --apply")
+    ie.add_argument("csv", help="the engagements CSV (header: docs/34)")
+    ie.add_argument("--apply", action="store_true", help="write (default: plan only)")
+    ek = sub.add_parser("engagement-kpis", help="the weekly engagement KPIs (docs/34)")
+    ek.add_argument("--weeks", type=int, default=8)
     lg = sub.add_parser("log", help="log a touch: log <contact> <channel> <window> <outcome>")
     lg.add_argument("contact_id")
     lg.add_argument("channel")
@@ -184,7 +191,8 @@ def main() -> None:
                   "trilium-import",
                   "load-all", "clear", "export", "export-all", "board-run",
                   "reindex-search",
-                  "routines-run", "log", "complete", "archive", "backup", "restore"}
+                  "routines-run", "log", "complete", "archive", "backup", "restore",
+                  "import-engagements"}
     if args.command in WRITE_CMDS:
         _echo_target(config)
     # refuse synthetic seed into a remote instance unless forced
@@ -452,6 +460,21 @@ def main() -> None:
     elif args.command == "dashboard":
         from . import api
         api.serve(config, host=args.host, port=args.port or config.port)
+    elif args.command == "import-engagements":
+        import time
+        from . import backups, engagements
+        if args.apply:
+            stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
+            print("backup:", backups.backup(client, "tx", stamp)["created"])
+        plan = engagements.import_csv(client, args.csv, apply=args.apply)
+        print(engagements.render_plan(plan))
+        if plan["problems"]:
+            raise SystemExit(1)
+    elif args.command == "engagement-kpis":
+        import json
+        from . import engagements
+        print(json.dumps(engagements.weekly(client, as_of=clock.today(), weeks=args.weeks),
+                         indent=1, ensure_ascii=False))
     elif args.command == "log":
         row = logbook.log_touch(
             client, args.contact_id, args.channel, args.window, args.outcome,
