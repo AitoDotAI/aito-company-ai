@@ -6,9 +6,9 @@
 
   request:  {'from': 'companies', 'where': {'$refs.contacts.company_id': {'$exists': {'role': 'CFO'}}}, 'predict': 'industry', 'select': ['$value', '$p'], 'limit': 5}
   total:    6
-    {'$p': 0.45180876109960416, '$value': 'accounting'}
-    {'$p': 0.18676738303391519, '$value': 'erp'}
-    {'$p': 0.15975007808127015, '$value': 'ecommerce'}
+    {'$p': 0.47901518034307206, '$value': 'accounting'}
+    {'$p': 0.19801389297643895, '$value': 'erp'}
+    {'$p': 0.16936969587681266, '$value': 'ecommerce'}
 
 ## An accounting account, a champion on board, nothing blocking — what are the odds?
 
