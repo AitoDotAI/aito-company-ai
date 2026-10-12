@@ -35,6 +35,7 @@ number lives here.
 
 import hashlib
 import json
+import logging
 import os
 import secrets
 import tempfile
@@ -64,6 +65,7 @@ def _hash(token: str) -> str:
 
 
 _STATE_VERSION = 1
+log = logging.getLogger(__name__)
 
 
 class OAuthProvider:
@@ -260,7 +262,16 @@ class OAuthProvider:
         os.makedirs(folder, exist_ok=True)
         fd, tmp = tempfile.mkstemp(dir=folder, prefix=".oauth-state-")
         try:
-            os.fchmod(fd, 0o600)
+            try:
+                os.fchmod(fd, 0o600)
+            except OSError as e:
+                # Azure's /home is an SMB share, where chmod can be refused.
+                # The file holds hashes, not usable tokens (only client secrets
+                # as issued, docs/29), so carry on, but say so.
+                if not getattr(self, "_chmod_warned", False):
+                    log.warning("OAuth state %s: cannot restrict permissions (%s)",
+                                self._path, e)
+                    self._chmod_warned = True
             with os.fdopen(fd, "w", encoding="utf-8") as f:
                 json.dump(state, f)
             os.replace(tmp, self._path)
