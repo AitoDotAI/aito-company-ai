@@ -97,7 +97,8 @@ def create_app(config: Config | None = None) -> FastAPI:
 
             if config.public_url:
                 _log(f"building /mcp app WITH OAuth (issuer {config.public_url})…")
-                remote_mcp = remotemcp.build_oauth(_verify_mcp_token, config.public_url)
+                remote_mcp = remotemcp.build_oauth(_verify_mcp_token, config.public_url,
+                                                   state_path=config.oauth_state)
             else:
                 _log("building /mcp app (bearer only; set COMPANY_AI_PUBLIC_URL for OAuth)…")
                 remote_mcp = remotemcp.build(_verify_mcp_token)
