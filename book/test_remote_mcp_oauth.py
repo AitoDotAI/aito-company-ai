@@ -14,7 +14,6 @@ the real gate); here there is no Easy Auth, so the handler runs directly — whi
 is exactly the OAuth logic this test is meant to pin down.
 """
 
-import asyncio
 import base64
 import dataclasses
 import hashlib
@@ -248,7 +247,7 @@ def test_login_survives_a_restart(t: bt.TestCaseRun) -> None:
     assert gone == 401
 
 
-def test_expired_tokens_are_pruned_and_a_bad_file_is_loud(t: bt.TestCaseRun) -> None:
+async def test_expired_tokens_are_pruned_and_a_bad_file_is_loud(t: bt.TestCaseRun) -> None:
     path = os.path.join(tempfile.mkdtemp(prefix="oauth-state-"), "oauth-state.json")
     clock = {"now": 1_000_000.0}
 
@@ -267,21 +266,21 @@ def test_expired_tokens_are_pruned_and_a_bad_file_is_loud(t: bt.TestCaseRun) -> 
     client = OAuthClientInformationFull(
         client_id="c1", redirect_uris=[REDIRECT], token_endpoint_auth_method="none")
     p = provider()
-    asyncio.run(p.register_client(client))
+    await p.register_client(client)
     issued = p._issue("c1", [])
 
     t.h1("expiry is applied when the file is read back")
     t.tln(f"issued                         → {counts()}")
     clock["now"] += 2 * 3600            # past the 1 h access token, inside the 30 d refresh
     p2 = provider()
-    at = asyncio.run(p2.load_access_token(issued.access_token))
-    rt = asyncio.run(p2.load_refresh_token(client, issued.refresh_token))
+    at = await p2.load_access_token(issued.access_token)
+    rt = await p2.load_refresh_token(client, issued.refresh_token)
     t.tln(f"after 2 h: access token loads  → {at is not None}")
     t.tln(f"after 2 h: refresh token loads → {rt is not None}")
     t.tln(f"after 2 h: file                → {counts()}")
     clock["now"] += 31 * 24 * 3600      # past the refresh token too
     p3 = provider()
-    rt3 = asyncio.run(p3.load_refresh_token(client, issued.refresh_token))
+    rt3 = await p3.load_refresh_token(client, issued.refresh_token)
     t.tln(f"after 31 d: refresh token loads → {rt3 is not None}")
     t.tln(f"after 31 d: file               → {counts()}  (the client stays registered)")
 
@@ -291,11 +290,11 @@ def test_expired_tokens_are_pruned_and_a_bad_file_is_loud(t: bt.TestCaseRun) -> 
     # at that moment, so the refresh failed and the connector had to sign in.
     clock["now"] = 1_000_000.0
     mem = OAuthProvider(lambda tok: False, now=now)          # in memory, no restart
-    asyncio.run(mem.register_client(client))
+    await mem.register_client(client)
     pair = mem._issue("c1", [])
     clock["now"] += 2 * 3600
-    expired = asyncio.run(mem.load_access_token(pair.access_token))
-    still = asyncio.run(mem.load_refresh_token(client, pair.refresh_token))
+    expired = await mem.load_access_token(pair.access_token)
+    still = await mem.load_refresh_token(client, pair.refresh_token)
     t.tln(f"expired access token loads     → {expired is not None}")
     t.tln(f"its refresh token still loads  → {still is not None}")
 
