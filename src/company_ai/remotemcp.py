@@ -147,7 +147,7 @@ def build(verify):
     return mcp.session_manager, BearerAuth(raw, verify), ["/mcp"]
 
 
-def build_oauth(verify, public_url):
+def build_oauth(verify, public_url, state_path=""):
     """Build the OAuth-enabled remote MCP app (docs/29) for claude.ai's connector.
 
     `public_url` is the app's public HTTPS origin (e.g. https://ai.example.com); it
@@ -160,10 +160,14 @@ def build_oauth(verify, public_url):
     Returns (session_manager, app, owned): `app` is the SDK's Starlette app
     (auth routes + guarded `/mcp`); `owned` is the set of path prefixes the caller
     must route to it ahead of the SPA. No BearerAuth wrapper here — the SDK's
-    RequireAuthMiddleware is the gate."""
+    RequireAuthMiddleware is the gate.
+
+    `state_path` (COMPANY_AI_OAUTH_STATE) makes the provider keep clients and
+    hashed tokens in that file, so a restart does not log the connector out;
+    empty keeps them in memory."""
     _harden()
     _advertise_public_clients()
-    provider = OAuthProvider(verify)
+    provider = OAuthProvider(verify, state_path=state_path or None)
     issuer = public_url.rstrip("/")
     mcp.settings.auth = AuthSettings(
         issuer_url=issuer,

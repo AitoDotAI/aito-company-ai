@@ -168,6 +168,12 @@ class Config:
     # (every non-GET /api/* is refused), no write side effects on reads, and the
     # internal host is refused at startup. See docs/33-public-demo.md.
     public_demo: bool = False
+    # COMPANY_AI_OAUTH_STATE: a file the remote-MCP OAuth server keeps its
+    # registered clients and (hashed) tokens in, so a restart or deploy does not
+    # log the claude.ai / Claude Desktop connector out. Empty = in memory, as
+    # before. On Azure App Service put it under /home, the persistent share.
+    # See docs/29-remote-mcp-oauth.md.
+    oauth_state: str = ""
 
     @property
     def embed_target(self) -> str:
@@ -275,6 +281,7 @@ class Config:
             mcp_token=_env_first("COMPANY_AI_MCP_TOKEN"),
             operator_email=_env_first("COMPANY_AI_OPERATOR_EMAIL").strip().lower(),
             public_url=_env_first("COMPANY_AI_PUBLIC_URL").rstrip("/"),
+            oauth_state=_env_first("COMPANY_AI_OAUTH_STATE").strip(),
             as_of=_parse_as_of(_env_first("COMPANY_AI_AS_OF")),
             # embeddings: its own endpoint/deployment; key falls back to the LLM
             # key (shared Azure resource). api-version defaults to the GA embeddings one.
