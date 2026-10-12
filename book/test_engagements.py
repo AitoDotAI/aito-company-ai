@@ -202,6 +202,9 @@ def test_deal_update_is_in_place_and_keeps_history(t: bt.TestCaseRun) -> None:
     t.tln(json.dumps({k: d.get(k) for k in ("deal_id", "stage", "blocker", "lost_reason",
                                             "won", "last_touch_date")}, sort_keys=True))
     assert client.count("deals") == n, "the update changed the number of deals"
+    # the count alone would also pass if the write did nothing: assert the values
+    assert (d["stage"], d["blocker"], d.get("lost_reason"), d.get("won")) == (
+        "closed_lost", "gone_silent", "no_decider", False), f"update did not land: {d}"
     t.h1("Its stage history")
     for e in sorted(engagements._all(client, "deal_events", {"deal_id": deal["deal_id"]}),
                     key=lambda e: e["date"]):
@@ -210,3 +213,19 @@ def test_deal_update_is_in_place_and_keeps_history(t: bt.TestCaseRun) -> None:
         log.log_deal_update(client, _open_deal(client)["deal_id"], lost_reason="price")
     except AssertionError as e:
         t.tln(f"\nrefused: {e}")
+
+
+def test_a_deal_update_that_does_not_land_is_an_error(t: bt.TestCaseRun) -> None:
+    """Fail-first: with the in-place write stubbed to do nothing, log_deal_update
+    must raise from its own read-back, not return as if it had worked."""
+    client = _client()
+    _seed(client)
+    deal = _open_deal(client)
+    client.update_entries = lambda table, where, set_fields: None   # the write is lost
+    try:
+        log.log_deal_update(client, deal["deal_id"], blocker="gone_silent",
+                            as_of=date(2026, 9, 20))
+    except AssertionError as e:
+        t.tln(f"refused: {e}")
+    else:
+        raise AssertionError("a lost deal update returned as if it had landed")
