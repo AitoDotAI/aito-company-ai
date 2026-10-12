@@ -6,7 +6,8 @@ import { api } from "./api.js";
 
 vi.mock("./api.js", () => ({
   api: { companies: vi.fn(), deals: vi.fn(), todos: vi.fn(), funnel: vi.fn(), funnelCatalog: vi.fn(),
-         whoToReach: vi.fn(), salesTrend: vi.fn(), todoOptions: vi.fn(),
+         whoToReach: vi.fn(), salesTrend: vi.fn(),
+         engagements: vi.fn(() => Promise.resolve({ weeks: [], open_deals_by_blocker: {}, in_window: 0, with_engagement_details: 0 })), todoOptions: vi.fn(),
          pwin: vi.fn(() => Promise.resolve({ p_win: 0.4, why: [] })),
          users: vi.fn(), assignments: vi.fn(), assign: vi.fn() },
   pct: (x) => (x == null ? "–" : Math.round(x * 100) + "%"),
@@ -205,5 +206,31 @@ describe("an area view owns its own analytics", () => {
   it("declares Marketing tabs, so the page is not one long scroll", () => {
     expect(VIEWS.marketing.tabs.map((t) => t.label))
       .toEqual(["To do", "Posts", "Analytics", "Scorer"]);
+  });
+});
+
+describe("Engagements by week", () => {
+  it("shows a rate over nothing as a dash, and the blockers of open deals", async () => {
+    api.deals.mockResolvedValue({ kpis: { weighted_pipeline: 0, open_value: 0, open_deals: 1, stalled: 0 }, deals: [] });
+    api.whoToReach.mockResolvedValue({ rows: [] });
+    api.salesTrend.mockResolvedValue({ win_rate: 0, avg_cycle_days: 0, won: 0, closed: 0, quarters: [] });
+    api.funnelCatalog.mockResolvedValue({
+      funnels: [{ key: "sales", label: "Sales funnel", dimensions: [], values: {} }] });
+    api.funnel.mockResolvedValue({ deepest_label: "meeting", outlook: null, causes: [], leak: null, stages: [] });
+    api.engagements.mockResolvedValue({
+      in_window: 5, with_engagement_details: 4,
+      open_deals_by_blocker: { none: 3, gone_silent: 2 },
+      weeks: [{ week: "2026-W41", engagements: 5, by_channel: { email: 3, call: 1 }, inbound: 1,
+                new_contacts_touched: 2, calls: 1, calls_answered_by_person: null,
+                calls_with_answered_by: 0, emails_out: 3, email_replies_in: 1,
+                meetings_booked: 1, meetings_held: 0, meetings_per_10_first_touches: 5.0 }],
+    });
+    render(VIEWS.salesanalytics.render());
+    expect(await screen.findByText("Engagements by week")).toBeTruthy();
+    expect(screen.getByText("2026-W41")).toBeTruthy();
+    expect(screen.getByText("email 3 · call 1")).toBeTruthy();
+    expect(screen.getByText(/— \(0\/1\)/)).toBeTruthy();       // no answered_by recorded: no rate
+    expect(screen.getByText("gone silent")).toBeTruthy();
+    expect(screen.queryByText("none")).toBeNull();              // "no blocker" is not a blocker
   });
 });

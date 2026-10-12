@@ -11,6 +11,7 @@ from mcp.server.fastmcp import FastMCP
 from . import clock
 from . import analytics
 from . import deals
+from . import engagements
 from . import decisions
 from . import experiments
 from . import funnels
@@ -119,16 +120,18 @@ def add_contact(
 def add_deal(
     company: str, segment: str, stage: str, value_eur: int, probability: int,
     champion_present: bool, blocker: str = "none",
+    source: str | None = None, first_meeting_date: str | None = None,
 ) -> dict:
     """Add a new opportunity to the pipeline (writes to the live Aito
     instance). stage: lead/qualified/demo/pilot/negotiation/closed_won/
     closed_lost/parked. probability is the operator's own 0–100 estimate.
-    blocker: none/consultant_lock/timing_mismatch/demo_readiness/budget/
-    no_champion. `won` is derived from the stage."""
+    blocker: see log_deal_update. source: warm/trigger/cold/referral.
+    `won` is derived from the stage."""
     return logbook.add_deal(
         _client(), company=company, segment=segment, stage=stage,
         value_eur=value_eur, probability=probability,
-        champion_present=champion_present, blocker=blocker)
+        champion_present=champion_present, blocker=blocker, source=source,
+        first_meeting_date=first_meeting_date)
 
 
 @mcp.tool()
@@ -333,20 +336,62 @@ def log_session(
 def log_touch(
     contact_id: str,
     channel: str,
-    window: str,
     outcome: str,
+    window: str | None = None,
     next_action: str | None = None,
     next_action_due: str | None = None,
     notes: str | None = None,
+    ts: str | None = None,
+    deal_id: str | None = None,
+    direction: str | None = None,
+    answered_by: str | None = None,
+    linkedin_kind: str | None = None,
+    meeting_kind: str | None = None,
+    reply_sentiment: str | None = None,
+    source: str | None = None,
+    hook: str | None = None,
+    template: str | None = None,
+    language: str | None = None,
+    gmail_thread_id: str | None = None,
+    calendar_event_id: str | None = None,
 ) -> dict:
-    """Log a contact attempt or event. Channels: call, email, linkedin,
-    meeting. Outcomes: no_answer, callback_requested, conversation,
-    meeting_booked, declined, bounced, reply, no_reply. The logged touch
-    immediately affects the next brief."""
+    """Log one engagement (docs/34). channel: call, email, linkedin, meeting,
+    sms. outcome: no_answer, callback_requested, conversation, meeting_booked,
+    declined, bounced, reply, no_reply. `ts` is local ISO time (default now);
+    `window` defaults to the call window ts falls in.
+
+    The details are optional but are what the funnel learns from — set what
+    you know: deal_id (the case), direction (out/in), answered_by on a call
+    (person/voicemail/switchboard/gatekeeper/none), linkedin_kind
+    (connect/dm/comment/post_engagement), meeting_kind (first/follow_up/demo/
+    technical/pilot/negotiation), reply_sentiment on a reply (positive/neutral/
+    polite_no/negative), source (warm/trigger/cold/referral), hook (the angle,
+    ≤120 chars), template, language (fi/en/sv), gmail_thread_id,
+    calendar_event_id. A detail on the wrong channel is refused.
+
+    The touch moves the contact's funnel flags and step numbers at once, and a
+    touch with a deal_id refreshes that deal's last-touch date."""
+    from datetime import datetime
     return logbook.log_touch(
         _client(), contact_id, channel, window, outcome,
         next_action=next_action, next_action_due=next_action_due, notes=notes,
+        ts=datetime.fromisoformat(ts) if ts else None,
+        deal_id=deal_id, direction=direction, answered_by=answered_by,
+        linkedin_kind=linkedin_kind, meeting_kind=meeting_kind,
+        reply_sentiment=reply_sentiment, source=source, hook=hook, template=template,
+        language=language, gmail_thread_id=gmail_thread_id,
+        calendar_event_id=calendar_event_id,
     )
+
+
+@mcp.tool()
+def engagement_kpis(weeks: int = 8) -> dict:
+    """The weekly engagement KPIs (docs/34), the last `weeks` ISO weeks: volume
+    by channel, inbound, new contacts touched, calls answered by a person,
+    email replies, meetings booked and held, meetings per 10 first touches;
+    plus open deals by blocker and lost deals by reason. A rate over nothing
+    is null, never 0."""
+    return engagements.weekly(_client(), as_of=clock.today(), weeks=weeks)
 
 
 @mcp.tool()
@@ -449,15 +494,25 @@ def log_deal_update(
     probability: int | None = None,
     blocker: str | None = None,
     champion_present: bool | None = None,
+    source: str | None = None,
+    first_meeting_date: str | None = None,
+    lost_reason: str | None = None,
 ) -> dict:
     """Advance a deal — the closed loop from the action surface. After a
     call resolves (meeting booked, stage moved, blocker cleared, deal
     closed_won/closed_lost), update it here; the pipeline re-ranks and the
     risk model re-derives immediately. stage: lead/qualified/demo/pilot/
-    negotiation/closed_won/closed_lost/parked."""
+    negotiation/closed_won/closed_lost/parked. blocker (what stops it now) and
+    lost_reason (closed_lost only) share one vocabulary: none, consultant_lock,
+    timing_mismatch, demo_readiness, budget, parked_intent, no_champion,
+    no_decider, group_owned, build_in_house, no_burning_need, capacity,
+    competitor, gone_silent. source: warm/trigger/cold/referral;
+    first_meeting_date: ISO date. A stage or blocker change is recorded in the
+    deal's stage history."""
     return logbook.log_deal_update(
         _client(), deal_id, stage=stage, probability=probability,
-        blocker=blocker, champion_present=champion_present)
+        blocker=blocker, champion_present=champion_present, source=source,
+        first_meeting_date=first_meeting_date, lost_reason=lost_reason)
 
 
 @mcp.tool()

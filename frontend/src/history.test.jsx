@@ -6,7 +6,8 @@ import { api } from "./api.js";
 // No finished history (no deal closed, no post measured) is a state, not a number:
 // the backend returns p_win null (deals: basis "no_history") and the UI says why.
 vi.mock("./api.js", () => ({
-  api: { deals: vi.fn(), whoToReach: vi.fn(), salesTrend: vi.fn(), funnel: vi.fn(),
+  api: { deals: vi.fn(), whoToReach: vi.fn(), salesTrend: vi.fn(),
+         engagements: vi.fn(() => Promise.resolve({ weeks: [], open_deals_by_blocker: {}, in_window: 0, with_engagement_details: 0 })), funnel: vi.fn(),
          funnelCatalog: vi.fn(), score: vi.fn(), scoreOptions: vi.fn(),
          pwin: vi.fn(() => Promise.resolve({ p_win: null, why: [], n: 0, basis: "no_history" })),
          users: vi.fn(() => Promise.resolve({ users: [] })),
