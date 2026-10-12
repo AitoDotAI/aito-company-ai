@@ -920,18 +920,31 @@ EDITABLE_ROUTINE_FIELDS = {"title", "area", "cadence", "weekday", "day_of_month"
                            "prep", "prompt", "active", "notes"}
 
 
-def _rewrite_routine(client: AitoClient, routine_id: str, mutate) -> dict:
-    all_routines = client.query({"from": "routines", "limit": 10000})["hits"]
-    match = [r for r in all_routines if r["routine_id"] == routine_id]
-    assert match, f"unknown routine_id {routine_id!r}"
-    row = dict(match[0])
+def _write_row(client: AitoClient, table: str, key: str, row_id: str, mutate) -> dict:
+    """Change ONE row in place: read it, apply `mutate` to a copy, write only
+    the fields that changed (v2 `_modify`, flushed), then read it back and
+    assert every field landed (rule 3). Never touches another row, so writers
+    on different rows cannot erase each other, and the table is never dropped.
+    Replaces the read-all -> drop -> recreate rewrite that lost routine ticks
+    and document edits under concurrent writers (td-20261012114045038839)."""
+    hit = client.query({"from": table, "where": {key: row_id}, "limit": 2})["hits"]
+    assert hit, f"unknown {key} {row_id!r}"
+    assert len(hit) == 1, f"{table}: {len(hit)} rows with {key}={row_id!r}"
+    row = dict(hit[0])
     mutate(row)
-    rewritten = [r for r in all_routines if r["routine_id"] != routine_id] + [row]
-    client.delete_table("routines")
-    client.create_table("routines", schema.ROUTINES)
-    client.upload_batch("routines", rewritten)
-    assert client.count("routines") == len(rewritten), "routine rewrite row-count mismatch"
+    change = {k: v for k, v in row.items() if hit[0].get(k) != v}
+    if change:
+        client.update_entries(table, {key: row_id}, change)
+        got = client.query({"from": table, "where": {key: row_id}, "limit": 2})["hits"]
+        assert len(got) == 1, f"{table} {row_id}: {len(got)} rows after the update"
+        wrong = {k: (v, got[0].get(k)) for k, v in change.items() if got[0].get(k) != v}
+        assert not wrong, f"{table} {row_id}: wrote/read back {wrong}"
+        row = got[0]
     return row
+
+
+def _rewrite_routine(client: AitoClient, routine_id: str, mutate) -> dict:
+    return _write_row(client, "routines", "routine_id", routine_id, mutate)
 
 
 def update_routine(client: AitoClient, routine_id: str, changes: dict) -> dict:
@@ -1018,22 +1031,9 @@ EDITABLE_DOCUMENT_FIELDS = {"title", "body", "kind", "area", "company", "stakeho
                             "topics", "noted_on"}
 
 
-def _rewrite_documents(client: AitoClient, doc_id: str, mutate) -> list[dict]:
-    rows = client.query({"from": "documents", "limit": 100000})["hits"]
-    match = [r for r in rows if r["doc_id"] == doc_id]
-    assert match, f"unknown doc_id {doc_id!r}"
-    kept = mutate([dict(r) for r in rows])
-    client.delete_table("documents")
-    client.create_table("documents", schema.DOCUMENTS)
-    if kept:
-        client.upload_batch("documents", kept)
-    assert client.count("documents") == len(kept), "documents rewrite row-count mismatch"
-    return kept
-
-
 def update_document(client: AitoClient, doc_id: str, changes: dict) -> dict:
-    """Edit a document. Validates kind/area/contact; rewrites the table (the
-    full-rewrite pattern, never `_modify`). Stamps `updated`."""
+    """Edit a document. Validates kind/area/contact; writes only this row's
+    changed fields in place (`_write_row`). Stamps `updated`."""
     unknown = set(changes) - EDITABLE_DOCUMENT_FIELDS
     assert not unknown, f"not editable: {sorted(unknown)}; allowed {sorted(EDITABLE_DOCUMENT_FIELDS)}"
     if "kind" in changes:
@@ -1045,26 +1045,26 @@ def update_document(client: AitoClient, doc_id: str, changes: dict) -> dict:
     if changes.get("noted_on"):
         date.fromisoformat(changes["noted_on"])   # loud on a malformed diary date (rule 3)
     from .loaders import company_slug
-    edited = {}
 
-    def mutate(rows):
-        for row in rows:
-            if row["doc_id"] == doc_id:
-                for k, v in changes.items():
-                    row[k] = v if v != "" else None
-                if "company" in changes:   # keep the entity link in step with the string
-                    row["company_id"] = company_slug(row["company"]) if row["company"] else None
-                row["updated"] = date.today().isoformat()
-                edited.update(row)
-        return rows
-    _rewrite_documents(client, doc_id, mutate)
+    def mutate(row):
+        for k, v in changes.items():
+            row[k] = v if v != "" else None
+        if "company" in changes:   # keep the entity link in step with the string
+            row["company_id"] = company_slug(row["company"]) if row["company"] else None
+        row["updated"] = date.today().isoformat()
+    edited = _write_row(client, "documents", "doc_id", doc_id, mutate)
     search.refresh(client)
     return edited
 
 
 def delete_document(client: AitoClient, doc_id: str) -> dict:
-    """Remove a document."""
-    _rewrite_documents(client, doc_id, lambda rows: [r for r in rows if r["doc_id"] != doc_id])
+    """Remove a document: a row-addressed delete, then proof it is gone."""
+    hit = client.query({"from": "documents", "where": {"doc_id": doc_id}, "limit": 1})["hits"]
+    assert hit, f"unknown doc_id {doc_id!r}"
+    client.delete_entries("documents", {"doc_id": doc_id})
+    client.optimize("documents")
+    left = client.query({"from": "documents", "where": {"doc_id": doc_id}, "limit": 1})["hits"]
+    assert not left, f"document {doc_id} still present after the delete"
     search.refresh(client)
     return {"deleted": doc_id}
 
