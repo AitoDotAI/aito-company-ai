@@ -1,0 +1,1 @@
+refused: deal se001: wrote/read back {'search_text': ('Prestige Oy other qualified gone_silent', 'Prestige Oy other qualified none'), 'last_touch_date': ('2026-09-20', '2026-06-03'), 'blocker': ('gone_silent', 'none')}
