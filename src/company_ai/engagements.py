@@ -45,17 +45,25 @@ def _all(client: AitoClient, table: str, where: dict | None = None) -> list[dict
     return client.query(q)["hits"]
 
 
+def _any_of(field: str, values) -> dict:
+    """A where matching any of `values` on `field`: read only the rows a write
+    touched, not the whole table (a whole-table read of a busy table is
+    megabytes per call on the live instance)."""
+    values = sorted(values)
+    return {field: values[0]} if len(values) == 1 else {"$or": [{field: v} for v in values]}
+
+
 def resequence(client: AitoClient, contact_ids: set[str]) -> dict:
     """Re-derive the history-dependent columns for every touch of these
     contacts, and their funnel flags; write only what changed, then read the
     contacts back (rule 3: a write that did not land is an error, not a hope)."""
     if not contact_ids:
         return {"touches_updated": 0, "contacts_updated": 0, "deals_updated": 0}
-    contacts = {c["contact_id"]: c for c in _all(client, "contacts")
-                if c["contact_id"] in contact_ids}
+    contacts = {c["contact_id"]: c
+                for c in _all(client, "contacts", _any_of("contact_id", contact_ids))}
     missing = contact_ids - set(contacts)
     assert not missing, f"resequence: unknown contact_id(s) {sorted(missing)}"
-    touches = [t for t in _all(client, "touches") if t["contact_id"] in contact_ids]
+    touches = _all(client, "touches", _any_of("contact_id", contact_ids))
     before = {t["touch_id"]: {c: t.get(c) for c in SEQUENCE_COLUMNS} for t in touches}
     loaders.derive_sequence(touches, {k: c.get("company_id") for k, c in contacts.items()})
     touch_updates = []
@@ -76,8 +84,8 @@ def resequence(client: AitoClient, contact_ids: set[str]) -> dict:
             contact_updates.append(({"contact_id": cid}, change))
     client.update_many("contacts", contact_updates)
     if contact_updates:
-        after = {c["contact_id"]: c for c in _all(client, "contacts")
-                 if c["contact_id"] in contact_ids}
+        after = {c["contact_id"]: c
+                 for c in _all(client, "contacts", _any_of("contact_id", contact_ids))}
         for where, change in contact_updates:
             got = after[where["contact_id"]]
             wrong = {k: (v, got.get(k)) for k, v in change.items() if got.get(k) != v}
@@ -92,7 +100,7 @@ def resequence(client: AitoClient, contact_ids: set[str]) -> dict:
             latest[t["deal_id"]] = max(latest.get(t["deal_id"], ""), t["ts"][:10])
     deal_updates = []
     if latest:
-        for d in _all(client, "deals"):
+        for d in _all(client, "deals", _any_of("deal_id", latest)):
             if d["deal_id"] in latest and latest[d["deal_id"]] > (d.get("last_touch_date") or ""):
                 deal_updates.append(({"deal_id": d["deal_id"]},
                                      {"last_touch_date": latest[d["deal_id"]]}))
