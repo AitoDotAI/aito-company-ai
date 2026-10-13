@@ -50,4 +50,7 @@ _recommend: {"from": "contacts", "goal": {"ever_meeting": true}, "limit": 8, "re
   leak: {'into': 'Meeting booked', 'conversion': 0.25}
   outlook P(Meeting booked) = 0.0597
     why segment=accounting lift=0.7449
+    cause notes_tags=founder-led with=0.3333 without=0.0000 mi=0.0534
+    cause source=referral with=0.3333 without=0.0000 mi=0.0534
+    cause role=Head of Finance with=0.2500 without=0.0000 mi=0.0326
     lever source: referral=0.5841, trigger=0.1380, cold=0.0888, warm=0.0733

@@ -18,6 +18,7 @@ docs/09-funnels.md.
 
 from dataclasses import dataclass, field
 
+from . import relations
 from . import aitowhy
 from .aito import AitoClient
 
@@ -135,21 +136,12 @@ def _causes(client: AitoClient, result: Result, spec: FunnelSpec, where: dict,
     allowed = set(spec.cause_fields) - fixed
     causes = []
     for hit in response.get("hits", []):
-        # v2 relate: goal in `condition`, driver in `related`, `info` a float,
-        # frequencies in `fs`.
-        related = hit.get("related", {})
-        field_name = next(iter(related), None)
-        if field_name not in allowed:
+        r = relations.read_hit(hit, on=seg_prop is not None)
+        if r is None or r["field"] not in allowed:
             continue
-        raw = related[field_name]
-        fs = hit.get("fs", {})
-        f, n = fs.get("f", 0), fs.get("n", 0)
-        fc, foc = fs.get("fCondition", 0), fs.get("fOnCondition", 0)
         causes.append({
-            "field": field_name,
-            "value": raw.get("$has") if isinstance(raw, dict) else raw,
-            "rate_with": (foc / f) if f else None,
-            "rate_without": ((fc - foc) / (n - f)) if (n - f) else None,
+            "field": r["field"], "value": r["value"],
+            "rate_with": r["rate_with"], "rate_without": r["rate_without"],
             "mi": hit.get("info", 0.0),
         })
     causes.sort(key=lambda c: (-c["mi"], c["field"], str(c["value"])))  # deterministic ties

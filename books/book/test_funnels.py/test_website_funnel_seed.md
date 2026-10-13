@@ -45,6 +45,9 @@ _relate: {"from": "sessions", "limit": 150, "relate": {"$on": [{"converted_paid"
   leak: {'into': 'Signed up', 'conversion': 0.46153846153846156}
   outlook P(Converted to paid) = 0.1206
     why source=referral lift=1.9221
+    cause landing_page=/demo with=0.4000 without=0.0517 mi=0.0711
+    cause device=tablet with=0.3333 without=0.1061 mi=0.0089
+    cause country=Germany with=0.3333 without=0.1159 mi=0.0063
 
 # Website funnel: device=mobile (the planted trial leak)
 
@@ -68,4 +71,7 @@ _recommend: {"from": "sessions", "goal": {"converted_paid": true}, "limit": 8, "
   leak: {'into': 'Started trial', 'conversion': 0.2839506172839506}
   outlook P(Converted to paid) = 0.0348
     why device=mobile lift=0.5676
+    cause landing_page=/pricing with=0.1220 without=0.0113 mi=0.0086
+    cause source=referral with=0.0789 without=0.0222 mi=0.0023
+    cause landing_page=/blog with=0.0000 without=0.0417 mi=0.0020
     lever source: referral=0.1413, organic=0.0592, paid_search=0.0554, direct=0.0516, social=0.0374
