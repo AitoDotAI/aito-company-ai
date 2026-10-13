@@ -17,6 +17,7 @@ from . import experiments
 from . import funnels
 from . import log as logbook
 from . import queries
+from . import relations
 from . import scorer
 from . import todos
 from .aito import AitoClient
@@ -758,6 +759,21 @@ def predict(table: str, where: dict, predict_field: str) -> dict:
     return _client().predict(
         {"from": table, "where": where, "predict": predict_field, "limit": 10}
     )
+
+
+@mcp.tool()
+def relate(table: str, outcome: dict, where: dict | None = None, top_n: int = 10,
+           exclude: list[str] | None = None) -> dict:
+    """Generic statistical connections (the sibling of `predict`): which field
+    values go together with an outcome, ranked by Aito's _relate. `outcome` is
+    one field: value, e.g. relate('touches', {'reached': True}) or
+    relate('deals', {'won': False}). `where` restricts the population first
+    (e.g. {'channel': 'call'}). Each relation has its lift, the outcome rate
+    with and without the value, and rows_with; `thin` marks fewer than 10 rows,
+    a hint rather than a finding. Fields that restate the outcome, ids, times
+    and free text are excluded and listed; add more with `exclude`."""
+    return relations.relate(_client(), table, outcome, where=where, top_n=top_n,
+                            exclude=exclude)
 
 
 @mcp.prompt()
