@@ -239,7 +239,6 @@ def log_touch(
     client.upload_batch("touches", [row])
 
     def follow_up():
-        client.optimize("touches")
         engagements.resequence(client, {contact_id})
         changelog.record(client, "touch", row["touch_id"], "logged",
                          f"{channel} to {contact_id}: {outcome}")
@@ -312,7 +311,7 @@ def log_deal_update(
     updates the deal here, which immediately re-ranks the pipeline and
     re-derives `won` from the new stage.
 
-    Updated in place (v2 `_modify`, flushed) and read back. This used to drop
+    Updated in place (v2 `_modify`) and read back. This used to drop
     and rewrite the whole table, which was safe only while nothing linked to
     deals; touches and deal_events now do (docs/34). A change of stage or
     blocker also appends a deal_events row."""
@@ -505,7 +504,7 @@ def _write_todo(client: AitoClient, todo_id: str, build, attempts: int = _WRITE_
         rev = f"rv-{uuid.uuid4().hex}"
         history = ((before.get("revs") or before["rev"]).split() + [rev])[-_REV_HISTORY:]
         client.update_entries("todos", {"todo_id": todo_id, "rev": before["rev"]},
-                              {**fields, "rev": rev, "revs": " ".join(history)})  # _modify + flush
+                              {**fields, "rev": rev, "revs": " ".join(history)})  # _modify
         try:
             return before, _read_back(client, todo_id, {**fields, "rev": rev}, sleep=sleep)
         except TodoWriteNotPersisted:
@@ -1022,7 +1021,7 @@ EDITABLE_ROUTINE_FIELDS = {"title", "area", "cadence", "weekday", "day_of_month"
 
 def _write_row(client: AitoClient, table: str, key: str, row_id: str, mutate) -> dict:
     """Change ONE row in place: read it, apply `mutate` to a copy, write only
-    the fields that changed (v2 `_modify`, flushed), then read it back and
+    the fields that changed (v2 `_modify`), then read it back and
     assert every field landed (rule 3). Never touches another row, so writers
     on different rows cannot erase each other, and the table is never dropped.
     Replaces the read-all -> drop -> recreate rewrite that lost routine ticks
@@ -1171,7 +1170,6 @@ def delete_document(client: AitoClient, doc_id: str) -> dict:
     hit = client.query({"from": "documents", "where": {"doc_id": doc_id}, "limit": 1})["hits"]
     assert hit, f"unknown doc_id {doc_id!r}"
     client.delete_entries("documents", {"doc_id": doc_id})
-    client.optimize("documents")
     left = client.query({"from": "documents", "where": {"doc_id": doc_id}, "limit": 1})["hits"]
     assert not left, f"document {doc_id} still present after the delete"
     search.refresh(client)

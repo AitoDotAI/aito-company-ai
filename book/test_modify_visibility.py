@@ -1,10 +1,11 @@
 """`_modify` read-visibility (docs/24 bug 5) — re-probed per engine build.
 
 An update was applied but stayed INVISIBLE to reads until the next write to the
-collection: not a lost write, a read-visibility bug. It is why
-`AitoClient.update_entries` carries a built-in `optimize` — the only correct
-`_modify` update is a flushed one — and why a caller that forgets is left with
-a table that reads stale with no error.
+collection: not a lost write, a read-visibility bug. `AitoClient.update_entries`
+used to carry a built-in `optimize` because of it. It no longer reproduces
+(2.11.6: 0/50 on the test env and on internal, 14.10.2026), so the flush was
+dropped: it cost seconds per write. If this probe ever reports the bug again,
+the flush has to come back before anything else ships.
 
 This probe writes to a scratch table of its own and drops it again, so it can
 be re-run on any build to answer one question: does it still reproduce?
@@ -43,8 +44,7 @@ def test_modify_update_is_visible_to_the_next_read(t: bt.TestCaseRun) -> None:
                                 {"id": "r2", "val": "before"}])
     t.tln(f"  seeded: r1={_val(client, 'r1')} r2={_val(client, 'r2')}")
 
-    # The RAW modify, deliberately without the optimize that update_entries
-    # adds — the whole point is what a caller sees when nothing flushes.
+    # The RAW modify, with no optimize: what every write path now does.
     client._request("POST", "/api/v2/data/_modify",
                     {"update": TABLE, "where": {"id": "r2"}, "set": {"val": "AFTER"}})
 
@@ -57,7 +57,7 @@ def test_modify_update_is_visible_to_the_next_read(t: bt.TestCaseRun) -> None:
     visible_unflushed = seen[-1] == "AFTER"
     t.tln(f"  visible without a flush: {visible_unflushed}")
 
-    t.h1("after an optimize (the flush update_entries performs)")
+    t.h1("after an explicit optimize")
     client.optimize(TABLE)
     after_flush = _val(client, "r2")
     t.tln(f"  r2 = {after_flush}")

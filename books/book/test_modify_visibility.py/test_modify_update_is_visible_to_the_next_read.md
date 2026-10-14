@@ -7,7 +7,7 @@
   r2 over ~4s: ['AFTER', 'AFTER', 'AFTER', 'AFTER', 'AFTER']
   visible without a flush: True
 
-# after an optimize (the flush update_entries performs)
+# after an explicit optimize
 
   r2 = AFTER
   r1 untouched = before

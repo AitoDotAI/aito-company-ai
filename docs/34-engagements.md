@@ -64,7 +64,7 @@ row renumbers the rows after it. The same pass:
   stage or blocker changes (`deal_id`, `date`, `stage`, `prev_stage`,
   `blocker`, `segment`), written by `add_deal` and `log_deal_update`. App
   state like the changelog: no CSV, starts empty.
-- `log_deal_update` now updates the row in place (`_modify`, flushed, read
+- `log_deal_update` now updates the row in place (`_modify`, read
   back). It used to drop and rewrite the whole table, which was safe only
   while nothing linked to deals.
 

@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 from itertools import zip_longest
 
 from . import schema
-from .aito import AitoClient
+from .aito import AitoClient, AitoError
 
 # Unicode word characters (minus underscore) so accented and non-Latin query
 # terms survive tokenization — an ASCII-only class treats ä ö å ü ß … as
@@ -58,6 +58,7 @@ _VIEW = {"type": "view", "as": {"union": [
     {"from": "documents", "select": {"kind": {"$const": "doc"}, "source_id": "doc_id",
         "title": {"$text": ["title"]}, "content": {"$text": ["title", "body"]}}},
 ]}}
+_VIEW_SOURCES = [part["from"] for part in _VIEW["as"]["union"]]
 
 
 def _view_exists(client: AitoClient) -> bool:
@@ -159,7 +160,19 @@ def refresh(client: AitoClient) -> None:
     """Re-materialise the view from its (changed) sources. Cheap and idempotent;
     a no-op if the view isn't built yet. Replaces the old per-row auto-reindex —
     a source write just refreshes the view (docs/24)."""
-    if _view_exists(client):
+    if not _view_exists(client):
+        return
+    try:
+        client.refresh_view("search_items")
+    except AitoError as e:
+        # The view refresh does not see through an uncompacted `_modify` on a
+        # source ("column source_id value not found"), though reads do. Writes
+        # no longer flush (td-20261014123607349120), so compact the sources and
+        # retry, once, only when the engine refuses. Any other error raises.
+        if "refresh_failed" not in str(e):
+            raise
+        for source in _VIEW_SOURCES:
+            client.optimize(source)
         client.refresh_view("search_items")
 
 
