@@ -196,9 +196,9 @@ response: total=54 (rows omitted)
 
 ## Aito calls
 
-request:  {"from": "contacts", "limit": 10000}
+request:  {"from": "contacts", "limit": 5000, "offset": 0, "select": ["contact_id", "name", "company", "phone_present", "segment", "tier", "ai_lifecycle"]}
 response: total=60 (rows omitted)
-request:  {"from": "touches", "limit": 10000}
+request:  {"from": "touches", "limit": 5000, "offset": 0, "select": ["contact_id", "ts", "next_action_due"]}
 response: total=150 (rows omitted)
 request:  {"from": "touches", "limit": 8, "predict": "outcome", "where": {"contact_id.ai_lifecycle": "operating", "contact_id.segment": "consultancy", "contact_id.tier": "B", "days_since_prev_touch": "22+", "weekday": "fri", "window": "0800"}}
 response: {"hits": [{"$p": 0.2847605803118647, "$value": "no_answer"}, {"$p": 0.2428641731590634, "$value": "conversation"}, {"$p": 0.20704986620534288, "$value": "reply"}, {"$p": 0.11263760762869192, "$value": "no_reply"}, {"$p": 0.06564519515984141, "$value": "bounced"}, {"$p": 0.05411700351897197, "$value": "meeting_booked"}, {"$p": 0.01909606757780468, "$value": "declined"}, {"$p": 0.013829506438419042, "$value": "callback_requested"}], "offset": 0, "total": 8}

@@ -813,6 +813,11 @@ def populate() -> str:
     )
 
 
+# every tool call logs its time and Aito round trips (timing.py)
+from . import timing as _timing  # noqa: E402
+_timing.wrap_mcp_tools(mcp)
+
+
 def main() -> None:
     # echo the target instance to stderr (never stdout — that's the MCP
     # stdio channel) so the agent's db is legible, not silent (findings 03).

@@ -292,6 +292,17 @@ def create_app(config: Config | None = None) -> FastAPI:
     _PUBLIC_DEMO_READ_POSTS = {"/api/assistant/chat"}
 
     @app.middleware("http")
+    async def request_timing(request: Request, call_next):
+        # one line per dashboard request: total, Aito round trips, bytes
+        # (timing.py). MCP calls are timed per tool inside server.py instead,
+        # because the tool runs in the MCP session's task, not this one.
+        if not request.url.path.startswith("/api/"):
+            return await call_next(request)
+        from . import timing
+        with timing.measure(f"{request.method} {request.url.path}"):
+            return await call_next(request)
+
+    @app.middleware("http")
     async def public_demo_guard(request: Request, call_next):
         if config.public_demo and request.url.path.startswith("/api/"):
             if (request.method not in ("GET", "HEAD", "OPTIONS")

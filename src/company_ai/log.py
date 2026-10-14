@@ -161,6 +161,22 @@ def add_deal(
     return row
 
 
+def _free_touch_id(client: AitoClient, base: str) -> str:
+    """`base`, or `base-2`, `base-3`… if taken: two touches for one contact in
+    the same second used to share an id, and the second write then broke the
+    first one's read-back. Deterministic for a given history, so snapshots of
+    a logged touch stay stable."""
+    taken = {h["touch_id"] for h in client.query(
+        {"from": "touches", "where": {"$or": [{"touch_id": base}, {"touch_id": {"$startsWith": base + "-"}}]},
+         "select": ["touch_id"], "limit": 1000})["hits"]}
+    if base not in taken:
+        return base
+    n = 2
+    while f"{base}-{n}" in taken:
+        n += 1
+    return f"{base}-{n}"
+
+
 def log_touch(
     client: AitoClient,
     contact_id: str,
@@ -186,7 +202,7 @@ def log_touch(
     explicit_ts = ts
     ts = ts or datetime.now().replace(microsecond=0)
     raw = {
-        "touch_id": f"log-{ts.strftime('%Y%m%d%H%M%S')}-{contact_id}",
+        "touch_id": _free_touch_id(client, f"log-{ts.strftime('%Y%m%d%H%M%S')}-{contact_id}"),
         "contact_id": contact_id,
         "ts": ts.isoformat(),
         "weekday": schema.WEEKDAYS[ts.weekday()],
@@ -564,10 +580,25 @@ def reorder_todos(client: AitoClient, ordered_ids: list[str]) -> int:
     return len(ordered_ids)
 
 
-def _todo_link_ids(client: AitoClient) -> tuple[set[str], set[str]]:
-    contact_ids = {c["contact_id"] for c in client.query({"from": "contacts", "limit": 100000})["hits"]}
-    deal_ids = {d["deal_id"] for d in client.query({"from": "deals", "limit": 100000})["hits"]}
-    return contact_ids, deal_ids
+class _Exists:
+    """`id in _Exists(...)` asks Aito about that one id (and remembers the
+    answer). It stands in for the set of every contact/deal id that a todo
+    write used to download just to check one link: two whole tables per write,
+    1.6 MB per write at 10x the seed (td-20261014123607349120)."""
+
+    def __init__(self, client: AitoClient, table: str, field: str):
+        self.client, self.table, self.field, self.known = client, table, field, {}
+
+    def __contains__(self, value) -> bool:
+        if value not in self.known:
+            self.known[value] = bool(self.client.query(
+                {"from": self.table, "where": {self.field: value},
+                 "select": [self.field], "limit": 1})["hits"])
+        return self.known[value]
+
+
+def _todo_link_ids(client: AitoClient) -> tuple[_Exists, _Exists]:
+    return _Exists(client, "contacts", "contact_id"), _Exists(client, "deals", "deal_id")
 
 
 def add_todo(
@@ -1053,8 +1084,8 @@ def tick_routine(client: AitoClient, routine_id: str, as_of: date | None = None)
 def _check_contact(client: AitoClient, stakeholder_id: str | None) -> None:
     if not stakeholder_id:
         return
-    ids = {c["contact_id"] for c in client.query({"from": "contacts", "limit": 100000})["hits"]}
-    assert stakeholder_id in ids, f"unknown stakeholder_id {stakeholder_id!r}"
+    assert stakeholder_id in _Exists(client, "contacts", "contact_id"), \
+        f"unknown stakeholder_id {stakeholder_id!r}"
 
 
 # ---- documents (the knowledge store, docs/25) ----

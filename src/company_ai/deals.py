@@ -58,7 +58,7 @@ def _fetch_open(client: AitoClient, result: Result) -> list[dict]:
 
 def close_likelihood(client: AitoClient, stage: str, blocker: str,
                      champion_present, result: Result | None = None,
-                     segment: str | None = None) -> dict:
+                     segment: str | None = None, counts: dict | None = None) -> dict:
     """Aito's P(won) + $why for a deal's profile (blocker, champion, and its
     segment when given), learned from CLOSED deals. Keyed on the profile, it is
     the unit the dashboard resolves lazily and caches (one HTTP call per
@@ -87,11 +87,17 @@ def close_likelihood(client: AitoClient, stage: str, blocker: str,
     if segment is not None:
         features["segment"] = segment
     evidence, thin = {}, []
+    # `counts` (feature, value) -> closed deals with it: shared by every deal
+    # a pipeline call scores, so "how many closed deals had blocker=budget" is
+    # asked once, not once per deal that has it (td-20261014123607349120)
+    counts = {} if counts is None else counts
     for feature, value in features.items():
-        count_request, count = history.count(client, "deals", {feature: value})
-        if result is not None:
-            result.calls.append(("_query", count_request, count))
-        support = int(count.get("total", 0))
+        if (feature, value) not in counts:
+            count_request, count = history.count(client, "deals", {feature: value})
+            if result is not None:
+                result.calls.append(("_query", count_request, count))
+            counts[(feature, value)] = int(count.get("total", 0))
+        support = counts[(feature, value)]
         if support >= MIN_PROFILE_EVIDENCE:
             evidence[feature] = value
         else:
@@ -123,10 +129,12 @@ def close_likelihood(client: AitoClient, stage: str, blocker: str,
     return {"p_win": hit["$p"], "why": why, **out}
 
 
-def _close_likelihood(client: AitoClient, result: Result, deal: dict, as_of: date) -> dict:
+def _close_likelihood(client: AitoClient, result: Result, deal: dict, as_of: date,
+                      counts: dict | None = None) -> dict:
     days = (as_of - date.fromisoformat(deal["last_touch_date"])).days
     cl = close_likelihood(client, deal["stage"], deal["blocker"],
-                          deal["champion_present"], result, segment=deal["segment"])
+                          deal["champion_present"], result, segment=deal["segment"],
+                          counts=counts)
     return {"p_win": cl["p_win"], "why": cl["why"], "n": cl["n"], "basis": cl["basis"],
             "thin": cl["thin"], "days_since_touch": days}
 
@@ -214,6 +222,12 @@ def pipeline(client: AitoClient, as_of: date | None = None, predict: bool = True
     deals = _fetch_open(client, result)
 
     ranked = []
+    # close-likelihood is a function of the deal's profile alone (stage,
+    # blocker, champion, segment), so deals that share a profile share one
+    # answer: Aito is asked once per distinct profile, not once per deal
+    # (201 calls at the seed, 2,001 at 10x; td-20261014123607349120)
+    by_profile: dict[tuple, dict] = {}
+    counts: dict = {}
     for d in deals:
         days = (as_of - date.fromisoformat(d["last_touch_date"])).days
         weighted = d["value_eur"] * d["probability"] / 100.0
@@ -226,7 +240,10 @@ def pipeline(client: AitoClient, as_of: date | None = None, predict: bool = True
             "p_win": None, "why": [], "n": None, "basis": None, "thin": [],
         }
         if predict:
-            cl = _close_likelihood(client, result, d, as_of)
+            profile = (d["stage"], d["blocker"], d["champion_present"], d["segment"])
+            if profile not in by_profile:
+                by_profile[profile] = _close_likelihood(client, result, d, as_of, counts)
+            cl = by_profile[profile]
             row["p_win"], row["why"] = cl["p_win"], cl["why"][:3]
             row["n"], row["basis"], row["thin"] = cl["n"], cl["basis"], cl["thin"]
         ranked.append(row)
