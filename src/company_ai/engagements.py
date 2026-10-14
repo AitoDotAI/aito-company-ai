@@ -267,8 +267,12 @@ def weekly(client: AitoClient, as_of: dt.date, weeks: int = 8) -> dict:
     """The engagement KPIs per ISO week, the last `weeks` weeks up to `as_of`.
     Every rate carries its denominator, and a rate over nothing is null."""
     start = as_of - dt.timedelta(days=7 * weeks - 1 + as_of.weekday())
-    rows = [t for t in _all(client, "touches")
-            if start.isoformat() <= t["ts"][:10] <= as_of.isoformat()]
+    # only the window's rows and the fields counted below (was: every touch,
+    # every field: 8.5 MB at 100x the seed, td-20261014123607349120)
+    rows = [t for t in client.query({
+        "from": "touches", "where": {"ts": {"$gte": start.isoformat()}},
+        "select": ["ts", "channel", "direction", "outcome", "step", "answered_by"],
+        "limit": LIMIT})["hits"] if t["ts"][:10] <= as_of.isoformat()]
     by_week: dict[str, list[dict]] = defaultdict(list)
     for t in rows:
         by_week[_week(t["ts"])].append(t)
@@ -303,7 +307,8 @@ def weekly(client: AitoClient, as_of: dt.date, weeks: int = 8) -> dict:
                                               if first else None),
         })
         d += dt.timedelta(days=7)
-    deals = _all(client, "deals")
+    deals = client.query({"from": "deals", "select": ["stage", "blocker", "lost_reason"],
+                          "limit": LIMIT})["hits"]
     open_deals = [x for x in deals if x["stage"] in schema.DEAL_OPEN_STAGES]
     return {
         "as_of": as_of.isoformat(), "weeks": series,

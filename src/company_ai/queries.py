@@ -14,6 +14,7 @@ next_action not yet due" would be unimplementable.
 """
 
 from dataclasses import dataclass, field
+import json
 from datetime import date, datetime, timedelta
 
 from . import clock
@@ -50,12 +51,27 @@ def _ts_date(touch: dict) -> date:
     return datetime.fromisoformat(touch["ts"]).date()
 
 
-def _fetch_all(client: AitoClient, result: Result, table: str) -> list[dict]:
-    request = {"from": table, "limit": 10000}
-    response = client.query(request)
-    assert response["total"] <= 10000, f"{table} exceeds fetch limit; raise it"
-    result.calls.append((request, response))
-    return response["hits"]
+_PAGE = 5000
+
+
+def _fetch_all(client: AitoClient, result: Result, table: str,
+               select: list[str] | None = None) -> list[dict]:
+    """Every row of `table`, in pages, with only the `select`ed fields. Was one
+    unprojected request capped at 10,000 rows that asserted past it: who_to_call
+    would have stopped working at about 70x today's touch count, and it moved
+    every field of every contact and touch to rank them (10 MB at 100x the seed,
+    td-20261014123607349120). The first page is recorded in `result.calls`."""
+    hits: list[dict] = []
+    while True:
+        request = {"from": table, "offset": len(hits), "limit": _PAGE}
+        if select:
+            request["select"] = select
+        response = client.query(request)
+        if not hits:
+            result.calls.append((request, response))
+        hits.extend(response["hits"])
+        if not response["hits"] or len(hits) >= response["total"]:
+            return hits
 
 
 def _last_touch_dates(touches: list[dict]) -> dict[str, date]:
@@ -82,8 +98,10 @@ def who_to_call(
     as_of = as_of or clock.today()
     weekday = schema.WEEKDAYS[as_of.weekday()]
     result = Result()
-    contacts = _fetch_all(client, result, "contacts")
-    touches = _fetch_all(client, result, "touches")
+    contacts = _fetch_all(client, result, "contacts", select=[
+        "contact_id", "name", "company", "phone_present", "segment", "tier", "ai_lifecycle"])
+    touches = _fetch_all(client, result, "touches",
+                         select=["contact_id", "ts", "next_action_due"])
     last_touch = _last_touch_dates(touches)
 
     # exclusions per docs/03, applied before ranking
@@ -104,6 +122,11 @@ def who_to_call(
     ]
 
     ranked = []
+    # the prediction is a function of the request alone (segment, tier,
+    # lifecycle, recency bucket, window, weekday), so contacts that share one
+    # share its answer: one _predict per distinct profile, not per contact
+    # (47 calls at the seed, 4,502 at 100x; td-20261014123607349120)
+    answers: dict[str, dict] = {}
     for contact in eligible:
         days = (as_of - last_touch[contact["contact_id"]]).days \
             if contact["contact_id"] in last_touch else None
@@ -120,7 +143,10 @@ def who_to_call(
             "predict": "outcome",
             "limit": len(schema.OUTCOMES),
         }
-        response = client.predict(request)
+        profile = json.dumps(request, sort_keys=True)
+        if profile not in answers:
+            answers[profile] = client.predict(request)
+        response = answers[profile]
         # outcome features are mutually exclusive, so the spec's
         # $p(outcome in GOOD_OUTCOMES) is the sum of Aito's per-outcome $p
         p_good = sum(
@@ -231,10 +257,12 @@ def what_changed(client: AitoClient, as_of: date | None = None) -> Result:
     due = client.query(due_request)
     result.calls.append((due_request, due))
 
-    touches = _fetch_all(client, Result(), "touches")
+    touches = _fetch_all(client, Result(), "touches",
+                         select=["touch_id", "contact_id", "ts", "next_action_due"])
     last_touch = _last_touch_dates(touches)
     open_ids = {t["touch_id"] for t in _open_followups(touches, last_touch)}
-    names = {c["contact_id"]: c for c in _fetch_all(client, Result(), "contacts")}
+    names = {c["contact_id"]: c for c in _fetch_all(client, Result(), "contacts",
+                                                    select=["contact_id", "name", "company"])}
 
     followups = sorted(
         (t for t in due["hits"] if t["touch_id"] in open_ids),

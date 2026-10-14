@@ -68,9 +68,9 @@ response: total=5 (rows omitted)
 
 ## Aito calls
 
-request:  {"from": "contacts", "limit": 10000}
+request:  {"from": "contacts", "limit": 5000, "offset": 0, "select": ["contact_id", "name", "company", "phone_present", "segment", "tier", "ai_lifecycle"]}
 response: total=10 (rows omitted)
-request:  {"from": "touches", "limit": 10000}
+request:  {"from": "touches", "limit": 5000, "offset": 0, "select": ["contact_id", "ts", "next_action_due"]}
 response: total=15 (rows omitted)
 request:  {"from": "touches", "limit": 8, "predict": "outcome", "where": {"contact_id.ai_lifecycle": "announced", "contact_id.segment": "consultancy", "contact_id.tier": "A", "days_since_prev_touch": "8-21", "weekday": "fri", "window": "0800"}}
 response: {"hits": [{"$p": 0.4596471487792537, "$value": "meeting_booked"}, {"$p": 0.20037935383844677, "$value": "reply"}, {"$p": 0.15570834366195666, "$value": "no_reply"}, {"$p": 0.13668311145151255, "$value": "no_answer"}, {"$p": 0.047582042268830387, "$value": "callback_requested"}], "offset": 0, "total": 5}

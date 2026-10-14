@@ -214,6 +214,11 @@ def pipeline(client: AitoClient, as_of: date | None = None, predict: bool = True
     deals = _fetch_open(client, result)
 
     ranked = []
+    # close-likelihood is a function of the deal's profile alone (stage,
+    # blocker, champion, segment), so deals that share a profile share one
+    # answer: Aito is asked once per distinct profile, not once per deal
+    # (201 calls at the seed, 2,001 at 10x; td-20261014123607349120)
+    by_profile: dict[tuple, dict] = {}
     for d in deals:
         days = (as_of - date.fromisoformat(d["last_touch_date"])).days
         weighted = d["value_eur"] * d["probability"] / 100.0
@@ -226,7 +231,10 @@ def pipeline(client: AitoClient, as_of: date | None = None, predict: bool = True
             "p_win": None, "why": [], "n": None, "basis": None, "thin": [],
         }
         if predict:
-            cl = _close_likelihood(client, result, d, as_of)
+            profile = (d["stage"], d["blocker"], d["champion_present"], d["segment"])
+            if profile not in by_profile:
+                by_profile[profile] = _close_likelihood(client, result, d, as_of)
+            cl = by_profile[profile]
             row["p_win"], row["why"] = cl["p_win"], cl["why"][:3]
             row["n"], row["basis"], row["thin"] = cl["n"], cl["basis"], cl["thin"]
         ranked.append(row)
