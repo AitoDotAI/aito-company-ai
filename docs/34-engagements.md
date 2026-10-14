@@ -33,7 +33,8 @@ Categoricals are `String` (one exact value, one feature), not `Text`.
 
 `channel` gains `sms`.
 
-**Derived, never written by a caller:** `hour` (from `ts`), `company_id` (the
+**Derived, never written by a caller:** `hour` (from `ts`; null for a date-only
+`ts`), `time_known` (false for a date-only `ts`), `company_id` (the
 contact's), and `step` — the 1-based position of an outbound engagement in its
 contact's sequence. Inbound rows have no step. A touch with no `direction`
 (the older hand log) counts as outbound. `window`, when not given, is the call
@@ -86,6 +87,10 @@ row renumbers the rows after it. The same pass:
     belongs to another contact is refused.
   - `ts` is local time with no offset; a row in UTC (`Z`, `+00:00`) is
     refused, since a shifted hour is exactly what the call timing learns from.
+    When only the DATE is known, write the bare date (`2026-09-24`): the row
+    gets no hour, window `other` and `time_known=false`, so timing questions
+    can leave it out while its outcome and who answered still count. Never
+    invent a time.
   - `contact_id` and `deal_id` must already exist.
   - Every row is checked first and every problem reported at once, by line.
     If any row is refused, nothing is written.
