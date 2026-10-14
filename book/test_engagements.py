@@ -229,3 +229,22 @@ def test_a_deal_update_that_does_not_land_is_an_error(t: bt.TestCaseRun) -> None
         t.tln(f"refused: {e}")
     else:
         raise AssertionError("a lost deal update returned as if it had landed")
+
+
+def test_two_touches_in_one_second_get_their_own_ids(t: bt.TestCaseRun) -> None:
+    """Two engagements for one contact logged in the same second (an email
+    and an SMS, back to back) used to share a touch_id, and the second write
+    broke the first one's read-back. The second now gets '-2'."""
+    client = _client()
+    _seed(client)
+    cid = _untouched_contact(client)["contact_id"]
+    at = datetime(2026, 9, 8, 10, 30)
+    a = log.log_touch(client, cid, "email", None, "no_reply", ts=at, notes="the offer")
+    b = log.log_touch(client, cid, "sms", None, "no_reply", ts=at, notes="heads-up text")
+    t.h1("Same contact, same second")
+    t.tln(f"{a['touch_id']}  {a['channel']}")
+    t.tln(f"{b['touch_id']}  {b['channel']}")
+    assert a["touch_id"] != b["touch_id"] and b["touch_id"] == a["touch_id"] + "-2"
+    rows = engagements._all(client, "touches", {"contact_id": cid})
+    t.tln(f"rows for {cid}: {len(rows)}")
+    assert len(rows) == 2
