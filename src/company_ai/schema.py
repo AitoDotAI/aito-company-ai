@@ -488,8 +488,10 @@ CHANGELOG = {
 # documents — the knowledge store (docs/25): the operator's own writing,
 # tagged and linked, kept in the tool. A first-class collection (the read-only
 # file "Library" it replaces staged files into `search_docs`; documents are
-# real rows, so search unions them directly). The write path mirrors the
-# a full-table rewrite (log.add_document / update / delete), never `_modify`.
+# real rows, so search unions them directly). Writes are row-addressed:
+# add_document inserts one row, update/delete change only their own row
+# (log._write_row, v2 `_modify`). The full-table rewrite they replaced lost
+# edits under concurrent writers (td-20261012114045038839).
 DOCUMENTS = {
     "type": "table",
     "columns": {

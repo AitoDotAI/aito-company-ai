@@ -7,7 +7,7 @@ immediately queryable, which the round-trip booktest proves.
 import re
 import time
 import uuid
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from . import changelog, schema, search
 from .aito import AitoClient
@@ -20,6 +20,51 @@ from .queries import bucket_days_since
 
 def _stamp(prefix: str) -> str:
     return f"{prefix}-{datetime.now().strftime('%Y%m%d%H%M%S%f')}"
+
+
+# --- inserts that survive a retry --------------------------------------------
+#
+# An agent that gets an error from a write retries it. When the error came
+# AFTER the row was inserted (a follow-up write failed, or a gateway 5xx hid a
+# finished insert), the retry inserted the same thing twice: log_touch did on
+# 2026-10-13 (td-20261013085244963489). So an insert first looks for the same
+# content written in the last few minutes and returns that instead, and a
+# failure after the insert says the row exists.
+
+RETRY_WINDOW = timedelta(minutes=10)
+
+
+class RecordedButIncomplete(RuntimeError):
+    """The row WAS written; a follow-up step failed. Do not write it again."""
+
+
+def _recent_same(client: AitoClient, table: str, where: dict, stamp_of, now: datetime) -> dict | None:
+    """The row in `table` matching `where` whose time (`stamp_of(row)`) is
+    within RETRY_WINDOW of `now`, if any: the earlier attempt of a retry."""
+    for row in client.query({"from": table, "where": where, "limit": 1000})["hits"]:
+        at = stamp_of(row)
+        if at is not None and abs(at - now) <= RETRY_WINDOW:
+            return row
+    return None
+
+
+def _stamp_time(row_id: str) -> datetime | None:
+    """The time in an id made by _stamp ('td-20261013084911123456')."""
+    try:
+        return datetime.strptime(row_id.split("-", 1)[1][:14], "%Y%m%d%H%M%S")
+    except (IndexError, ValueError):
+        return None
+
+
+def _after_insert(kind: str, row_id: str, steps) -> None:
+    """Run the steps that follow an insert; if one fails, say the row exists."""
+    try:
+        steps()
+    except Exception as e:  # noqa: BLE001 — re-raised with what IS recorded
+        raise RecordedButIncomplete(
+            f"{kind} {row_id} IS recorded; a follow-up step failed "
+            f"({type(e).__name__}: {str(e)[:200]}). Do not write it again: a retry "
+            f"returns the existing row.") from e
 
 
 def add_contact(
@@ -138,6 +183,7 @@ def log_touch(
     from .loaders import ENGAGEMENT_COLUMNS
     unknown = set(engagement) - set(ENGAGEMENT_COLUMNS)
     assert not unknown, f"unknown engagement field(s) {sorted(unknown)}"
+    explicit_ts = ts
     ts = ts or datetime.now().replace(microsecond=0)
     raw = {
         "touch_id": f"log-{ts.strftime('%Y%m%d%H%M%S')}-{contact_id}",
@@ -152,25 +198,40 @@ def log_touch(
         "notes": notes or "",
         **{k: v or "" for k, v in engagement.items()},
     }
-    contact_ids = {
-        hit["contact_id"]
-        for hit in client.query({"from": "contacts", "limit": 10000})["hits"]
-    }
-    deal_ids = ({d["deal_id"] for d in client.query({"from": "deals", "limit": 10000})["hits"]}
+    # existence checks read the one row asked about, not the table
+    contact_ids = {h["contact_id"] for h in client.query(
+        {"from": "contacts", "where": {"contact_id": contact_id},
+         "select": ["contact_id"], "limit": 1})["hits"]}
+    deal_ids = ({h["deal_id"] for h in client.query(
+        {"from": "deals", "where": {"deal_id": engagement["deal_id"]},
+         "select": ["deal_id"], "limit": 1})["hits"]}
                 if engagement.get("deal_id") else None)
     row = parse_touch_row(raw, contact_ids, deal_ids)
+    # a retry of the same engagement returns the row the first attempt wrote
+    same = {"contact_id": contact_id, "channel": channel, "outcome": outcome}
+    earlier = _recent_same(
+        client, "touches", same,
+        lambda t: (datetime.fromisoformat(t["ts"])
+                   if (t.get("notes") or None) == row["notes"]
+                   and (t.get("next_action") or None) == row["next_action"]
+                   and (explicit_ts is None or t["ts"] == row["ts"]) else None),
+        ts)
+    if earlier is not None:
+        return {**earlier, "already_recorded": True}
     # placeholders; resequence derives the real values from the whole history
     row.update({"days_since_prev_touch": "first", "step": None, "company_id": None})
     client.upload_batch("touches", [row])
-    client.optimize("touches")
-    engagements.resequence(client, {contact_id})
-    row = client.query({"from": "touches", "where": {"touch_id": row["touch_id"]},
+
+    def follow_up():
+        client.optimize("touches")
+        engagements.resequence(client, {contact_id})
+        changelog.record(client, "touch", row["touch_id"], "logged",
+                         f"{channel} to {contact_id}: {outcome}")
+    _after_insert("touch", row["touch_id"], follow_up)
+    got = client.query({"from": "touches", "where": {"touch_id": row["touch_id"]},
                         "limit": 2})["hits"]
-    assert len(row) == 1, f"logged touch not readable back: {raw['touch_id']}"
-    row = row[0]
-    changelog.record(client, "touch", row["touch_id"], "logged",
-                     f"{channel} to {contact_id}: {outcome}")
-    return row
+    assert len(got) == 1, f"logged touch not readable back: {row['touch_id']}"
+    return got[0]
 
 
 def log_decision(
@@ -552,8 +613,16 @@ def add_todo(
     row = parse_todo_row(raw, contact_ids, deal_ids)
     _ensure_rev_column(client)
     row["rev"] = row["revs"] = f"rv-{uuid.uuid4().hex}"   # unique: no rev value is ever reused
+    earlier = _recent_same(client, "todos", {"title": title, "area": area},
+                           lambda t: _stamp_time(t["todo_id"])
+                           if t["title"] == title  # a Text where matches words; be exact
+                           and (t.get("role") or None) == (row.get("role") or None) else None,
+                           datetime.now())
+    if earlier is not None:
+        return {**earlier, "already_recorded": True}
     client.upload_batch("todos", [row])
-    changelog.record(client, "todo", row["todo_id"], "created", f"todo: {title} ({area})")
+    _after_insert("todo", row["todo_id"], lambda: changelog.record(
+        client, "todo", row["todo_id"], "created", f"todo: {title} ({area})"))
     return row
 
 
@@ -920,18 +989,31 @@ EDITABLE_ROUTINE_FIELDS = {"title", "area", "cadence", "weekday", "day_of_month"
                            "prep", "prompt", "active", "notes"}
 
 
-def _rewrite_routine(client: AitoClient, routine_id: str, mutate) -> dict:
-    all_routines = client.query({"from": "routines", "limit": 10000})["hits"]
-    match = [r for r in all_routines if r["routine_id"] == routine_id]
-    assert match, f"unknown routine_id {routine_id!r}"
-    row = dict(match[0])
+def _write_row(client: AitoClient, table: str, key: str, row_id: str, mutate) -> dict:
+    """Change ONE row in place: read it, apply `mutate` to a copy, write only
+    the fields that changed (v2 `_modify`, flushed), then read it back and
+    assert every field landed (rule 3). Never touches another row, so writers
+    on different rows cannot erase each other, and the table is never dropped.
+    Replaces the read-all -> drop -> recreate rewrite that lost routine ticks
+    and document edits under concurrent writers (td-20261012114045038839)."""
+    hit = client.query({"from": table, "where": {key: row_id}, "limit": 2})["hits"]
+    assert hit, f"unknown {key} {row_id!r}"
+    assert len(hit) == 1, f"{table}: {len(hit)} rows with {key}={row_id!r}"
+    row = dict(hit[0])
     mutate(row)
-    rewritten = [r for r in all_routines if r["routine_id"] != routine_id] + [row]
-    client.delete_table("routines")
-    client.create_table("routines", schema.ROUTINES)
-    client.upload_batch("routines", rewritten)
-    assert client.count("routines") == len(rewritten), "routine rewrite row-count mismatch"
+    change = {k: v for k, v in row.items() if hit[0].get(k) != v}
+    if change:
+        client.update_entries(table, {key: row_id}, change)
+        got = client.query({"from": table, "where": {key: row_id}, "limit": 2})["hits"]
+        assert len(got) == 1, f"{table} {row_id}: {len(got)} rows after the update"
+        wrong = {k: (v, got[0].get(k)) for k, v in change.items() if got[0].get(k) != v}
+        assert not wrong, f"{table} {row_id}: wrote/read back {wrong}"
+        row = got[0]
     return row
+
+
+def _rewrite_routine(client: AitoClient, routine_id: str, mutate) -> dict:
+    return _write_row(client, "routines", "routine_id", routine_id, mutate)
 
 
 def update_routine(client: AitoClient, routine_id: str, changes: dict) -> dict:
@@ -1008,9 +1090,18 @@ def add_document(client: AitoClient, title: str, body: str, kind: str = "interna
         "stakeholder_id": stakeholder_id or None, "source": source or None,
         "created": now, "updated": now,
     }
+    earlier = _recent_same(client, "documents", {"title": title, "kind": kind},
+                           lambda d: _stamp_time(d["doc_id"])
+                           if d["title"] == title and d.get("body") == body else None,
+                           datetime.now())
+    if earlier is not None:
+        return {**earlier, "already_recorded": True}
     client.upload_batch("documents", [row])
-    changelog.record(client, "documents", row["doc_id"], "created", f"document: {title}")
-    search.refresh(client)
+
+    def follow_up():
+        changelog.record(client, "documents", row["doc_id"], "created", f"document: {title}")
+        search.refresh(client)
+    _after_insert("document", row["doc_id"], follow_up)
     return row
 
 
@@ -1018,22 +1109,9 @@ EDITABLE_DOCUMENT_FIELDS = {"title", "body", "kind", "area", "company", "stakeho
                             "topics", "noted_on"}
 
 
-def _rewrite_documents(client: AitoClient, doc_id: str, mutate) -> list[dict]:
-    rows = client.query({"from": "documents", "limit": 100000})["hits"]
-    match = [r for r in rows if r["doc_id"] == doc_id]
-    assert match, f"unknown doc_id {doc_id!r}"
-    kept = mutate([dict(r) for r in rows])
-    client.delete_table("documents")
-    client.create_table("documents", schema.DOCUMENTS)
-    if kept:
-        client.upload_batch("documents", kept)
-    assert client.count("documents") == len(kept), "documents rewrite row-count mismatch"
-    return kept
-
-
 def update_document(client: AitoClient, doc_id: str, changes: dict) -> dict:
-    """Edit a document. Validates kind/area/contact; rewrites the table (the
-    full-rewrite pattern, never `_modify`). Stamps `updated`."""
+    """Edit a document. Validates kind/area/contact; writes only this row's
+    changed fields in place (`_write_row`). Stamps `updated`."""
     unknown = set(changes) - EDITABLE_DOCUMENT_FIELDS
     assert not unknown, f"not editable: {sorted(unknown)}; allowed {sorted(EDITABLE_DOCUMENT_FIELDS)}"
     if "kind" in changes:
@@ -1045,26 +1123,26 @@ def update_document(client: AitoClient, doc_id: str, changes: dict) -> dict:
     if changes.get("noted_on"):
         date.fromisoformat(changes["noted_on"])   # loud on a malformed diary date (rule 3)
     from .loaders import company_slug
-    edited = {}
 
-    def mutate(rows):
-        for row in rows:
-            if row["doc_id"] == doc_id:
-                for k, v in changes.items():
-                    row[k] = v if v != "" else None
-                if "company" in changes:   # keep the entity link in step with the string
-                    row["company_id"] = company_slug(row["company"]) if row["company"] else None
-                row["updated"] = date.today().isoformat()
-                edited.update(row)
-        return rows
-    _rewrite_documents(client, doc_id, mutate)
+    def mutate(row):
+        for k, v in changes.items():
+            row[k] = v if v != "" else None
+        if "company" in changes:   # keep the entity link in step with the string
+            row["company_id"] = company_slug(row["company"]) if row["company"] else None
+        row["updated"] = date.today().isoformat()
+    edited = _write_row(client, "documents", "doc_id", doc_id, mutate)
     search.refresh(client)
     return edited
 
 
 def delete_document(client: AitoClient, doc_id: str) -> dict:
-    """Remove a document."""
-    _rewrite_documents(client, doc_id, lambda rows: [r for r in rows if r["doc_id"] != doc_id])
+    """Remove a document: a row-addressed delete, then proof it is gone."""
+    hit = client.query({"from": "documents", "where": {"doc_id": doc_id}, "limit": 1})["hits"]
+    assert hit, f"unknown doc_id {doc_id!r}"
+    client.delete_entries("documents", {"doc_id": doc_id})
+    client.optimize("documents")
+    left = client.query({"from": "documents", "where": {"doc_id": doc_id}, "limit": 1})["hits"]
+    assert not left, f"document {doc_id} still present after the delete"
     search.refresh(client)
     return {"deleted": doc_id}
 

@@ -1,7 +1,7 @@
 """Documents — the knowledge store (docs/25).
 
-A read surface over the `documents` collection (the write path is in log.py, a
-full-table rewrite, never `_modify`). Lists documents with optional filters
+A read surface over the `documents` collection (the write path is in log.py:
+row-addressed inserts, in-place `_modify` updates and deletes). Lists documents with optional filters
 (kind / area / company / person / topic), joining the linked contact in for display.
 Plus a path-safe file *importer* so an existing markdown knowledge dir (the old
 `COMPANY_AI_LIBRARY_DIR`) can move into the store once.

@@ -4,10 +4,20 @@ Transport and loud errors only; every piece of predictive logic is the
 query body passed through, never anything computed here.
 """
 
+import time
 from typing import Any
 from urllib.parse import urlparse
 
 import requests
+
+# A gateway in front of an instance can answer 502/503/504 for a request the
+# engine never saw, or saw and finished. Only requests that are safe to apply
+# twice are retried: `_modify` updates (setting the same values again) and
+# deletes (deleting what is already gone). Inserts are never retried here; a
+# duplicate insert is a duplicate row (the 2026-10-13 log_touch incident).
+_TRANSIENT = {502, 503, 504}
+_RETRIES = 3
+_BACKOFF_S = 0.5
 
 
 class AitoError(RuntimeError):
@@ -25,10 +35,16 @@ class AitoClient:
         headers = {"content-type": "application/json"}
         if self.api_key:
             headers["x-api-key"] = self.api_key
-        response = requests.request(
-            method, f"{base or self.base_url}{path}", json=body, headers=headers,
-            timeout=self.timeout
-        )
+        idempotent = path == "/api/v2/data/_modify" and isinstance(body, dict) and (
+            "update" in body or "delete" in body)
+        for attempt in range(_RETRIES + 1 if idempotent else 1):
+            response = requests.request(
+                method, f"{base or self.base_url}{path}", json=body, headers=headers,
+                timeout=self.timeout
+            )
+            if response.status_code not in _TRANSIENT or attempt == _RETRIES or not idempotent:
+                break
+            time.sleep(_BACKOFF_S * (attempt + 1))
         if response.status_code >= 400:
             raise AitoError(f"{method} {path} -> {response.status_code}: {response.text}")
         return response.json()

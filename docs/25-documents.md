@@ -14,7 +14,10 @@ text-`_match` in smart search (docs/23), never a Python heuristic.
 ## The model
 
 A document is an Aito collection row — the journal is the closest cousin
-(docs/20), and the write path mirrors it (full-rewrite edits, no `_modify`).
+(docs/20). Writes are row-addressed: an insert, an in-place `_modify` of one
+row's changed fields (read back and asserted), or a row delete. They used to
+rewrite the whole table, which lost edits when two agents wrote at once
+(production error 2026-10-07; fixed by td-20261012114045038839).
 
 ```
 documents (collection)
