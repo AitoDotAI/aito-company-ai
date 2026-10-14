@@ -45,18 +45,40 @@ def _fetch(client: AitoClient, result: Result, table: str, where: dict | None = 
     return response["hits"]
 
 
-def _company_names(client: AitoClient, result: Result) -> dict:
+def _any_of(field: str, values) -> dict | None:
+    values = sorted(v for v in values if v)
+    if not values:
+        return None
+    return {field: values[0]} if len(values) == 1 else {"$or": [{field: v} for v in values]}
+
+
+def _company_names(client: AitoClient, result: Result, todos: list[dict] | None = None) -> dict:
     """Lookup maps for the entities a todo references: `company` (id -> company,
     for both contacts and deals; their id namespaces don't collide) and
     `person` (contact_id -> name, for the stakeholder). Only the id/name/company
-    columns are projected — the tables carry heavier columns (e.g. the search
-    text blobs) this lookup never reads."""
-    contacts = _fetch(client, result, "contacts", select=["contact_id", "company", "name"])
+    columns are projected. Given `todos`, only the contacts and deals THEY
+    reference are read (td-20261014123607349120); without, the whole tables."""
+    if todos is None:
+        c_where = d_where = {}
+    else:
+        ids = {t.get("stakeholder_id") for t in todos} | {
+            t.get("linked_id") for t in todos if t.get("linked_type") in ("contact", "deal")}
+        c_where, d_where = _any_of("contact_id", ids), _any_of("deal_id", ids)
+    contacts = ([] if c_where is None else
+                _fetch(client, result, "contacts", c_where, select=["contact_id", "company", "name"]))
     company = {c["contact_id"]: c["company"] for c in contacts}
-    company.update({d["deal_id"]: d["company"] for d in
-                    _fetch(client, result, "deals", select=["deal_id", "company"])})
+    if d_where is not None:
+        company.update({d["deal_id"]: d["company"] for d in
+                        _fetch(client, result, "deals", d_where, select=["deal_id", "company"])})
     person = {c["contact_id"]: c["name"] for c in contacts}
     return {"company": company, "person": person}
+
+
+# every todo column but the ticket body: what ranking needs. The body is the
+# bulk of the table (about 3 MB of 3.8 on the live instance, 14.10), so a lens
+# that shows a few rows ranks without it and fetches it for those rows only.
+_LIST_COLUMNS = [c for c in schema.TODOS["columns"] if c != "detail"]
+_OPEN = {"$and": [{"status": {"$not": s}} for s in sorted(schema.TERMINAL_STATUSES)]}
 
 
 def _days_until(due: str | None, as_of: date) -> int | None:
@@ -193,11 +215,20 @@ def now(client: AitoClient, as_of: date | None = None, top_n: int = 8,
     operator sees both what's urgent and what's likely to slip."""
     as_of = as_of or clock.today()
     result = Result()
-    names = _company_names(client, result)
-    todos = [_decorate(t, names, as_of) for t in _fetch(client, result, "todos")
-             if t["status"] not in OPEN_STATUSES_EXCLUDED]
-    todos.sort(key=_urgency_key)
-    top = todos[:top_n]
+    # rank the open todos without their bodies, then read bodies and names
+    # for the few that are shown (was: every todo, every field, plus the
+    # whole contacts and deals tables, on every call)
+    rows = [t for t in _fetch(client, result, "todos", _OPEN, select=_LIST_COLUMNS)
+            if t["status"] not in OPEN_STATUSES_EXCLUDED]
+    empty = {"company": {}, "person": {}}
+    rows.sort(key=lambda t: _urgency_key(_decorate(t, empty, as_of)))
+    rows = rows[:top_n]
+    body_where = _any_of("todo_id", {t["todo_id"] for t in rows})
+    bodies = ({} if body_where is None else
+              {b["todo_id"]: b.get("detail") for b in
+               _fetch(client, result, "todos", body_where, select=["todo_id", "detail"])})
+    names = _company_names(client, result, rows)
+    top = [_decorate({**t, "detail": bodies.get(t["todo_id"])}, names, as_of) for t in rows]
     if with_slip_risk:
         _annotate_slip_risk(client, result, top)
     result.derived = {"lens": "now", "as_of": as_of.isoformat(), "todos": top}
@@ -210,10 +241,10 @@ def pipeline(client: AitoClient, area: str, as_of: date | None = None) -> Result
     assert area in schema.TODO_AREAS, f"unknown area {area!r}"
     as_of = as_of or clock.today()
     result = Result()
-    names = _company_names(client, result)
-    todos = [_decorate(t, names, as_of)
-             for t in _fetch(client, result, "todos", {"area": area})
-             if t["status"] not in OPEN_STATUSES_EXCLUDED]
+    rows = [t for t in _fetch(client, result, "todos", {"$and": [{"area": area}, _OPEN]})
+            if t["status"] not in OPEN_STATUSES_EXCLUDED]
+    names = _company_names(client, result, rows)
+    todos = [_decorate(t, names, as_of) for t in rows]
     # null sort_order sorts last → an un-dragged list is exactly priority order
     todos.sort(key=lambda t: (t["sort_order"] if t["sort_order"] is not None else 10**9,
                               t["priority"], t["todo_id"]))
@@ -226,10 +257,10 @@ def calendar(client: AitoClient, area: str, as_of: date | None = None) -> Result
     assert area in schema.TODO_AREAS, f"unknown area {area!r}"
     as_of = as_of or clock.today()
     result = Result()
-    names = _company_names(client, result)
-    todos = [_decorate(t, names, as_of)
-             for t in _fetch(client, result, "todos", {"area": area})
-             if t["status"] not in OPEN_STATUSES_EXCLUDED and t.get("due_date")]
+    rows = [t for t in _fetch(client, result, "todos", {"$and": [{"area": area}, _OPEN]})
+            if t["status"] not in OPEN_STATUSES_EXCLUDED and t.get("due_date")]
+    names = _company_names(client, result, rows)
+    todos = [_decorate(t, names, as_of) for t in rows]
     todos.sort(key=lambda t: (t["due_date"], t["priority"], t["todo_id"]))
     result.derived = {"lens": "calendar", "area": area, "todos": todos}
     return result
