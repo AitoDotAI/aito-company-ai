@@ -139,7 +139,7 @@ def parse_rolodex_row(row: dict) -> dict:
 
 
 DERIVED_TOUCH_COLUMNS = {"days_since_prev_touch", "good_outcome", "reached", "booked",
-                         "hour", "company_id", "step"}
+                         "hour", "company_id", "step", "time_known"}
 # The engagement's details (docs/34). Optional in a touches CSV, so a seed or an
 # export written before they existed still loads; absent and empty both read
 # null ("not recorded").
@@ -196,6 +196,12 @@ def parse_touch_row(row: dict, contact_ids: set[str],
     # local time, no offset: one row in UTC among local ones would shift its
     # hour and weekday silently, and those are what the call timing learns from
     _require(ts.tzinfo is None, f"ts carries a time zone: {row['ts']!r} (write local time)", row)
+    # a bare date means the time is unknown: no hour, and the catch-all window
+    # rather than a guessed one (a guess would teach the call timing)
+    time_known = len(row["ts"]) > 10
+    if not time_known:
+        _require(row["window"] == "other",
+                 f"a date-only ts has no call window; window must be 'other', got {row['window']!r}", row)
     actual_weekday = schema.WEEKDAYS[ts.weekday()]
     _require(
         row["weekday"] == actual_weekday,
@@ -216,7 +222,8 @@ def parse_touch_row(row: dict, contact_ids: set[str],
         "next_action": row["next_action"] or None,
         "next_action_due": row["next_action_due"] or None,
         "notes": row["notes"] or None,
-        "hour": ts.hour,
+        "hour": ts.hour if time_known else None,
+        "time_known": time_known,
         **schema.kpi_flags(row["outcome"]),
     }
 

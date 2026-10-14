@@ -248,3 +248,27 @@ def test_two_touches_in_one_second_get_their_own_ids(t: bt.TestCaseRun) -> None:
     rows = engagements._all(client, "touches", {"contact_id": cid})
     t.tln(f"rows for {cid}: {len(rows)}")
     assert len(rows) == 2
+
+
+def test_a_date_only_engagement_has_no_invented_time(t: bt.TestCaseRun) -> None:
+    """A backfill from notes often knows the day but not the time. A bare-date
+    ts imports with no hour, window 'other' and time_known=false; re-importing
+    a row that had a placeholder time corrects it in place."""
+    client = _client()
+    _seed(client)
+    cid = _untouched_contact(client)["contact_id"]
+    row = {"touch_id": "d1", "contact_id": cid, "channel": "call", "direction": "out",
+           "outcome": "conversation", "answered_by": "person"}
+    first = engagements.import_csv(client, _write(_tmp("guess.csv"),
+                                   [{**row, "ts": "2026-09-24T09:00:00"}]), apply=True)
+    fixed = engagements.import_csv(client, _write(_tmp("date.csv"),
+                                   [{**row, "ts": "2026-09-24"}]), apply=True)
+    t.h1("A placeholder time, then the honest date")
+    t.tln(f"first: new {len(first['new'])}; correction: changed {len(fixed['changed'])} "
+          f"{sorted(fixed['changed'][0][1]) if fixed['changed'] else []}")
+    got = engagements._all(client, "touches", {"touch_id": "d1"})
+    assert len(got) == 1
+    t.tln(json.dumps({k: got[0].get(k) for k in ("ts", "weekday", "window", "hour",
+                                                 "time_known", "answered_by")}, sort_keys=True))
+    assert got[0].get("hour") is None and got[0]["window"] == "other"
+    assert got[0].get("time_known") is False and got[0]["answered_by"] == "person"

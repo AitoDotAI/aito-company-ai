@@ -35,15 +35,15 @@ response: {"ai_lifecycle": "announced", "company": "Rekall Oy", "company_id": "r
 ## Sample rows: touches
 
 request:  {"from": "touches", "limit": 1, "where": {"touch_id": "yt002"}}
-response: {"booked": true, "channel": "call", "company_id": "vertex-o", "contact_id": "yc004", "days_since_prev_touch": "first", "good_outcome": true, "hour": 8, "next_action": "prepare demo", "next_action_due": "2026-04-11", "notes": "agreed to a 30min walkthrough", "outcome": "meeting_booked", "reached": true, "step": 1, "touch_id": "yt002", "ts": "2026-04-07T08:32:00", "weekday": "tue", "window": "0800"}
+response: {"booked": true, "channel": "call", "company_id": "vertex-o", "contact_id": "yc004", "days_since_prev_touch": "first", "good_outcome": true, "hour": 8, "next_action": "prepare demo", "next_action_due": "2026-04-11", "notes": "agreed to a 30min walkthrough", "outcome": "meeting_booked", "reached": true, "step": 1, "time_known": true, "touch_id": "yt002", "ts": "2026-04-07T08:32:00", "weekday": "tue", "window": "0800"}
 request:  {"from": "touches", "limit": 1, "where": {"touch_id": "yt011"}}
-response: {"booked": false, "channel": "linkedin", "company_id": "genco-oy", "contact_id": "yc009", "days_since_prev_touch": "first", "good_outcome": false, "hour": 9, "outcome": "no_reply", "reached": false, "step": 1, "touch_id": "yt011", "ts": "2026-04-23T09:28:00", "weekday": "thu", "window": "0800"}
+response: {"booked": false, "channel": "linkedin", "company_id": "genco-oy", "contact_id": "yc009", "days_since_prev_touch": "first", "good_outcome": false, "hour": 9, "outcome": "no_reply", "reached": false, "step": 1, "time_known": true, "touch_id": "yt011", "ts": "2026-04-23T09:28:00", "weekday": "thu", "window": "0800"}
 request:  {"from": "touches", "limit": 1, "where": {"touch_id": "yt001"}}
-response: {"booked": false, "channel": "call", "company_id": "vertex-o", "contact_id": "yc006", "days_since_prev_touch": "first", "good_outcome": false, "hour": 17, "outcome": "no_answer", "reached": false, "step": 1, "touch_id": "yt001", "ts": "2026-04-23T17:01:00", "weekday": "thu", "window": "1600"}
+response: {"booked": false, "channel": "call", "company_id": "vertex-o", "contact_id": "yc006", "days_since_prev_touch": "first", "good_outcome": false, "hour": 17, "outcome": "no_answer", "reached": false, "step": 1, "time_known": true, "touch_id": "yt001", "ts": "2026-04-23T17:01:00", "weekday": "thu", "window": "1600"}
 request:  {"from": "touches", "limit": 1, "where": {"touch_id": "yt005"}}
-response: {"booked": true, "channel": "call", "company_id": "rekall-oy", "contact_id": "yc005", "days_since_prev_touch": "first", "good_outcome": true, "hour": 12, "notes": "demo booked", "outcome": "meeting_booked", "reached": true, "step": 1, "touch_id": "yt005", "ts": "2026-05-26T12:20:00", "weekday": "tue", "window": "1215"}
+response: {"booked": true, "channel": "call", "company_id": "rekall-oy", "contact_id": "yc005", "days_since_prev_touch": "first", "good_outcome": true, "hour": 12, "notes": "demo booked", "outcome": "meeting_booked", "reached": true, "step": 1, "time_known": true, "touch_id": "yt005", "ts": "2026-05-26T12:20:00", "weekday": "tue", "window": "1215"}
 request:  {"from": "touches", "limit": 1, "where": {"touch_id": "yt008"}}
-response: {"booked": false, "channel": "email", "company_id": "vertex-o", "contact_id": "yc003", "days_since_prev_touch": "first", "good_outcome": false, "hour": 16, "next_action": "send one-pager", "next_action_due": "2026-05-27", "notes": "asked for a one-pager", "outcome": "reply", "reached": true, "step": 1, "touch_id": "yt008", "ts": "2026-05-26T16:43:00", "weekday": "tue", "window": "1600"}
+response: {"booked": false, "channel": "email", "company_id": "vertex-o", "contact_id": "yc003", "days_since_prev_touch": "first", "good_outcome": false, "hour": 16, "next_action": "send one-pager", "next_action_due": "2026-05-27", "notes": "asked for a one-pager", "outcome": "reply", "reached": true, "step": 1, "time_known": true, "touch_id": "yt008", "ts": "2026-05-26T16:43:00", "weekday": "tue", "window": "1600"}
 
 ## Sample rows: sessions
 

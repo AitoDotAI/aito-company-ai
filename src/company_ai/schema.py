@@ -145,6 +145,10 @@ TOUCHES = {
         # (recomputed for the whole contact whenever one is added, because a
         # backfill arrives out of order). Inbound rows have no step.
         "hour": {"type": "Int", "nullable": True},
+        # false when the source knew only the DATE (a backfill from notes):
+        # `ts` is then the bare date, `hour` null and `window` "other", so a
+        # timing question can leave the row out while its outcome still counts
+        "time_known": {"type": "Boolean", "nullable": True},
         "company_id": {"type": "String", "nullable": True, "link": "companies.company_id"},
         "step": {"type": "Int", "nullable": True},
     },

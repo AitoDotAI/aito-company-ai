@@ -8,7 +8,7 @@ sc038 Victor Brooks $p=0.1949
 
 # Log a touch for the top contact
 
-{"booked": false, "channel": "call", "company_id": "vance-bv", "contact_id": "sc024", "days_since_prev_touch": "22+", "good_outcome": true, "hour": 8, "next_action": "send pricing summary", "next_action_due": "2026-06-15", "notes": "picked up, good chat", "outcome": "conversation", "reached": true, "step": 4, "touch_id": "log-20260612081000-sc024", "ts": "2026-06-12T08:10:00", "weekday": "fri", "window": "0800"}
+{"booked": false, "channel": "call", "company_id": "vance-bv", "contact_id": "sc024", "days_since_prev_touch": "22+", "good_outcome": true, "hour": 8, "next_action": "send pricing summary", "next_action_due": "2026-06-15", "notes": "picked up, good chat", "outcome": "conversation", "reached": true, "step": 4, "time_known": true, "touch_id": "log-20260612081000-sc024", "ts": "2026-06-12T08:10:00", "weekday": "fri", "window": "0800"}
 
 # Queue after
 

@@ -34,7 +34,7 @@ SEQUENCE_COLUMNS = ("days_since_prev_touch", "step", "company_id")
 FUNNEL_FLAGS = ("ever_touched", "ever_reached", "ever_conversation", "ever_meeting")
 # the fields an import may change on a touch it already holds
 STORED_COLUMNS = [c for c in IMPORT_COLUMNS if c != "touch_id"] + [
-    "weekday", "window", "hour", "good_outcome", "reached", "booked"]
+    "weekday", "window", "hour", "time_known", "good_outcome", "reached", "booked"]
 LIMIT = 1_000_000
 
 
@@ -117,7 +117,7 @@ def _row_from_import(raw: dict) -> dict:
     try:
         ts = dt.datetime.fromisoformat(row["ts"])
         row["weekday"] = schema.WEEKDAYS[ts.weekday()]
-        row["window"] = schema.window_for(ts.hour)
+        row["window"] = schema.window_for(ts.hour) if len(row["ts"]) > 10 else "other"
     except ValueError:
         row["weekday"], row["window"] = "?", "other"
     return row
