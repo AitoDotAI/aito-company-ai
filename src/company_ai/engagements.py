@@ -206,7 +206,6 @@ def import_csv(client: AitoClient, path: Path, apply: bool = False) -> dict:
            for r in plan["new"]]
     for i in range(0, len(new), 200):
         client.upload_batch("touches", new[i:i + 200])
-    client.optimize("touches")
     client.update_many("touches", [({"touch_id": r["touch_id"]}, diff)
                                    for r, diff in plan["changed"]])
     held = {t["touch_id"] for t in _all(client, "touches")}

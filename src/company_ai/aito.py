@@ -220,31 +220,26 @@ class AitoClient:
                              {"from": table, "delete": where})
 
     def update_entries(self, table: str, where: dict, set_fields: dict) -> Any:
-        """Update in place the rows matching `where` (v2 `_modify` update), then
-        `optimize` to flush — so a caller that re-reads sees its own change.
+        """Update in place the rows matching `where` (v2 `_modify` update).
 
-        The flush is built in ON PURPOSE: on this build a bare `_modify` update
-        is applied but stays INVISIBLE to reads until the next write (see
-        `optimize`), a silent data-integrity trap. Making the flush part of the
-        primitive means a future caller cannot reintroduce the bug by forgetting
-        it — the only correct `_modify` update is a flushed one. Callers that need
-        to *prove* the write landed should still read back and assert (rule 3);
-        see `log.claim_todo`."""
-        result = self._request("POST", "/api/v2/data/_modify",
-                               {"update": table, "where": where, "set": set_fields})
-        self.optimize(table)   # flush: the update is invisible to reads until the next write
-        return result
+        No flush. Until 14.10.2026 every update was followed by an `optimize`,
+        the workaround for docs/24 bug 5 (an update invisible to reads until
+        the next write). That no longer reproduces: 0/50 stale reads on the
+        test env and 0/50 on internal (2.11.6), and inserts and deletes are
+        visible immediately too. The flush cost ~2.8-4 s per write on internal
+        and was 66% of its engine time, and it cleared the table's caches so the
+        next read paid a rebuild (td-20261014123607349120). Callers that must
+        prove a write landed still read back and assert (rule 3), and
+        book/test_modify_visibility.py re-probes the bug on each engine build."""
+        return self._request("POST", "/api/v2/data/_modify",
+                             {"update": table, "where": where, "set": set_fields})
 
     def update_many(self, table: str, updates: list[tuple[dict, dict]]) -> int:
-        """Several `_modify` updates, then ONE flush. Same contract as
-        `update_entries` (the flush is part of the primitive), for a caller
-        that changes many rows at once and would otherwise compact the
-        collection once per row. Returns how many updates were sent."""
+        """Several `_modify` updates (see update_entries: no flush). Returns
+        how many updates were sent."""
         for where, set_fields in updates:
             self._request("POST", "/api/v2/data/_modify",
                           {"update": table, "where": where, "set": set_fields})
-        if updates:
-            self.optimize(table)
         return len(updates)
 
     def optimize(self, table: str) -> Any:
