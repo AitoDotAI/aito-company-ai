@@ -551,3 +551,16 @@ required: ['predict_field', 'table', 'where']
 Generic escape hatch: ask Aito for the distribution of any field
     given any conditions, e.g. predict('touches', {'window': '0800'},
     'outcome'). Use linked fields like 'contact_id.segment' in where.
+
+## relate
+
+params: ['exclude', 'outcome', 'table', 'top_n', 'where']
+required: ['outcome', 'table']
+Generic statistical connections (the sibling of `predict`): which field
+    values go together with an outcome, ranked by Aito's _relate. `outcome` is
+    one field: value, e.g. relate('touches', {'reached': True}) or
+    relate('deals', {'won': False}). `where` restricts the population first
+    (e.g. {'channel': 'call'}). Each relation has its lift, the outcome rate
+    with and without the value, and rows_with; `thin` marks fewer than 10 rows,
+    a hint rather than a finding. Fields that restate the outcome, ids, times
+    and free text are excluded and listed; add more with `exclude`.

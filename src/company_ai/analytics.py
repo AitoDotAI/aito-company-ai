@@ -14,6 +14,7 @@ view, the intuition stays in Aito. Spec in docs/07-dashboard.md.
 
 from dataclasses import dataclass, field
 
+from . import relations
 from . import aitowhy
 from .aito import AitoClient
 
@@ -115,24 +116,14 @@ def _causes(client: AitoClient, result: Result, kpi: KPI, seg_prop: dict | None,
 
     causes = []
     for hit in response.get("hits", []):
-        # v2 relate: the goal is `condition`, the co-occurring driver is
-        # `related`; `info` is the mutual-info float; frequencies are in `fs`.
-        related = hit.get("related", {})
-        field_name = next(iter(related), None)
-        if field_name not in ALLOWED_CAUSE_FIELDS or field_name in _SEGMENT_FIELDS:
+        r = relations.read_hit(hit, on=seg_prop is not None)
+        if r is None or r["field"] not in ALLOWED_CAUSE_FIELDS or r["field"] in _SEGMENT_FIELDS:
             continue
-        raw = related[field_name]
-        fs = hit.get("fs", {})
-        f, n = fs.get("f", 0), fs.get("n", 0)
-        fc, foc = fs.get("fCondition", 0), fs.get("fOnCondition", 0)
         causes.append({
-            "field": field_name,
-            "value": raw.get("$has") if isinstance(raw, dict) else raw,
-            "rate_with": (foc / f) if f else None,
-            "rate_without": ((fc - foc) / (n - f)) if (n - f) else None,
+            "field": r["field"], "value": r["value"],
+            "rate_with": r["rate_with"], "rate_without": r["rate_without"],
             "mi": hit.get("info", 0.0),
         })
-    # secondary keys make ties deterministic, so snapshots are stable
     causes.sort(key=lambda c: (-c["mi"], c["field"], str(c["value"])))
     return causes[:top_n]
 

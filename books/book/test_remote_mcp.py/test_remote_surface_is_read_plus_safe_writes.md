@@ -1,6 +1,6 @@
 # the remote tool surface (read + safe writes)
 
-51 tools exposed over HTTP:
+52 tools exposed over HTTP:
   add_channel
   add_contact
   add_deal
@@ -39,6 +39,7 @@
   prepare_routine
   recent_changes
   record_click
+  relate
   routines_board
   run_routine
   score_post
