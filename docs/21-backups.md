@@ -68,6 +68,25 @@ systemctl --user list-timers 'company-ai-*'
 shell, defaults `COMPANY_AI_ENV=.env.aito`). For transaction snapshots, call
 `ops/backup.sh tx` before a risky run, or wire a more frequent timer.
 
+### Hourly compaction
+
+Writes do not flush the table (td-20261014123607349120: the per-write
+`optimize` cost seconds and was most of the engine's time). Each `_modify`
+update leaves a pending delete and a one-row segment instead, and listings slow
+2-5x as those pile up, so a timer compacts every table hourly, off any user
+call:
+
+```
+cp ops/systemd/company-ai-compact.{service,timer} ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable --now company-ai-compact.timer
+```
+
+`ops/compact.sh` runs `company-ai compact` against the same instance as the
+backups and prints the time per table. Aito core is measuring how listings
+degrade after N writes without a compaction; if an hour proves too long for a
+busy table, shorten the timer.
+
 ## The second plane: off-box
 
 An env snapshot is a branch **inside the instance**. It undoes a bad write; it
