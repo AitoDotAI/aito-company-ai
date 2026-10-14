@@ -140,6 +140,9 @@ def main() -> None:
     rs.add_argument("--force", action="store_true",
                     help="actually promote; without it, show the diff and stop (dry-run)")
 
+    sub.add_parser("compact",
+                   help="compact every table (hourly from ops/compact.sh): writes no longer "
+                        "flush, so pending deletes pile up until this runs")
     ie = sub.add_parser("import-engagements",
                         help="import engagements from a CSV (docs/34): checks every row, "
                              "plans by default, writes only with --apply")
@@ -192,7 +195,7 @@ def main() -> None:
                   "load-all", "clear", "export", "export-all", "board-run",
                   "reindex-search",
                   "routines-run", "log", "complete", "archive", "backup", "restore",
-                  "import-engagements"}
+                  "import-engagements", "compact"}
     if args.command in WRITE_CMDS:
         _echo_target(config)
     # refuse synthetic seed into a remote instance unless forced
@@ -460,6 +463,19 @@ def main() -> None:
     elif args.command == "dashboard":
         from . import api
         api.serve(config, host=args.host, port=args.port or config.port)
+    elif args.command == "compact":
+        import time
+        have = client.get_schema()["schema"]
+        total = 0.0
+        for table in schema.TABLES:
+            if table not in have:
+                continue
+            started = time.perf_counter()
+            client.optimize(table)
+            ms = (time.perf_counter() - started) * 1000
+            total += ms
+            print(f"{table:20} {ms:8.0f} ms")
+        print(f"compacted in {total / 1000:.1f} s")
     elif args.command == "import-engagements":
         import time
         from . import backups, engagements

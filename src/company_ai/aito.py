@@ -228,7 +228,10 @@ class AitoClient:
         test env and 0/50 on internal (2.11.6), and inserts and deletes are
         visible immediately too. The flush cost ~2.8-4 s per write on internal
         and was 66% of its engine time, and it cleared the table's caches so the
-        next read paid a rebuild (td-20261014123607349120). Callers that must
+        next read paid a rebuild (td-20261014123607349120). Compaction still
+        matters, just not per write: each update leaves a pending delete and a
+        one-row segment, and listings slow as they pile up, so `company-ai
+        compact` runs hourly from an OS timer (ops/compact.sh). Callers that must
         prove a write landed still read back and assert (rule 3), and
         book/test_modify_visibility.py re-probes the bug on each engine build."""
         return self._request("POST", "/api/v2/data/_modify",

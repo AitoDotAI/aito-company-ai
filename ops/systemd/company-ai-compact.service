@@ -1,0 +1,7 @@
+[Unit]
+Description=Company AI — compact the Aito tables (hourly)
+Documentation=file://%h/aito-company-ai/docs/34-engagements.md
+
+[Service]
+Type=oneshot
+ExecStart=%h/aito-company-ai/ops/compact.sh
