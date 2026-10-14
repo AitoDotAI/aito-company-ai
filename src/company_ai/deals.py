@@ -129,6 +129,44 @@ def close_likelihood(client: AitoClient, stage: str, blocker: str,
     return {"p_win": hit["$p"], "why": why, **out}
 
 
+# Close-likelihood per profile, shared by every dashboard session in this
+# process (td-20261014123607349120). The dashboard used to fire one /api/pwin
+# per profile, ~40 in parallel on every page load, each 3-5 Aito calls, while
+# writes ran beside them. An entry is valid while no deals or touches write
+# has gone through this process since it was computed (which covers the
+# dashboard and the remote MCP, both in this process), and for at most
+# PWIN_TTL_S seconds, which bounds staleness from writers in other processes.
+PWIN_TTL_S = 300
+_pwin_cache: dict[tuple, tuple[tuple, float, dict]] = {}
+
+
+def _write_epoch() -> tuple:
+    from .aito import WRITES
+    return (WRITES.get("deals", 0), WRITES.get("touches", 0))
+
+
+def pwin_many(client: AitoClient, profiles: list[dict]) -> list[dict]:
+    """close_likelihood for many profiles in one call: cached ones from the
+    cache, the rest computed one after another with shared feature counts.
+    Each profile is {stage, blocker, champion_present, segment}; the answers
+    come back in the same order."""
+    import time
+    epoch, now = _write_epoch(), time.monotonic()
+    counts: dict = {}
+    out = []
+    for p in profiles:
+        key = (p["stage"], p["blocker"], str(p["champion_present"]).lower(), p.get("segment"))
+        hit = _pwin_cache.get(key)
+        if hit and hit[0] == epoch and now - hit[1] < PWIN_TTL_S:
+            out.append(hit[2])
+            continue
+        cl = close_likelihood(client, p["stage"], p["blocker"], p["champion_present"],
+                              segment=p.get("segment"), counts=counts)
+        _pwin_cache[key] = (_write_epoch(), time.monotonic(), cl)
+        out.append(cl)
+    return out
+
+
 def _close_likelihood(client: AitoClient, result: Result, deal: dict, as_of: date,
                       counts: dict | None = None) -> dict:
     days = (as_of - date.fromisoformat(deal["last_touch_date"])).days

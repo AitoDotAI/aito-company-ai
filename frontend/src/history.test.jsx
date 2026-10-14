@@ -10,6 +10,7 @@ vi.mock("./api.js", () => ({
          engagements: vi.fn(() => Promise.resolve({ weeks: [], open_deals_by_blocker: {}, in_window: 0, with_engagement_details: 0 })), funnel: vi.fn(),
          funnelCatalog: vi.fn(), score: vi.fn(), scoreOptions: vi.fn(),
          pwin: vi.fn(() => Promise.resolve({ p_win: null, why: [], n: 0, basis: "no_history" })),
+         pwinBatch: vi.fn((profiles) => Promise.resolve({ results: profiles.map(() => ({ p_win: null, why: [], n: 0, basis: "no_history" })) })),
          users: vi.fn(() => Promise.resolve({ users: [] })),
          assignments: vi.fn(() => Promise.resolve({ map: {} })), assign: vi.fn() },
   pct: (x) => (x == null ? "–" : Math.round(x * 100) + "%"),

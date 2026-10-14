@@ -289,7 +289,7 @@ def create_app(config: Config | None = None) -> FastAPI:
     # Aito's 401 surfacing as a 500. The assistant is a POST but only reads
     # (its tools are read-only), so it is allowed through; it answers 503 with
     # a message when no model is configured (see assistant_chat).
-    _PUBLIC_DEMO_READ_POSTS = {"/api/assistant/chat"}
+    _PUBLIC_DEMO_READ_POSTS = {"/api/assistant/chat", "/api/pwin/batch"}
 
     @app.middleware("http")
     async def request_timing(request: Request, call_next):
@@ -420,6 +420,17 @@ def create_app(config: Config | None = None) -> FastAPI:
         # Aito's P(won) for one deal profile — cached per profile in the browser.
         return _guarded(lambda: deals.close_likelihood(
             client(), stage, blocker, champion_present, segment=segment))
+
+    @app.post("/api/pwin/batch")
+    async def pwin_batch_route(request: Request):
+        # every profile a view needs in ONE request, computed serially through
+        # the shared cache (deals.pwin_many), instead of one GET per profile
+        body = await request.json()
+        profiles = body.get("profiles") or []
+        assert isinstance(profiles, list) and len(profiles) <= 500, "profiles: a list of at most 500"
+        from starlette.concurrency import run_in_threadpool
+        return await run_in_threadpool(
+            lambda: _guarded(lambda: {"results": deals.pwin_many(client(), profiles)}))
 
     @app.get("/api/who-to-reach")
     def who_to_reach_route():
