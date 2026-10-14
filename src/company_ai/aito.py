@@ -4,6 +4,8 @@ Transport and loud errors only; every piece of predictive logic is the
 query body passed through, never anything computed here.
 """
 
+import contextvars
+import json
 import time
 from typing import Any
 from urllib.parse import urlparse
@@ -16,6 +18,12 @@ import requests
 # deletes (deleting what is already gone). Inserts are never retried here; a
 # duplicate insert is a duplicate row (the 2026-10-13 log_touch incident).
 _TRANSIENT = {502, 503, 504}
+
+# Per-request accounting of Aito round trips (td-20261014122004215297): when a
+# list is set here, every call appends {method, path, ms, sent, received,
+# status}. The API middleware sets one per HTTP request and logs the totals;
+# the benchmark uses it to split a tool's time into Aito vs everything else.
+TRACE: contextvars.ContextVar = contextvars.ContextVar("aito_trace", default=None)
 _RETRIES = 3
 _BACKOFF_S = 0.5
 
@@ -35,6 +43,7 @@ class AitoClient:
         headers = {"content-type": "application/json"}
         if self.api_key:
             headers["x-api-key"] = self.api_key
+        started = time.perf_counter()
         idempotent = path == "/api/v2/data/_modify" and isinstance(body, dict) and (
             "update" in body or "delete" in body)
         for attempt in range(_RETRIES + 1 if idempotent else 1):
@@ -45,6 +54,14 @@ class AitoClient:
             if response.status_code not in _TRANSIENT or attempt == _RETRIES or not idempotent:
                 break
             time.sleep(_BACKOFF_S * (attempt + 1))
+        trace = TRACE.get()
+        if trace is not None:
+            trace.append({"method": method, "path": path,
+                          "ms": round((time.perf_counter() - started) * 1000, 1),
+                          "sent": len(json.dumps(body)) if body is not None else 0,
+                          "received": len(getattr(response, "content", b"") or b""),
+                          "status": response.status_code,
+                          "body": body if isinstance(body, dict) else None})
         if response.status_code >= 400:
             raise AitoError(f"{method} {path} -> {response.status_code}: {response.text}")
         return response.json()
