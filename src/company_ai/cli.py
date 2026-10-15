@@ -140,9 +140,11 @@ def main() -> None:
     rs.add_argument("--force", action="store_true",
                     help="actually promote; without it, show the diff and stop (dry-run)")
 
-    sub.add_parser("compact",
-                   help="compact every table (hourly from ops/compact.sh): writes no longer "
-                        "flush, so pending deletes pile up until this runs")
+    cp = sub.add_parser("compact",
+                        help="compact the tables (ops/compact.sh): writes no longer flush, so "
+                             "pending deletes pile up until this runs")
+    cp.add_argument("--all", action="store_true",
+                    help="include the append-only logs (nightly); default skips them (hourly)")
     ie = sub.add_parser("import-engagements",
                         help="import engagements from a CSV (docs/34): checks every row, "
                              "plans by default, writes only with --apply")
@@ -467,8 +469,13 @@ def main() -> None:
         import time
         have = client.get_schema()["schema"]
         total = 0.0
+        # The append-only logs take no updates, so no pending deletes build up
+        # in them; on internal their compaction is a full rebuild of several
+        # seconds (changelog ~6-7 s) that pins one of the engine's two API
+        # threads. They are compacted nightly (--all), the rest hourly.
+        append_only = {"changelog", "search_contexts", "search_impressions"}
         for table in schema.TABLES:
-            if table not in have:
+            if table not in have or (table in append_only and not args.all):
                 continue
             started = time.perf_counter()
             client.optimize(table)
