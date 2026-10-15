@@ -72,6 +72,12 @@ def recommend(client: AitoClient, request: dict) -> dict | None:
         raise
 
 
+def count_request(table: str, where: dict | None = None) -> dict:
+    """the `_query` counting finished rows matching `where` (see count)"""
+    return {"from": table, "limit": 0,
+            "where": {"$and": [TERMINAL[table], where]} if where else TERMINAL[table]}
+
+
 def count(client: AitoClient, table: str, where: dict | None = None) -> tuple[dict, dict]:
     """(request, response) counting finished rows matching `where`. Counting is
     a `_query`, so an empty population is a total of 0, not an error."""

@@ -121,16 +121,16 @@ def who_to_call(
         and (c["phone_present"] or window not in schema.call_windows())
     ]
 
-    ranked = []
     # the prediction is a function of the request alone (segment, tier,
     # lifecycle, recency bucket, window, weekday), so contacts that share one
-    # share its answer: one _predict per distinct profile, not per contact
-    # (47 calls at the seed, 4,502 at 100x; td-20261014123607349120)
-    answers: dict[str, dict] = {}
+    # share its answer, and every distinct request goes in ONE _batch round
+    # trip (was one _predict per contact: 47 at the seed, 4,502 at 100x;
+    # td-20261014123607349120)
+    requests_by_contact = {}
     for contact in eligible:
         days = (as_of - last_touch[contact["contact_id"]]).days \
             if contact["contact_id"] in last_touch else None
-        request = {
+        requests_by_contact[contact["contact_id"]] = {
             "from": "touches",
             "where": {
                 "window": window,
@@ -143,10 +143,13 @@ def who_to_call(
             "predict": "outcome",
             "limit": len(schema.OUTCOMES),
         }
-        profile = json.dumps(request, sort_keys=True)
-        if profile not in answers:
-            answers[profile] = client.predict(request)
-        response = answers[profile]
+    distinct = sorted({json.dumps(r, sort_keys=True) for r in requests_by_contact.values()})
+    answers = dict(zip(distinct, client.batch([json.loads(d) for d in distinct])))
+
+    ranked = []
+    for contact in eligible:
+        request = requests_by_contact[contact["contact_id"]]
+        response = answers[json.dumps(request, sort_keys=True)]
         # outcome features are mutually exclusive, so the spec's
         # $p(outcome in GOOD_OUTCOMES) is the sum of Aito's per-outcome $p
         p_good = sum(
