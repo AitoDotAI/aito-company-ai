@@ -51,12 +51,55 @@ def _p_accepted(client: AitoClient, result: Result, where: dict) -> float | None
 
 
 def scorecard(client: AitoClient) -> Result:
+    """Two Aito requests whatever the vocabulary: one projected read the counts
+    are tallied from (accounting, not prediction), and one _batch for the
+    per-bucket predictions (was a count query per type/bucket and accepted
+    pair, plus a predict per bucket; td-20261014123607349120)."""
     result = Result()
-    total = _count(client, result, {})
+    request = {"from": "decisions",
+               "select": ["decision_type", "confidence_bucket", "human_action"], "limit": 100000}
+    response = client.query(request)
+    result.calls.append(("_query", request, response))
+    rows = response["hits"]
+    total = len(rows)
     if not total:
         result.derived = {"total": 0, "acceptance": None, "by_type": [],
                           "calibration": [], "trustworthy": None}
         return result
+
+    def tally(**where) -> int:
+        return sum(1 for r in rows if all(r.get(k) == v for k, v in where.items()))
+
+    accepted = tally(human_action="accepted")
+    by_type = []
+    for dt in sorted(schema.DECISION_TYPES):
+        n, a = tally(decision_type=dt), tally(decision_type=dt, human_action="accepted")
+        by_type.append({"type": dt, "n": n, "accepted": a, "rate": (a / n) if n else None})
+
+    counts = [(b, tally(confidence_bucket=b), tally(confidence_bucket=b, human_action="accepted"))
+              for b in CONFIDENCE_BUCKETS]
+    asked = [b for b, n, _ in counts if n]
+    requests = [{"from": history.finished("decisions"), "where": {"confidence_bucket": b},
+                 "predict": "human_action", "select": ["$p", "$value"]} for b in asked]
+    p_by_bucket = {}
+    for b, req, resp in zip(asked, requests, history.predict_many(client, requests)):
+        if resp is None:
+            continue
+        result.calls.append(("_predict", req, resp))
+        hit = next((h for h in resp["hits"] if h["$value"] == "accepted"), None)
+        p_by_bucket[b] = hit["$p"] if hit else None
+    calibration = [{"bucket": b, "n": n, "observed": (a / n) if n else None,
+                    "aito_p": p_by_bucket.get(b)} for b, n, a in counts]
+
+    # trustworthy if observed acceptance rises low -> high (monotone, with data)
+    obs = [c["observed"] for c in calibration if c["observed"] is not None]
+    trustworthy = len(obs) >= 2 and all(x <= y for x, y in zip(obs, obs[1:]))
+
+    result.derived = {
+        "total": total, "accepted": accepted, "acceptance": accepted / total,
+        "by_type": by_type, "calibration": calibration, "trustworthy": trustworthy,
+    }
+    return result
 
     accepted = _count(client, result, {"human_action": "accepted"})
     by_type = []

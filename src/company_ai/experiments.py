@@ -57,30 +57,57 @@ def _running(client: AitoClient, result: Result) -> list[dict]:
              "hypothesis": e["hypothesis"], "started": e["started"]} for e in rows]
 
 
+def _p_validated_many(client: AitoClient, result: Result, wheres: list[dict]) -> list[float | None]:
+    requests = [{"from": history.finished("experiments"), "where": w,
+                 "predict": "validated", "select": ["$p", "$value"]} for w in wheres]
+    responses = history.predict_many(client, requests)
+    out = []
+    for request, response in zip(requests, responses):
+        if response is None:
+            out.append(None)
+            continue
+        result.calls.append(("_predict", request, response))
+        hit = next((h for h in response["hits"] if h["$value"] is True), None)
+        out.append(hit["$p"] if hit else None)
+    return out
+
+
 def board(client: AitoClient) -> Result:
+    """Three Aito requests whatever the vocabulary: one projected read that the
+    counts are tallied from (accounting, not prediction), the running bets, and
+    one _batch for the per-effort predictions (was a count query per status and
+    per effort x status, plus a predict per effort; td-20261014123607349120)."""
     result = Result()
-    total = _count(client, result, {})
+    request = {"from": "experiments", "select": ["status", "effort"], "limit": 100000}
+    response = client.query(request)
+    result.calls.append(("_query", request, response))
+    rows = response["hits"]
+    total = len(rows)
     if not total:
         result.derived = {"total": 0, "running": [], "decided": 0,
                           "validated_learning_rate": None, "status_mix": {},
                           "by_effort": [], "favour_small": None}
         return result
 
-    status_mix = {s: _count(client, result, {"status": s})
+    status_mix = {s: sum(1 for r in rows if r["status"] == s)
                   for s in sorted(schema.EXPERIMENT_STATUS)}
     decided = sum(status_mix[s] for s in schema.EXPERIMENT_TERMINAL)
     validated = status_mix["validated"]
 
-    by_effort = []
-    for effort in ("small", "medium", "large"):
-        n_val = _count(client, result, {"effort": effort, "status": "validated"})
-        n_dec = sum(_count(client, result, {"effort": effort, "status": s})
-                    for s in schema.EXPERIMENT_TERMINAL)
-        by_effort.append({
-            "effort": effort, "decided": n_dec, "validated": n_val,
-            "observed": (n_val / n_dec) if n_dec else None,
-            "aito_p": _p_validated(client, result, {"effort": effort}) if n_dec else None,
-        })
+    efforts = ("small", "medium", "large")
+    tallies = []
+    for effort in efforts:
+        n_val = sum(1 for r in rows if r.get("effort") == effort and r["status"] == "validated")
+        n_dec = sum(1 for r in rows if r.get("effort") == effort
+                    and r["status"] in schema.EXPERIMENT_TERMINAL)
+        tallies.append((effort, n_val, n_dec))
+    asked = [e for e, _, n_dec in tallies if n_dec]
+    p_by_effort = dict(zip(asked, _p_validated_many(client, result, [{"effort": e} for e in asked])))
+    by_effort = [{
+        "effort": effort, "decided": n_dec, "validated": n_val,
+        "observed": (n_val / n_dec) if n_dec else None,
+        "aito_p": p_by_effort.get(effort),
+    } for effort, n_val, n_dec in tallies]
 
     # the Lean read: do cheaper bets validate more? (small >= large, with data)
     obs = {b["effort"]: b["observed"] for b in by_effort}

@@ -62,6 +62,18 @@ def predict(client: AitoClient, request: dict) -> dict | None:
         raise
 
 
+def predict_many(client: AitoClient, requests: list[dict]) -> list[dict | None]:
+    """Several predicts over the same finished history in ONE `_batch` round
+    trip. They share the nested population, so if it is empty the engine
+    refuses the batch and every answer is None ("not enough history")."""
+    try:
+        return client.batch(requests)
+    except AitoError as error:
+        if is_empty_population(error):
+            return [None] * len(requests)
+        raise
+
+
 def recommend(client: AitoClient, request: dict) -> dict | None:
     """client.recommend, or None when the nested population is empty"""
     try:

@@ -225,35 +225,54 @@ def answer(client: AitoClient, question_id: str, prose: str, request: dict) -> d
                 raise
             out.update(hits=[], total=0, no_history=True)
             return out
-        hits = response.get("hits", [])
-        # $why comes back as a nested tree that is far too big to render raw.
-        # Flatten it to the labelled lift factors the dashboard already uses for
-        # deal close-likelihood, strongest effect first, and drop the tree.
-        if any("$why" in h for h in hits):
-            from . import aitowhy
-            from .deals import _why_label
-            true_hit = next((h for h in hits if h.get("$value") in (True, "true")), None)
-            if true_hit is not None:
-                factors = [{"label": _why_label(f["proposition"]), "lift": f["value"]}
-                           for f in aitowhy.lift_factors(true_hit)]
-                factors.sort(key=lambda w: -abs(w["lift"] - 1.0))
-                out["why"] = factors[:6]
-                out["p"] = true_hit.get("$p")
-            hits = [{k: v for k, v in h.items() if k != "$why"} for h in hits]
-        out["hits"] = hits
-        out["total"] = response.get("total")
+        _shape(out, response)
     except Exception as exc:                      # noqa: BLE001 — reported, see above
         out["error"] = f"{type(exc).__name__}: {exc}"
     return out
 
 
+def _shape(out: dict, response: dict) -> None:
+    """Fill a card from its query's response."""
+    hits = response.get("hits", [])
+    # $why comes back as a nested tree that is far too big to render raw.
+    # Flatten it to the labelled lift factors the dashboard already uses for
+    # deal close-likelihood, strongest effect first, and drop the tree.
+    if any("$why" in h for h in hits):
+        from . import aitowhy
+        from .deals import _why_label
+        true_hit = next((h for h in hits if h.get("$value") in (True, "true")), None)
+        if true_hit is not None:
+            factors = [{"label": _why_label(f["proposition"]), "lift": f["value"]}
+                       for f in aitowhy.lift_factors(true_hit)]
+            factors.sort(key=lambda w: -abs(w["lift"] - 1.0))
+            out["why"] = factors[:6]
+            out["p"] = true_hit.get("$p")
+        hits = [{k: v for k, v in h.items() if k != "$why"} for h in hits]
+    out["hits"] = hits
+    out["total"] = response.get("total")
+
+
 def board(client: AitoClient) -> dict:
     """Every question, each with the query that answered it."""
-    answers = [answer(client, qid, prose, req) for qid, prose, req in questions(client)]
     # the base rate is a card too: the view quotes it, so its query is on the page
-    base = answer(client, "baseline", "How likely is any closed deal to have been won?",
-                  BASELINE_REQUEST)
-    answers.append(base)
+    cards = list(questions(client)) + [
+        ("baseline", "How likely is any closed deal to have been won?", BASELINE_REQUEST)]
+    # every card in ONE _batch round trip; if any card's query fails, the batch
+    # does too, so fall back to one query per card, where each failure is
+    # reported on its own card (td-20261014123607349120)
+    try:
+        responses = client.batch([req for _, _, req in cards])
+    except AitoError:
+        responses = None
+    if responses is None:
+        answers = [answer(client, qid, prose, req) for qid, prose, req in cards]
+    else:
+        answers = []
+        for (qid, prose, req), response in zip(cards, responses):
+            out = {"id": qid, "question": prose, "endpoint": ENDPOINT, "request": req}
+            _shape(out, response)
+            answers.append(out)
+    base = answers[-1]
     conditioned = next((a for a in answers if a["id"] == "cto-odds"), None)
     return {
         "answers": answers,
