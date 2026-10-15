@@ -6,5 +6,5 @@
   demo        none             champ=False ecommerce    p_win=0.179
   demo        none             champ=True  analytics    p_win=0.730
   demo        none             champ=True  erp          p_win=0.449
-Aito calls: first batch 23, same batch again 0
-after a deal update: 23 calls (recomputed)
+Aito calls: first batch 2, same batch again 0
+after a deal update: 2 calls (recomputed)

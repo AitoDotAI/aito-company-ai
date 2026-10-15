@@ -30,7 +30,7 @@ INFERENCE_SLOTS = 2
 _INFERENCE = threading.BoundedSemaphore(INFERENCE_SLOTS)
 _WRITE = threading.Lock()
 _INFERENCE_PATHS = ("/api/v2/_predict", "/api/v2/_relate", "/api/v2/_recommend",
-                    "/api/v2/_similarity", "/api/v2/_match")
+                    "/api/v2/_similarity", "/api/v2/_match", "/api/v2/_batch")
 
 
 # Writes per table seen by THIS process: a cache of something derived from a
@@ -290,6 +290,19 @@ class AitoClient:
             self._request("POST", "/api/v2/data/_modify",
                           {"update": table, "where": where, "set": set_fields})
         return len(updates)
+
+    def batch(self, queries: list[dict]) -> list[dict]:
+        """Several queries in ONE request (v2 `_batch`): any mix of _query-style
+        and predict bodies, answered in order. One failing query fails the whole
+        batch. This is how a view that needs N answers makes one round trip
+        instead of N (td-20261014123607349120)."""
+        if not queries:
+            return []
+        response = self._request("POST", "/api/v2/_batch", queries)
+        data = response.get("data") if isinstance(response, dict) else None
+        assert isinstance(data, list) and len(data) == len(queries), \
+            f"_batch: expected {len(queries)} answers, got {response!r:.300}"
+        return data
 
     def optimize(self, table: str) -> Any:
         """Compact a collection. Needed as a *flush* after a `_modify` update:

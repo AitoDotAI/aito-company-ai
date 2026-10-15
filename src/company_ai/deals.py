@@ -18,7 +18,7 @@ from datetime import date
 
 from . import clock
 from . import aitowhy, history, schema
-from .aito import AitoClient
+from .aito import AitoClient, AitoError
 
 STALL_DAYS = 14  # no touch in this many days flags a stalled deal
 # Fewer closed deals than this share a feature's value, and its lift is a guess:
@@ -108,17 +108,47 @@ def close_likelihood(client: AitoClient, stage: str, blocker: str,
         if result is not None:
             result.calls.append(("_query", count_request, count))
         n = int(count.get("total", 0))
-    basis = ("base_rate" if not evidence else "partial" if thin else "profile")
+    request = _won_request(evidence)
+    response = history.predict(client, request)
+    if response is None:
+        return _NO_HISTORY_ANSWER
+    if result is not None:
+        result.calls.append(("_predict", request, response))
+    return _answer(evidence, thin, n, response)
+
+
+_NO_HISTORY_ANSWER = {"p_win": None, "why": [], "n": 0, "basis": history.NO_HISTORY,
+                      "evidence": [], "thin": []}
+
+
+def _profile_features(blocker, champion_present, segment) -> dict:
+    features = {"blocker": blocker, "champion_present": _as_bool(champion_present)}
+    if segment is not None:
+        features["segment"] = segment
+    return features
+
+
+def _split_evidence(features: dict, counts: dict) -> tuple[dict, list]:
+    evidence, thin = {}, []
+    for feature, value in features.items():
+        support = counts[(feature, value)]
+        if support >= MIN_PROFILE_EVIDENCE:
+            evidence[feature] = value
+        else:
+            thin.append({"feature": feature, "value": value, "n": support})
+    return evidence, thin
+
+
+def _won_request(evidence: dict) -> dict:
     request = {"from": history.finished("deals"), "predict": "won",
                "select": ["$p", "$value", "$why"]}
     if evidence:
         request["where"] = evidence
-    response = history.predict(client, request)
-    if response is None:
-        return {"p_win": None, "why": [], "n": 0, "basis": history.NO_HISTORY,
-                "evidence": [], "thin": []}
-    if result is not None:
-        result.calls.append(("_predict", request, response))
+    return request
+
+
+def _answer(evidence: dict, thin: list, n: int, response: dict) -> dict:
+    basis = ("base_rate" if not evidence else "partial" if thin else "profile")
     hit = next((h for h in response["hits"] if h["$value"] is True), None)
     out = {"n": n, "basis": basis, "evidence": sorted(evidence), "thin": thin}
     if hit is None:
@@ -127,6 +157,51 @@ def close_likelihood(client: AitoClient, stage: str, blocker: str,
            for f in aitowhy.lift_factors(hit)]
     why.sort(key=lambda w: -abs(w["lift"] - 1.0))
     return {"p_win": hit["$p"], "why": why, **out}
+
+
+def close_likelihood_many(client: AitoClient, profiles: list[dict],
+                          result: Result | None = None, counts: dict | None = None) -> list[dict]:
+    """close_likelihood for many profiles in TWO round trips, whatever their
+    number (v2 `_batch`): first every feature count not yet known, then every
+    distinct evidence set's joint count and prediction. Same thresholds and
+    same answers as one close_likelihood per profile; profiles that differ
+    only in stage (not evidence) share one prediction. A company with no
+    closed deal yet makes the engine refuse the batch (empty population);
+    that falls back to the per-profile path, which answers "no history"."""
+    counts = {} if counts is None else counts
+    feats = [_profile_features(p["blocker"], p["champion_present"], p.get("segment"))
+             for p in profiles]
+    need = sorted({fv for f in feats for fv in f.items() if fv not in counts}, key=str)
+    queries = [history.count_request("deals", {f: v}) for f, v in need]
+    try:
+        answers = client.batch(queries)
+        if result is not None and queries:
+            result.calls.append(("_batch", queries, answers))
+        for fv, a in zip(need, answers):
+            counts[fv] = int(a.get("total", 0))
+        splits = [_split_evidence(f, counts) for f in feats]
+        keys = sorted({tuple(sorted(ev.items())) for ev, _ in splits}, key=str)
+        queries = []
+        for key in keys:
+            ev = dict(key)
+            queries += [history.count_request("deals", ev) if ev else
+                        history.count_request("deals"), _won_request(ev)]
+        answers = client.batch(queries)
+    except AitoError as error:
+        if not history.is_empty_population(error):
+            raise
+        return [close_likelihood(client, p["stage"], p["blocker"], p["champion_present"],
+                                 result, segment=p.get("segment"), counts=counts)
+                for p in profiles]
+    if result is not None:
+        result.calls.append(("_batch", queries, answers))
+    by_key = {key: (int(answers[2 * i].get("total", 0)), answers[2 * i + 1])
+              for i, key in enumerate(keys)}
+    out = []
+    for ev, thin in splits:
+        n, response = by_key[tuple(sorted(ev.items()))]
+        out.append(_answer(ev, thin, n if ev else 0, response))
+    return out
 
 
 # Close-likelihood per profile, shared by every dashboard session in this
@@ -152,19 +227,19 @@ def pwin_many(client: AitoClient, profiles: list[dict]) -> list[dict]:
     come back in the same order."""
     import time
     epoch, now = _write_epoch(), time.monotonic()
-    counts: dict = {}
-    out = []
-    for p in profiles:
-        key = (p["stage"], p["blocker"], str(p["champion_present"]).lower(), p.get("segment"))
-        hit = _pwin_cache.get(key)
-        if hit and hit[0] == epoch and now - hit[1] < PWIN_TTL_S:
-            out.append(hit[2])
-            continue
-        cl = close_likelihood(client, p["stage"], p["blocker"], p["champion_present"],
-                              segment=p.get("segment"), counts=counts)
-        _pwin_cache[key] = (_write_epoch(), time.monotonic(), cl)
-        out.append(cl)
-    return out
+    keys = [(p["stage"], p["blocker"], str(p["champion_present"]).lower(), p.get("segment"))
+            for p in profiles]
+    fresh = {k: v[2] for k, v in _pwin_cache.items()
+             if v[0] == epoch and now - v[1] < PWIN_TTL_S}
+    missing = [p for k, p in zip(keys, profiles) if k not in fresh]
+    if missing:
+        computed = close_likelihood_many(client, missing)
+        stamp = (_write_epoch(), time.monotonic())
+        for p, cl in zip(missing, computed):
+            k = (p["stage"], p["blocker"], str(p["champion_present"]).lower(), p.get("segment"))
+            _pwin_cache[k] = (*stamp, cl)
+            fresh[k] = cl
+    return [fresh[k] for k in keys]
 
 
 def _close_likelihood(client: AitoClient, result: Result, deal: dict, as_of: date,
@@ -265,7 +340,14 @@ def pipeline(client: AitoClient, as_of: date | None = None, predict: bool = True
     # answer: Aito is asked once per distinct profile, not once per deal
     # (201 calls at the seed, 2,001 at 10x; td-20261014123607349120)
     by_profile: dict[tuple, dict] = {}
-    counts: dict = {}
+    if predict:
+        # every open deal's profile answered in two _batch round trips
+        uniq = sorted({(d["stage"], d["blocker"], d["champion_present"], d["segment"])
+                       for d in deals}, key=str)
+        answers = close_likelihood_many(
+            client, [{"stage": a, "blocker": b, "champion_present": c, "segment": s}
+                     for a, b, c, s in uniq], result)
+        by_profile = dict(zip(uniq, answers))
     for d in deals:
         days = (as_of - date.fromisoformat(d["last_touch_date"])).days
         weighted = d["value_eur"] * d["probability"] / 100.0
@@ -278,10 +360,7 @@ def pipeline(client: AitoClient, as_of: date | None = None, predict: bool = True
             "p_win": None, "why": [], "n": None, "basis": None, "thin": [],
         }
         if predict:
-            profile = (d["stage"], d["blocker"], d["champion_present"], d["segment"])
-            if profile not in by_profile:
-                by_profile[profile] = _close_likelihood(client, result, d, as_of, counts)
-            cl = by_profile[profile]
+            cl = by_profile[(d["stage"], d["blocker"], d["champion_present"], d["segment"])]
             row["p_win"], row["why"] = cl["p_win"], cl["why"][:3]
             row["n"], row["basis"], row["thin"] = cl["n"], cl["basis"], cl["thin"]
         ranked.append(row)
