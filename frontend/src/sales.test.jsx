@@ -9,6 +9,7 @@ vi.mock("./api.js", () => ({
          whoToReach: vi.fn(), salesTrend: vi.fn(),
          engagements: vi.fn(() => Promise.resolve({ weeks: [], open_deals_by_blocker: {}, in_window: 0, with_engagement_details: 0 })), todoOptions: vi.fn(),
          pwin: vi.fn(() => Promise.resolve({ p_win: 0.4, why: [] })),
+         pwinBatch: vi.fn((profiles) => Promise.resolve({ results: profiles.map(() => ({ p_win: 0.4, why: [] })) })),
          users: vi.fn(), assignments: vi.fn(), assign: vi.fn() },
   pct: (x) => (x == null ? "–" : Math.round(x * 100) + "%"),
 }));

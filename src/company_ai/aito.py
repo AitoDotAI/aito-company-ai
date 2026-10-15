@@ -6,6 +6,7 @@ query body passed through, never anything computed here.
 
 import contextvars
 import json
+import threading
 import time
 from typing import Any
 from urllib.parse import urlparse
@@ -18,6 +19,43 @@ import requests
 # deletes (deleting what is already gone). Inserts are never retried here; a
 # duplicate insert is a duplicate row (the 2026-10-13 log_touch incident).
 _TRANSIENT = {502, 503, 504}
+
+# How hard one process may push the engine (td-20261014123607349120). The
+# internal instance has two API threads. Core measured a 44 ms write turning
+# into ~1 s when predict reads ran beside it, because each write invalidates
+# the predict caches the readers then rebuild. So this process sends at most
+# INFERENCE_SLOTS inference calls at a time, and one write at a time; the rest
+# wait here instead of queueing inside the engine. Plain reads are not limited.
+INFERENCE_SLOTS = 2
+_INFERENCE = threading.BoundedSemaphore(INFERENCE_SLOTS)
+_WRITE = threading.Lock()
+_INFERENCE_PATHS = ("/api/v2/_predict", "/api/v2/_relate", "/api/v2/_recommend",
+                    "/api/v2/_similarity", "/api/v2/_match")
+
+
+# Writes per table seen by THIS process: a cache of something derived from a
+# table stays valid while the table's count is unchanged (see deals.pwin_many).
+WRITES: dict[str, int] = {}
+
+
+def _count_write(method: str, path: str, body) -> None:
+    if method == "GET" or not path.startswith("/api/v2/data/"):
+        return
+    if path == "/api/v2/data/_modify" and isinstance(body, dict):
+        table = body.get("update") or body.get("from")
+    else:
+        table = path.removeprefix("/api/v2/data/").split("/")[0]
+    if table:
+        WRITES[table] = WRITES.get(table, 0) + 1
+
+
+def _gate(method: str, path: str):
+    if path.startswith(_INFERENCE_PATHS):
+        return _INFERENCE
+    if method != "GET" and path.startswith("/api/v2/data/"):
+        return _WRITE
+    return None
+
 
 # Per-request accounting of Aito round trips (td-20261014122004215297): when a
 # list is set here, every call appends {method, path, ms, sent, received,
@@ -46,11 +84,19 @@ class AitoClient:
         started = time.perf_counter()
         idempotent = path == "/api/v2/data/_modify" and isinstance(body, dict) and (
             "update" in body or "delete" in body)
+        _count_write(method, path, body)
+        gate = _gate(method, path)
         for attempt in range(_RETRIES + 1 if idempotent else 1):
-            response = requests.request(
-                method, f"{base or self.base_url}{path}", json=body, headers=headers,
-                timeout=self.timeout
-            )
+            if gate is not None:
+                gate.acquire()
+            try:
+                response = requests.request(
+                    method, f"{base or self.base_url}{path}", json=body, headers=headers,
+                    timeout=self.timeout
+                )
+            finally:
+                if gate is not None:
+                    gate.release()
             if response.status_code not in _TRANSIENT or attempt == _RETRIES or not idempotent:
                 break
             time.sleep(_BACKOFF_S * (attempt + 1))

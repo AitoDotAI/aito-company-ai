@@ -2353,23 +2353,33 @@ function stageBreakdown(deals) {
 }
 
 // Lazy close-likelihood: /api/deals paints instantly (aggregates + stalled),
-// then each DISTINCT deal profile (stage|blocker|champion) resolves in parallel
-// via /api/pwin and fills in. Cached in a module Map, so it's instant on
-// re-navigation within the session; the graph shares the same cache.
+// then every DISTINCT deal profile (stage|blocker|champion|segment) still
+// missing is resolved in ONE /api/pwin/batch request, which the server answers
+// from a shared cache and computes serially (it used to be one GET per profile,
+// ~40 in parallel on every page load). Cached in a module Map too, so it's
+// instant on re-navigation within the session; the graph shares the same cache.
 const pwinCache = new Map();
 const pwinKey = (d) => `${d.stage}|${d.blocker}|${d.champion_present}|${d.segment}`;
 function usePwin(deals) {
   const [, bump] = useState(0);
   useEffect(() => {
     let alive = true;
-    const pending = new Set();
+    const missing = new Map();
     for (const d of deals || []) {
       if (d.p_win != null) continue;               // already resolved (predict=True path)
       const k = pwinKey(d);
-      if (pwinCache.has(k) || pending.has(k)) continue;
-      pending.add(k);
-      api.pwin(d.stage, d.blocker, d.champion_present, d.segment)
-        .then((r) => { if (alive) { pwinCache.set(k, r); bump((n) => n + 1); } })
+      if (pwinCache.has(k) || missing.has(k)) continue;
+      missing.set(k, { stage: d.stage, blocker: d.blocker,
+                       champion_present: d.champion_present, segment: d.segment });
+    }
+    if (missing.size) {
+      const keys = [...missing.keys()];
+      api.pwinBatch([...missing.values()])
+        .then((r) => {
+          if (!alive) return;
+          r.results.forEach((res, i) => pwinCache.set(keys[i], res));
+          bump((n) => n + 1);
+        })
         .catch(() => {});
     }
     return () => { alive = false; };

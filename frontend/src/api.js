@@ -43,6 +43,7 @@ export const api = {
   engagements: (weeks = 8) => get(`/engagements?weeks=${weeks}`),
   pwin: (stage, blocker, champion_present, segment) =>
     get("/pwin", { stage, blocker, champion_present, segment }),
+  pwinBatch: (profiles) => post("/pwin/batch", { profiles }),
   graph: () => get("/graph"),
   companies: () => get("/companies"),
   companyDetail: (id) => get(`/companies/${id}`),
