@@ -6,7 +6,8 @@
 # up. An hourly compaction bounds the pile without any user call paying for it.
 # Kept tiny and self-locating like backup.sh; enters the same Nix environment.
 #
-#   ops/compact.sh
+#   ops/compact.sh          # hourly: every table but the append-only logs
+#   ops/compact.sh --all    # nightly: those too
 #
 set -euo pipefail
 
@@ -16,4 +17,4 @@ REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export COMPANY_AI_ENV="${COMPANY_AI_ENV:-.env.aito}"
 
 cd "$REPO"
-exec nix-shell "$REPO/shell.nix" --run "uv run company-ai compact"
+exec nix-shell "$REPO/shell.nix" --run "uv run company-ai compact ${1:-}"

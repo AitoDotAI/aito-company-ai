@@ -83,7 +83,12 @@ systemctl --user enable --now company-ai-compact.timer
 ```
 
 `ops/compact.sh` runs `company-ai compact` against the same instance as the
-backups and prints the time per table. Aito core is measuring how listings
+backups and prints the time per table. The hourly run skips the append-only
+logs (`changelog`, `search_contexts`, `search_impressions`): they take no
+updates, so no pending deletes build up, and on internal their compaction is a
+full rebuild of several seconds that pins one of the engine's two API threads.
+`company-ai-compact-nightly.timer` runs `ops/compact.sh --all` at 03:45 for
+those. Aito core is measuring how listings
 degrade after N writes without a compaction; if an hour proves too long for a
 busy table, shorten the timer.
 

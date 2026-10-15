@@ -1,0 +1,7 @@
+[Unit]
+Description=Company AI — compact every table incl. the append-only logs (nightly)
+Documentation=file://%h/aito-company-ai/docs/21-backups.md
+
+[Service]
+Type=oneshot
+ExecStart=%h/aito-company-ai/ops/compact.sh --all
