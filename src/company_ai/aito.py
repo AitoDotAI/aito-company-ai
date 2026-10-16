@@ -40,6 +40,23 @@ _INFERENCE_PATHS = ("/api/v2/_predict", "/api/v2/_relate", "/api/v2/_recommend",
 _SESSION = requests.Session()
 _SESSION.mount("https://", requests.adapters.HTTPAdapter(pool_connections=4, pool_maxsize=16))
 _SESSION.mount("http://", requests.adapters.HTTPAdapter(pool_connections=4, pool_maxsize=16))
+# Azure drops a TCP flow idle for ~4 min (the instance's public IP, and App
+# Service's outbound SNAT) without telling either end, and a request on such a
+# dead pooled connection can hang for seconds before it fails. So connections
+# idle longer than IDLE_RETIRE_S are closed first and the request opens a
+# fresh one, a cheap TLS resumption (nginx keeps sessions for a day).
+IDLE_RETIRE_S = 180
+_last_used = [0.0]
+_pool_lock = threading.Lock()
+
+
+def _fresh_pool() -> None:
+    with _pool_lock:
+        now = time.monotonic()
+        if _last_used[0] and now - _last_used[0] > IDLE_RETIRE_S:
+            for adapter in _SESSION.adapters.values():
+                adapter.close()          # drops pooled connections; the adapter stays usable
+        _last_used[0] = now
 
 
 # Writes per table seen by THIS process: a cache of something derived from a
@@ -93,6 +110,7 @@ class AitoClient:
         started = time.perf_counter()
         idempotent = path == "/api/v2/data/_modify" and isinstance(body, dict) and (
             "update" in body or "delete" in body)
+        _fresh_pool()
         _count_write(method, path, body)
         gate = _gate(method, path)
         for attempt in range(_RETRIES + 1 if idempotent else 1):
