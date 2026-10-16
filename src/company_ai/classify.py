@@ -53,7 +53,8 @@ def _predict_field(client: AitoClient, result: Result, title: str, target: str,
 def _mention_scan(client: AitoClient, result: Result, title: str) -> list[dict]:
     """Contacts whose name or company token literally appears in the title.
     A lookup, not a ranking."""
-    request = {"from": "contacts", "limit": 100000}
+    request = {"from": "contacts", "select": ["contact_id", "name", "role", "company"],
+               "limit": 100000}
     response = client.query(request)
     result.calls.append(("_query", request, response))
     title_tokens = _tokens(title)
@@ -92,7 +93,7 @@ def classify_todo(client: AitoClient, title: str, given: dict | None = None) -> 
 def _company_scan(client: AitoClient, result: Result, title: str) -> list[dict]:
     """Companies (the entity) whose name token literally appears in the title.
     A lookup against the graph node, not a ranking."""
-    request = {"from": "companies", "limit": 100000}
+    request = {"from": "companies", "select": ["company_id", "name"], "limit": 100000}
     response = client.query(request)
     result.calls.append(("_query", request, response))
     title_tokens = _tokens(title)
@@ -175,7 +176,8 @@ def document_context(client: AitoClient, title: str, company: str | None = None,
         similar = []   # search advisory-only; never block the editor
     same_company = []
     if company:
-        docs = documents.feed(client, company=company).derived["documents"]
+        docs = documents.feed(client, company=company,
+                              fields=["title", "noted_on"]).derived["documents"]
         same_company = [{"doc_id": d["doc_id"], "title": d["title"],
                          "noted_on": d.get("noted_on")} for d in docs[:top_n]]
     result.derived = {"similar": similar, "same_company": same_company}
