@@ -33,6 +33,15 @@ _INFERENCE_PATHS = ("/api/v2/_predict", "/api/v2/_relate", "/api/v2/_recommend",
                     "/api/v2/_similarity", "/api/v2/_match", "/api/v2/_batch")
 
 
+# One HTTP session per process, so calls reuse kept-alive connections. Each
+# call used to open its own connection (DNS, TCP and TLS to the instance):
+# the first page load after a quiet night spent ~6 s before Aito saw a request
+# (td-20261014123607349120). The pool is sized above the in-flight limits.
+_SESSION = requests.Session()
+_SESSION.mount("https://", requests.adapters.HTTPAdapter(pool_connections=4, pool_maxsize=16))
+_SESSION.mount("http://", requests.adapters.HTTPAdapter(pool_connections=4, pool_maxsize=16))
+
+
 # Writes per table seen by THIS process: a cache of something derived from a
 # table stays valid while the table's count is unchanged (see deals.pwin_many).
 WRITES: dict[str, int] = {}
@@ -90,7 +99,7 @@ class AitoClient:
             if gate is not None:
                 gate.acquire()
             try:
-                response = requests.request(
+                response = _SESSION.request(
                     method, f"{base or self.base_url}{path}", json=body, headers=headers,
                     timeout=self.timeout
                 )
@@ -122,7 +131,7 @@ class AitoClient:
         headers = {"x-api-key": self.api_key} if self.api_key else {}
         for url in (f"{self.base_url}/version", f"{root}/version"):
             try:
-                response = requests.get(url, headers=headers, timeout=self.timeout)
+                response = _SESSION.get(url, headers=headers, timeout=self.timeout)
             except requests.RequestException:
                 continue
             if response.ok:

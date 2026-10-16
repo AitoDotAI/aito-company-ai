@@ -149,9 +149,13 @@ def create_app(config: Config | None = None) -> FastAPI:
     def todo_options():
         def go():
             c = client()
-            contacts = c.query({"from": "contacts", "limit": 100000})["hits"]
-            dl = c.query({"from": "deals", "limit": 100000})["hits"]
-            tds = c.query({"from": "todos", "limit": 100000})["hits"]
+            # only the fields shown: the todos read used to carry every ticket
+            # body just to list the lanes (4.6 MB per page load on internal)
+            contacts = c.query({"from": "contacts", "select": ["contact_id", "name", "company"],
+                                "limit": 100000})["hits"]
+            dl = c.query({"from": "deals", "select": ["deal_id", "company", "stage", "won"],
+                          "limit": 100000})["hits"]
+            tds = c.query({"from": "todos", "select": ["role", "owner"], "limit": 100000})["hits"]
             # existing agent lanes/owners (docs/12), so the editor can suggest the
             # lanes already in use rather than making the operator recall a slug.
             return {

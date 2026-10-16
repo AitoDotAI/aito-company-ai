@@ -38,7 +38,8 @@ def split_topics(value: str | None) -> list[str]:
 
 def feed(client: AitoClient, limit: int = 500, kind: str | None = None,
          area: str | None = None, company: str | None = None,
-         contact: str | None = None, topic: str | None = None) -> Result:
+         contact: str | None = None, topic: str | None = None,
+         fields: list[str] | None = None) -> Result:
     """Documents, newest-updated first. Filters (kind / area / company / person /
     topic) narrow it. The linked contact's name + company are joined in for
     display, and an *effective* company (the doc's own `company`, else the linked
@@ -60,10 +61,16 @@ def feed(client: AitoClient, limit: int = 500, kind: str | None = None,
     request = {"from": "documents", "limit": limit}
     if where:
         request["where"] = where
+    if fields:
+        # a caller that does not show the body asks for less: the bodies are
+        # most of the table's bytes (td-20261014123607349120)
+        request["select"] = sorted(set(fields) | {"doc_id", "company", "stakeholder_id",
+                                                  "topics", "updated", "created"})
     response = client.query(request)
     result.calls.append(("_query", request, response))
 
-    contacts = client.query({"from": "contacts", "limit": 100000})["hits"]
+    contacts = client.query({"from": "contacts", "select": ["contact_id", "name", "company"],
+                             "limit": 100000})["hits"]
     by_id = {c["contact_id"]: c for c in contacts}
 
     docs = []
@@ -120,7 +127,7 @@ def topics(client: AitoClient, limit: int = 2000) -> Result:
     """The distinct topics across the store, each with its document count — the
     browse-by-topic index over the free-form axis (docs/25, Phase 2). Split from
     the ';'-joined field and counted (formatting, not inference)."""
-    inner = feed(client, limit=limit)
+    inner = feed(client, limit=limit, fields=["topics"])
     counts: dict[str, int] = {}
     for d in inner.derived["documents"]:
         for tp in d.get("topic_list") or []:

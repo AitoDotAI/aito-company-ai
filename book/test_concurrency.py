@@ -83,7 +83,7 @@ class _Slow:
 def test_at_most_two_inference_calls_at_once(t: bt.TestCaseRun) -> None:
     live, peak = [0], [0]
     lock = threading.Lock()
-    real = requests.request
+    real = aito._SESSION.request
 
     def slow(method, url, **kw):
         with lock:
@@ -93,7 +93,7 @@ def test_at_most_two_inference_calls_at_once(t: bt.TestCaseRun) -> None:
         with lock:
             live[0] -= 1
         return _Slow()
-    requests.request = slow
+    aito._SESSION.request = slow
     try:
         c = AitoClient("http://aito.invalid/db/x")
         for label, path, body in (("predict", "/api/v2/_predict", {"from": "t"}),
@@ -108,4 +108,4 @@ def test_at_most_two_inference_calls_at_once(t: bt.TestCaseRun) -> None:
             t.tln(f"8 concurrent {label} calls -> at most {peak[0]} in flight")
             assert peak[0] == (aito.INFERENCE_SLOTS if label == "predict" else 1)
     finally:
-        requests.request = real
+        aito._SESSION.request = real

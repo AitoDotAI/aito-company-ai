@@ -95,12 +95,12 @@ class _Resp:
 
 def test_only_repeatable_requests_are_retried(t: bt.TestCaseRun) -> None:
     calls = []
-    real, sleep = requests.request, aito.time.sleep
+    real, sleep = aito._SESSION.request, aito.time.sleep
 
     def flaky(method, url, **kw):
         calls.append(url.rsplit("/api/", 1)[-1])
         return _Resp(502) if len(calls) == 1 else _Resp(200, {"ok": True})
-    requests.request, aito.time.sleep = flaky, lambda s: None
+    aito._SESSION.request, aito.time.sleep = flaky, lambda s: None
     try:
         c = AitoClient("http://aito.invalid/db/x")
         c._request("POST", "/api/v2/data/_modify", {"update": "t", "where": {"id": "1"}, "set": {"v": 1}})
@@ -115,4 +115,4 @@ def test_only_repeatable_requests_are_retried(t: bt.TestCaseRun) -> None:
         else:
             raise AssertionError("an insert was retried")
     finally:
-        requests.request, aito.time.sleep = real, sleep
+        aito._SESSION.request, aito.time.sleep = real, sleep
