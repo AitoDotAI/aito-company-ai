@@ -74,10 +74,6 @@ def _company_names(client: AitoClient, result: Result, todos: list[dict] | None 
     return {"company": company, "person": person}
 
 
-# every todo column but the ticket body: what ranking needs. The body is the
-# bulk of the table (about 3 MB of 3.8 on the live instance, 14.10), so a lens
-# that shows a few rows ranks without it and fetches it for those rows only.
-_LIST_COLUMNS = [c for c in schema.TODOS["columns"] if c != "detail"]
 _OPEN = {"$and": [{"status": {"$not": s}} for s in sorted(schema.TERMINAL_STATUSES)]}
 
 
@@ -218,17 +214,26 @@ def now(client: AitoClient, as_of: date | None = None, top_n: int = 8,
     # rank the open todos without their bodies, then read bodies and names
     # for the few that are shown (was: every todo, every field, plus the
     # whole contacts and deals tables, on every call)
-    rows = [t for t in _fetch(client, result, "todos", _OPEN, select=_LIST_COLUMNS)
+    # rank on the four fields the urgency key reads, then read the whole row
+    # for the few shown. Ranking on every list column moved ~540 KB per call
+    # on internal and parsing it held the app's one vCPU while the page's
+    # other calls queued behind it (td-20261014123607349120).
+    keys = [t for t in _fetch(client, result, "todos", _OPEN,
+                              select=["todo_id", "status", "priority", "due_date"])
             if t["status"] not in OPEN_STATUSES_EXCLUDED]
-    empty = {"company": {}, "person": {}}
-    rows.sort(key=lambda t: _urgency_key(_decorate(t, empty, as_of)))
-    rows = rows[:top_n]
-    body_where = _any_of("todo_id", {t["todo_id"] for t in rows})
-    bodies = ({} if body_where is None else
-              {b["todo_id"]: b.get("detail") for b in
-               _fetch(client, result, "todos", body_where, select=["todo_id", "detail"])})
+
+    def urgency(t: dict) -> tuple:
+        days = _days_until(t.get("due_date"), as_of)
+        return _urgency_key({"days_until_due": days, "overdue": days is not None and days < 0,
+                             "priority": t["priority"], "todo_id": t["todo_id"]})
+    keys.sort(key=urgency)
+    top_ids = [t["todo_id"] for t in keys[:top_n]]
+    row_where = _any_of("todo_id", top_ids)
+    by_id = ({} if row_where is None else
+             {r["todo_id"]: r for r in _fetch(client, result, "todos", row_where)})
+    rows = [by_id[i] for i in top_ids if i in by_id]
     names = _company_names(client, result, rows)
-    top = [_decorate({**t, "detail": bodies.get(t["todo_id"])}, names, as_of) for t in rows]
+    top = [_decorate(t, names, as_of) for t in rows]
     if with_slip_risk:
         _annotate_slip_risk(client, result, top)
     result.derived = {"lens": "now", "as_of": as_of.isoformat(), "todos": top}
