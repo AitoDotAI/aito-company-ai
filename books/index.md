@@ -32,6 +32,7 @@
      * [test_brief.py::test_brief_seed](book/test_brief.py::test_brief_seed.md)
      * [test_brief.py::test_brief_seed_tiny](book/test_brief.py::test_brief_seed_tiny.md)
      * [test_changelog.py::test_changelog_records_creations_and_updates](book/test_changelog.py::test_changelog_records_creations_and_updates.md)
+     * [test_changelog.py::test_recent_changes_bounded_on_a_large_changelog](book/test_changelog.py::test_recent_changes_bounded_on_a_large_changelog.md)
      * [test_chats.py::test_chats_store_roundtrip](book/test_chats.py::test_chats_store_roundtrip.md)
      * [test_claims.py::test_no_calibration_claim](book/test_claims.py::test_no_calibration_claim.md)
      * [test_classify.py::test_classify_document_uses_the_graph](book/test_classify.py::test_classify_document_uses_the_graph.md)
