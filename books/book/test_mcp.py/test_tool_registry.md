@@ -221,13 +221,38 @@ Plan a post: a material posted to a channel, with a go/no-go status
 
 ## log_post_result
 
-params: ['outcome', 'post_id', 'posted_at', 'reach_or_views', 'trials', 'upvotes']
+params: ['comments', 'link_clicks', 'outcome', 'post_id', 'posted_at', 'reach_or_views', 'reactions', 'reposts', 'trials', 'upvotes']
 required: ['outcome', 'post_id', 'reach_or_views']
 Mark a planned post posted and record its KPIs (the measure step).
     outcome: flop/modest/win; the per-platform metric is reach/views, never
     upvotes. posted_at: the YYYY-MM-DD it went out (default today); pass it
     when backfilling, since the weekday derived from it is a scorer feature.
+    reactions/comments/reposts/link_clicks: the platform's engagement counts,
+    recorded as given (omit what you don't have; never a scorer feature).
     Re-derives `won` and `weekday`.
+
+## list_materials
+
+params: ['lane', 'title', 'topic', 'type']
+required: []
+The materials catalog, newest first. `title` finds materials by words
+    of their title; type/topic/lane filter exactly. Check here before
+    add_material, so a material is not added twice.
+
+## list_channels
+
+params: ['name', 'platform']
+required: []
+The channels catalog (platform: linkedin/hackernews/reddit/blog), by
+    platform then name. Check here before add_channel.
+
+## list_posts
+
+params: ['channel_id', 'material_id', 'platform', 'status']
+required: []
+Posts with their status, posted_at, KPIs and engagement: newest posted
+    first, then the unposted. status: planned/go/no_go/posted. Check here
+    before add_post or a backfill, so a post is not logged twice.
 
 ## log_session
 

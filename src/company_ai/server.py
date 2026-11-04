@@ -314,15 +314,51 @@ def add_post(material_id: str, channel_id: str, tone: str, format: str,
 @mcp.tool()
 def log_post_result(post_id: str, outcome: str, reach_or_views: int,
                     upvotes: int = 0, trials: int = 0,
-                    posted_at: str | None = None) -> dict:
+                    posted_at: str | None = None, reactions: int | None = None,
+                    comments: int | None = None, reposts: int | None = None,
+                    link_clicks: int | None = None) -> dict:
     """Mark a planned post posted and record its KPIs (the measure step).
     outcome: flop/modest/win; the per-platform metric is reach/views, never
     upvotes. posted_at: the YYYY-MM-DD it went out (default today); pass it
     when backfilling, since the weekday derived from it is a scorer feature.
+    reactions/comments/reposts/link_clicks: the platform's engagement counts,
+    recorded as given (omit what you don't have; never a scorer feature).
     Re-derives `won` and `weekday`."""
     return logbook.log_post_result(
         _client(), post_id=post_id, outcome=outcome, reach_or_views=reach_or_views,
-        upvotes=upvotes, trials=trials, posted_at=posted_at)
+        upvotes=upvotes, trials=trials, posted_at=posted_at, reactions=reactions,
+        comments=comments, reposts=reposts, link_clicks=link_clicks)
+
+
+@mcp.tool()
+def list_materials(title: str | None = None, type: str | None = None,
+                   topic: str | None = None, lane: str | None = None) -> dict:
+    """The materials catalog, newest first. `title` finds materials by words
+    of their title; type/topic/lane filter exactly. Check here before
+    add_material, so a material is not added twice."""
+    from . import catalog
+    return {"materials": catalog.list_materials(_client(), title=title, type=type,
+                                                topic=topic, lane=lane)}
+
+
+@mcp.tool()
+def list_channels(platform: str | None = None, name: str | None = None) -> dict:
+    """The channels catalog (platform: linkedin/hackernews/reddit/blog), by
+    platform then name. Check here before add_channel."""
+    from . import catalog
+    return {"channels": catalog.list_channels(_client(), platform=platform, name=name)}
+
+
+@mcp.tool()
+def list_posts(material_id: str | None = None, channel_id: str | None = None,
+               status: str | None = None, platform: str | None = None) -> dict:
+    """Posts with their status, posted_at, KPIs and engagement: newest posted
+    first, then the unposted. status: planned/go/no_go/posted. Check here
+    before add_post or a backfill, so a post is not logged twice."""
+    from . import catalog
+    return {"posts": catalog.list_posts(_client(), material_id=material_id,
+                                        channel_id=channel_id, status=status,
+                                        platform=platform)}
 
 
 @mcp.tool()
