@@ -18,8 +18,14 @@ def _where(**filters) -> dict:
     return {k: v for k, v in filters.items() if v is not None}
 
 
+class UnknownFilter(AssertionError):
+    """A filter value outside the schema's vocabulary: the caller's error
+    (the API answers it 400), not a data surprise."""
+
+
 def _check(value, allowed: set, name: str) -> None:
-    assert value is None or value in allowed, f"unknown {name} {value!r}; allowed {sorted(allowed)}"
+    if value is not None and value not in allowed:
+        raise UnknownFilter(f"unknown {name} {value!r}; allowed {sorted(allowed)}")
 
 
 def list_materials(client: AitoClient, title: str | None = None, type: str | None = None,

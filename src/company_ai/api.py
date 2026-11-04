@@ -688,23 +688,29 @@ def create_app(config: Config | None = None) -> FastAPI:
         return _guarded(lambda: routines.run_routine(client(), routine_id))
 
     # ---- Marketing catalog: materials, channels, posts (go/no-go) ----
+    def _catalog_read(fn):
+        try:
+            return fn()
+        except catalog.UnknownFilter as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+
     @app.get("/api/materials")
     def materials_list(title: str | None = None, type: str | None = None,
                        topic: str | None = None, lane: str | None = None):
-        return _guarded(lambda: {"materials": catalog.list_materials(
-            client(), title=title, type=type, topic=topic, lane=lane)})
+        return _guarded(lambda: _catalog_read(lambda: {"materials": catalog.list_materials(
+            client(), title=title, type=type, topic=topic, lane=lane)}))
 
     @app.get("/api/channels")
     def channels_list(platform: str | None = None, name: str | None = None):
-        return _guarded(lambda: {"channels": catalog.list_channels(
-            client(), platform=platform, name=name)})
+        return _guarded(lambda: _catalog_read(lambda: {"channels": catalog.list_channels(
+            client(), platform=platform, name=name)}))
 
     @app.get("/api/posts")
     def posts_list(material_id: str | None = None, channel_id: str | None = None,
                    status: str | None = None, platform: str | None = None):
-        return _guarded(lambda: {"posts": catalog.list_posts(
+        return _guarded(lambda: _catalog_read(lambda: {"posts": catalog.list_posts(
             client(), material_id=material_id, channel_id=channel_id,
-            status=status, platform=platform)})
+            status=status, platform=platform)}))
 
     @app.post("/api/materials")
     async def materials_create(request: Request):

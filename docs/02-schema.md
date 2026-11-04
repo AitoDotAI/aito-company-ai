@@ -135,7 +135,7 @@ treatment in `docs/10-messaging-formula.md`.
 | reach_or_views | int | per-channel outcome: LinkedIn reach / HN views |
 | upvotes | int | logged, **never** the target |
 | trials | int | PLG attribution for cold drops |
-| reactions, comments, reposts, link_clicks | int, nullable | engagement as the platform reports it; recorded, **never** a scorer feature, excluded from `relate` (restates the outcome); optional columns in `posts.csv` |
+| reactions, comments, reposts, link_clicks | int, nullable | engagement as the platform reports it; recorded, **never** a scorer feature, excluded from `relate` (restates the outcome); optional columns in `posts.csv`; a `load-posts` reload replaces the table, so counts logged live survive it only if the file carries them |
 | outcome | string | flop, modest, win |
 | won | boolean | derived: `outcome == win`; the scorer's target |
 | utm_campaign | string, nullable | the readable slug the post's links carry; unique when set; joins `web_sessions` (docs/35) |

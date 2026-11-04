@@ -100,6 +100,13 @@ async def test_catalog_reads_over_mcp_and_api(t: bt.TestCaseRun) -> None:
         t.tln(f"GET {path} -> {len(rows)} rows")
         assert rows == direct, f"GET {path} differs from the module"
 
+    t.h1("A bad filter value is the caller's error: 400, not 500")
+    for path in ("/api/posts?status=maybe", "/api/channels?platform=myspace",
+                 "/api/materials?lane=lukewarm"):
+        response = api.get(path)
+        t.tln(f"GET {path} -> {response.status_code} {response.json()}")
+        assert response.status_code == 400, f"GET {path} -> {response.status_code}"
+
 
 def test_post_result_records_engagement(t: bt.TestCaseRun) -> None:
     client = _seeded()
@@ -121,6 +128,15 @@ def test_post_result_records_engagement(t: bt.TestCaseRun) -> None:
                      sort_keys=True))
     assert all(bare.get(k) is None for k in ("reactions", "comments", "reposts", "link_clicks"))
 
+    t.h1("Re-logged without counts, the first counts survive")
+    again = log.log_post_result(client, post["post_id"], outcome="win", reach_or_views=1200,
+                                posted_at="2026-10-14")
+    t.tln(json.dumps({k: again.get(k) for k in ("outcome", "reach_or_views", "reactions",
+                                                "comments", "reposts", "link_clicks")},
+                     sort_keys=True))
+    kept = tuple(again.get(k) for k in ("reactions", "comments", "reposts", "link_clicks"))
+    assert kept == (31, 4, 2, 17), f"a re-log without counts wiped them: {kept}"
+
     t.h1("A negative count raises")
     try:
         log.log_post_result(client, other["post_id"], outcome="flop", reach_or_views=40,
@@ -130,5 +146,9 @@ def test_post_result_records_engagement(t: bt.TestCaseRun) -> None:
         t.tln(str(e))
 
     t.h1("Engagement restates the outcome, so relate excludes it")
-    t.tln(f"posts leaks: {sorted(relations.LEAKS['posts'])}")
-    assert {"reactions", "comments", "reposts", "link_clicks"} <= relations.LEAKS["posts"]
+    engagement = {"reactions", "comments", "reposts", "link_clicks"}
+    for target in ("won", "outcome"):
+        excluded = set(relations.excluded_fields("posts", target))
+        t.tln(f"relate on {target}: excludes {sorted(excluded & (engagement | {'won', 'outcome'}))}")
+        assert engagement | {"won", "outcome"} <= excluded, \
+            f"relate on {target} reports {sorted((engagement | {'won', 'outcome'}) - excluded)}"
