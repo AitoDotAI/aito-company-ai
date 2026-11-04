@@ -835,25 +835,35 @@ def log_post_result(client: AitoClient, post_id: str, outcome: str,
                     reach_or_views: int, upvotes: int = 0, trials: int = 0,
                     posted_at: str | None = None) -> dict:
     """Mark a planned post posted and record its KPIs — the measure step.
-    Re-derives `won`/`weekday`. Full-table rewrite (Aito exposes no row id)."""
+    Re-derives `won`/`weekday`. Updated in place (v2 `_modify`) and read
+    back; this used to drop and re-upload the whole posts table, so two
+    results logged at once lost one of them and a reader in between found no
+    table (the todos incident of 2026-09-26, same pattern).
+    posted_at is a plain YYYY-MM-DD, not in the future; the weekday is the
+    date's own, with no timezone conversion."""
     assert outcome in schema.POST_OUTCOMES, f"unknown outcome {outcome!r}"
-    all_posts = client.query({"from": "posts", "limit": 100000})["hits"]
-    match = [p for p in all_posts if p["post_id"] == post_id]
-    assert match, f"unknown post_id {post_id!r}"
-    row = dict(match[0])
     when = posted_at or date.today().isoformat()
-    row.update({
+    try:
+        day = date.fromisoformat(when)
+    except ValueError:
+        day = None
+    assert day is not None and len(when) == 10, f"posted_at {when!r}: expected YYYY-MM-DD"
+    assert day <= date.today(), f"posted_at {when!r} is in the future"
+    match = client.query({"from": "posts", "where": {"post_id": post_id}, "limit": 2})["hits"]
+    assert len(match) == 1, f"post_id {post_id!r}: expected one post, found {len(match)}"
+    change = {
         "status": "posted", "posted_at": when,
-        "weekday": schema.WEEKDAYS[date.fromisoformat(when[:10]).weekday()],
+        "weekday": schema.WEEKDAYS[day.weekday()],
         "outcome": outcome, "reach_or_views": int(reach_or_views),
         "upvotes": int(upvotes), "trials": int(trials),
         "won": schema.post_won("posted", outcome),
-    })
-    rewritten = [p for p in all_posts if p["post_id"] != post_id] + [row]
-    client.delete_table("posts")
-    client.create_table("posts", schema.POSTS)
-    client.upload_batch("posts", rewritten)
-    assert client.count("posts") == len(rewritten), "post rewrite row-count mismatch"
+    }
+    client.update_entries("posts", {"post_id": post_id}, change)
+    after = client.query({"from": "posts", "where": {"post_id": post_id}, "limit": 2})["hits"]
+    assert len(after) == 1, f"post {post_id}: {len(after)} rows after the update"
+    row = after[0]
+    wrong = {k: (v, row.get(k)) for k, v in change.items() if row.get(k) != v}
+    assert not wrong, f"post {post_id}: wrote/read back {wrong}"
     changelog.record(client, "post", post_id, "posted", f"post {outcome}: {reach_or_views} reach")
     return row
 

@@ -218,11 +218,13 @@ Plan a post: a material posted to a channel, with a go/no-go status
 
 ## log_post_result
 
-params: ['outcome', 'post_id', 'reach_or_views', 'trials', 'upvotes']
+params: ['outcome', 'post_id', 'posted_at', 'reach_or_views', 'trials', 'upvotes']
 required: ['outcome', 'post_id', 'reach_or_views']
 Mark a planned post posted and record its KPIs (the measure step).
     outcome: flop/modest/win; the per-platform metric is reach/views, never
-    upvotes. Re-derives `won`.
+    upvotes. posted_at: the YYYY-MM-DD it went out (default today); pass it
+    when backfilling, since the weekday derived from it is a scorer feature.
+    Re-derives `won` and `weekday`.
 
 ## log_session
 

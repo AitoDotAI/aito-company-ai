@@ -31,6 +31,16 @@ async def test_tool_registry(t: bt.TestCaseRun) -> None:
         t.tln(tool.description or "")
 
 
+async def test_log_post_result_takes_posted_at(t: bt.TestCaseRun) -> None:
+    t.h1("log_post_result accepts the date the post went out")
+    t.tln("A backfilled post logged without it is stamped today, and its weekday")
+    t.tln("(a scorer feature) with it.")
+    tool = next(x for x in await mcp.list_tools() if x.name == "log_post_result")
+    params = sorted(tool.inputSchema.get("properties", {}))
+    t.tln(f"params: {params}")
+    assert "posted_at" in params, f"log_post_result drops posted_at: {params}"
+
+
 def test_log_decision(t: bt.TestCaseRun) -> None:
     t.h1("log_decision writes a decisions row")
     client = _client()

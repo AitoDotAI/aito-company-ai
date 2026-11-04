@@ -109,3 +109,35 @@ def test_concurrent_document_writes_all_land(t: bt.TestCaseRun) -> None:
     assert ids == sorted(set(before) - {gone}), f"rows lost or duplicated: {len(before)} -> {len(ids)}"
     assert not any(isinstance(r, Exception) for r in results), "a writer failed"
     assert all(rows[d].get("topics") == "edited-concurrently" for d in edit), "an edit was lost"
+
+
+def test_concurrent_post_results_all_land(t: bt.TestCaseRun) -> None:
+    client = _client()
+    loaders.create_schema(client)
+    for load in (loaders.load_materials, loaders.load_channels, loaders.load_posts):
+        load(client, SEED_DIR)
+    before = _ids(client, "posts", "post_id")
+    t.h1("Posts before")
+    t.tln(f"{len(before)} rows")
+
+    targets = before[:3]
+    days = ["2026-10-05", "2026-10-06", "2026-10-07"]
+    calls = [lambda pid=pid, day=day, i=i: log.log_post_result(
+                 _client(), pid, outcome="modest", reach_or_views=500 + i, posted_at=day)
+             for i, (pid, day) in enumerate(zip(targets, days))]
+    results = _together(calls)
+    t.h1("Three post results logged at once")
+    for pid, r in zip(targets, results):
+        t.tln(f"{pid}: {'ERROR ' + type(r).__name__ + ': ' + str(r)[:120] if isinstance(r, Exception) else 'ok'}")
+
+    after = {r["post_id"]: r for r in client.query({"from": "posts", "limit": 100000})["hits"]}
+    ids = _ids(client, "posts", "post_id")
+    t.h1("Posts after")
+    t.tln(f"{len(ids)} rows")
+    for pid in targets:
+        r = after.get(pid, {})
+        t.tln(f"{pid} posted_at={r.get('posted_at')} weekday={r.get('weekday')} "
+              f"reach={r.get('reach_or_views')} won={r.get('won')}")
+    assert ids == before, f"rows lost or duplicated: {len(before)} -> {len(ids)}"
+    assert not any(isinstance(r, Exception) for r in results), "a writer failed"
+    assert [after[pid]["posted_at"] for pid in targets] == days, "a post result was lost"
