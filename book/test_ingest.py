@@ -126,3 +126,18 @@ def test_add_validates_loudly(t: bt.TestCaseRun) -> None:
             raise RuntimeError(f"{label}: was accepted")
         except AssertionError as e:
             t.tln(f"{label}: {str(e).split(';')[0]}")
+
+
+def test_post_result_refuses_a_bad_date(t: bt.TestCaseRun) -> None:
+    t.h1("log_post_result: posted_at is a plain YYYY-MM-DD, not in the future")
+    t.tln("The weekday (a scorer feature) is derived from the date as written,")
+    t.tln("with no timezone conversion, so anything but a plain date is refused.")
+    client = _client()
+    for bad in ["2026-10-05junk", "2026-10-05T09:00:00+02:00", "5.10.2026", "2999-01-01"]:
+        try:
+            log.log_post_result(client, "no-such-post", outcome="modest",
+                                reach_or_views=1, posted_at=bad)
+            raise RuntimeError(f"accepted posted_at {bad!r}")
+        except AssertionError as e:
+            t.tln(f"{bad!r}: {str(e)}")
+            assert "posted_at" in str(e), f"{bad!r} not refused for its date: {e}"

@@ -838,14 +838,22 @@ def log_post_result(client: AitoClient, post_id: str, outcome: str,
     Re-derives `won`/`weekday`. Updated in place (v2 `_modify`) and read
     back; this used to drop and re-upload the whole posts table, so two
     results logged at once lost one of them and a reader in between found no
-    table (the todos incident of 2026-09-26, same pattern)."""
+    table (the todos incident of 2026-09-26, same pattern).
+    posted_at is a plain YYYY-MM-DD, not in the future; the weekday is the
+    date's own, with no timezone conversion."""
     assert outcome in schema.POST_OUTCOMES, f"unknown outcome {outcome!r}"
+    when = posted_at or date.today().isoformat()
+    try:
+        day = date.fromisoformat(when)
+    except ValueError:
+        day = None
+    assert day is not None and len(when) == 10, f"posted_at {when!r}: expected YYYY-MM-DD"
+    assert day <= date.today(), f"posted_at {when!r} is in the future"
     match = client.query({"from": "posts", "where": {"post_id": post_id}, "limit": 2})["hits"]
     assert len(match) == 1, f"post_id {post_id!r}: expected one post, found {len(match)}"
-    when = posted_at or date.today().isoformat()
     change = {
         "status": "posted", "posted_at": when,
-        "weekday": schema.WEEKDAYS[date.fromisoformat(when[:10]).weekday()],
+        "weekday": schema.WEEKDAYS[day.weekday()],
         "outcome": outcome, "reach_or_views": int(reach_or_views),
         "upvotes": int(upvotes), "trials": int(trials),
         "won": schema.post_won("posted", outcome),
