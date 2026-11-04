@@ -308,13 +308,16 @@ def add_post(material_id: str, channel_id: str, tone: str, format: str,
 
 @mcp.tool()
 def log_post_result(post_id: str, outcome: str, reach_or_views: int,
-                    upvotes: int = 0, trials: int = 0) -> dict:
+                    upvotes: int = 0, trials: int = 0,
+                    posted_at: str | None = None) -> dict:
     """Mark a planned post posted and record its KPIs (the measure step).
     outcome: flop/modest/win; the per-platform metric is reach/views, never
-    upvotes. Re-derives `won`."""
+    upvotes. posted_at: the YYYY-MM-DD it went out (default today); pass it
+    when backfilling, since the weekday derived from it is a scorer feature.
+    Re-derives `won` and `weekday`."""
     return logbook.log_post_result(
         _client(), post_id=post_id, outcome=outcome, reach_or_views=reach_or_views,
-        upvotes=upvotes, trials=trials)
+        upvotes=upvotes, trials=trials, posted_at=posted_at)
 
 
 @mcp.tool()
