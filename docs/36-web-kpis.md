@@ -80,7 +80,10 @@ So `_relate` can take any event as the target, not only the KPIs. Probed on
     name. The target's own token in `co_events` is dropped as the
     self-relation. The lifts stay Aito's, with no Python arithmetic.
   - Once Antti decides the semantics, this can be simplified, but it is
-    correct under either outcome.
+    correct under either outcome. The CPO has asked aito-core to make the
+    `$and` fix exclude only the named (field, value) self-relation and keep
+    same-field co-occurrence. Once that ships, drop `co_events` and relate
+    on `events` directly, to keep the schema lean.
 
 ## Tables
 
