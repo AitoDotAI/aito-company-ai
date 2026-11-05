@@ -137,6 +137,12 @@ treatment in `docs/10-messaging-formula.md`.
 | trials | int | PLG attribution for cold drops |
 | outcome | string | flop, modest, win |
 | won | boolean | derived: `outcome == win`; the scorer's target |
+| utm_campaign | string, nullable | the readable slug the post's links carry; unique when set; joins `web_sessions` (docs/35) |
+
+## web_sessions
+
+One row per aito.ai visit, pulled daily from Amplitude. The fields, privacy
+rules and links are in `docs/35-web-analytics.md`.
 
 ## todos
 

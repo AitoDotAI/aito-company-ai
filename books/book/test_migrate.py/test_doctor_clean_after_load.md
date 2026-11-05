@@ -24,3 +24,4 @@ schema_drift: False
   changelog    present=True rows=0 missing_cols=[]
   search_contexts present=True rows=0 missing_cols=[]
   search_impressions present=True rows=0 missing_cols=[]
+  web_sessions present=True rows=0 missing_cols=[]

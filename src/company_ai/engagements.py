@@ -275,6 +275,13 @@ def weekly(client: AitoClient, as_of: dt.date, weeks: int = 8) -> dict:
     by_week: dict[str, list[dict]] = defaultdict(list)
     for t in rows:
         by_week[_week(t["ts"])].append(t)
+    # aito.ai visits from the Amplitude pull (docs/35), bots excluded
+    web = client.query({"from": "web_sessions", "where": {"$and": [
+        {"day": {"$gte": start.isoformat()}}, {"day": {"$lte": as_of.isoformat()}},
+        {"likely_bot": False}]}, "select": ["week", "onward_click"], "limit": LIMIT})["hits"]
+    web_by_week: dict[str, list[dict]] = defaultdict(list)
+    for s in web:
+        web_by_week[s["week"]].append(s)
     series = []
     d = start
     while d <= as_of:
@@ -304,6 +311,9 @@ def weekly(client: AitoClient, as_of: dt.date, weeks: int = 8) -> dict:
                                  and t["outcome"] == "conversation"),
             "meetings_per_10_first_touches": (round(10 * booked / len(first), 1)
                                               if first else None),
+            "web_sessions": len(web_by_week.get(wk, [])),
+            "web_onward_click_rate": _rate(sum(s["onward_click"] for s in web_by_week.get(wk, [])),
+                                           len(web_by_week.get(wk, []))),
         })
         d += dt.timedelta(days=7)
     deals = client.query({"from": "deals", "select": ["stage", "blocker", "lost_reason"],

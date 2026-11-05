@@ -1,0 +1,53 @@
+# Store one day from the fixture
+
+{
+ "bots": 1,
+ "day": "2026-10-05",
+ "events": 12,
+ "linked": {
+  "referrer_day": 1,
+  "utm_campaign": 1
+ },
+ "mapped": {
+  "Page View": 8,
+  "Viewed": 2
+ },
+ "multi_host_sessions": 1,
+ "sessions": 5,
+ "unknown_os": {
+  "PlayStation": 1
+ },
+ "unmapped": {
+  "Instance create": 1
+ }
+}
+
+# Stored rows
+
+{"country": "Finland", "day": "2026-10-05", "device_class": "mobile", "engaged_seconds": 270, "hour": 10, "landing_path": "/blog/every-screen-a-decision/", "likely_bot": false, "link_basis": "utm_campaign", "next_path": "/pricing/", "onward_click": true, "pages": "/blog/every-screen-a-decision/ /pricing/ /signup/", "post_id": "<li-post>", "referrer_domain": "linkedin.com", "signup_cta": true, "source": "social", "utm_campaign": "ecom-screen", "utm_medium": "social", "utm_source": "linkedin", "views": 3, "week": "2026-W41", "weekday": "mon"}
+{"country": "Germany", "day": "2026-10-05", "device_class": "desktop", "engaged_seconds": 180, "hour": 9, "landing_path": "/", "likely_bot": false, "next_path": "ecommerce.aito.ai/cart", "onward_click": true, "pages": "/ ecommerce.aito.ai/cart", "signup_cta": true, "source": "direct", "views": 2, "week": "2026-W41", "weekday": "mon"}
+{"country": "Netherlands", "day": "2026-10-05", "device_class": "desktop", "engaged_seconds": 0, "hour": 3, "landing_path": "/wp-login.php", "likely_bot": true, "onward_click": false, "pages": "/wp-login.php", "signup_cta": false, "source": "direct", "views": 1, "week": "2026-W41", "weekday": "mon"}
+{"country": "Sweden", "day": "2026-10-05", "device_class": "unknown", "engaged_seconds": 180, "hour": 16, "landing_path": "/docs/", "likely_bot": false, "next_path": "/docs/api/v2/quickstart/", "onward_click": true, "pages": "/docs/ /docs/api/v2/quickstart/ /docs/", "referrer_domain": "google.com", "signup_cta": false, "source": "organic", "views": 3, "week": "2026-W41", "weekday": "mon"}
+{"country": "United States", "day": "2026-10-05", "device_class": "desktop", "engaged_seconds": 0, "hour": 14, "landing_path": "/", "likely_bot": false, "link_basis": "referrer_day", "onward_click": false, "pages": "/", "post_id": "<hn-post>", "referrer_domain": "news.ycombinator.com", "signup_cta": false, "source": "social", "views": 1, "week": "2026-W41", "weekday": "mon"}
+
+# The LinkedIn session
+
+wrong: {}
+
+# The Hacker News bounce: a candidate link, not a bot
+
+{"likely_bot": false, "link_basis": "referrer_day", "onward_click": false, "post_id": "<hn-post>", "source": "social", "views": 1}
+
+# The probe is flagged, kept
+
+
+# The direct visit: Viewed shape, a CTA, a demo page on another host
+
+{"landing_path": "/", "next_path": "ecommerce.aito.ai/cart", "onward_click": true, "pages": "/ ecommerce.aito.ai/cart", "signup_cta": true, "source": "direct", "views": 2}
+
+# The search visit: repeats kept in order, unknown device
+
+
+# Nothing raw is stored
+
+leaks: []

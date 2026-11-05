@@ -145,6 +145,12 @@ def main() -> None:
                              "pending deletes pile up until this runs")
     cp.add_argument("--all", action="store_true",
                     help="include the append-only logs (nightly); default skips them (hourly)")
+    pw = sub.add_parser("pull-web",
+                        help="pull aito.ai visits from Amplitude into web_sessions (docs/35); "
+                             "keys AMPLITUDE_API_KEY/AMPLITUDE_SECRET_KEY in the env file")
+    pw.add_argument("--day", help="one UTC day (YYYY-MM-DD); default the last --days days")
+    pw.add_argument("--days", type=int, default=3,
+                    help="pull the last N complete UTC days (default 3: a missed run backfills)")
     ie = sub.add_parser("import-engagements",
                         help="import engagements from a CSV (docs/34): checks every row, "
                              "plans by default, writes only with --apply")
@@ -197,7 +203,7 @@ def main() -> None:
                   "load-all", "clear", "export", "export-all", "board-run",
                   "reindex-search",
                   "routines-run", "log", "complete", "archive", "backup", "restore",
-                  "import-engagements", "compact"}
+                  "import-engagements", "compact", "pull-web"}
     if args.command in WRITE_CMDS:
         _echo_target(config)
     # refuse synthetic seed into a remote instance unless forced
@@ -465,6 +471,14 @@ def main() -> None:
     elif args.command == "dashboard":
         from . import api
         api.serve(config, host=args.host, port=args.port or config.port)
+    elif args.command == "pull-web":
+        import json
+        from . import webanalytics
+        for report in webanalytics.pull(client, days=args.days, day=args.day):
+            print(json.dumps(report, sort_keys=True))
+        newest = client.query({"from": "web_sessions", "orderBy": {"$desc": "day"},
+                               "select": ["day"], "limit": 1})["hits"]
+        print(f"newest day stored: {newest[0]['day'] if newest else 'none'}")
     elif args.command == "compact":
         import time
         have = client.get_schema()["schema"]

@@ -548,8 +548,11 @@ def parse_post_row(row: dict, materials: dict, channels: dict) -> dict:
     """A material posted/planned to a channel. The material's and channel's
     attributes are denormalized onto the row so the scorer's predict is one
     query. `materials`/`channels` map id -> row (loaded first)."""
-    expected = set(schema.POSTS["columns"]) - DERIVED_POST_COLUMNS
-    _require(set(row) == expected, f"unexpected columns {sorted(set(row) ^ expected)}", row)
+    optional = {"utm_campaign"}    # post files from before 5.11.2026 don't have it
+    core = set(schema.POSTS["columns"]) - DERIVED_POST_COLUMNS - optional
+    unexpected = set(row) - core - optional
+    _require(core <= set(row) and not unexpected,
+             f"unexpected columns {sorted((core - set(row)) | unexpected)}", row)
     for field in ("post_id", "material_id", "channel_id", "status", "tone",
                   "format", "link_placement"):
         _require(bool(row[field]), f"{field} is empty", row)
@@ -584,6 +587,7 @@ def parse_post_row(row: dict, materials: dict, channels: dict) -> dict:
         "upvotes": _parse_int(row["upvotes"], "upvotes", row) if row["upvotes"] else None,
         "trials": _parse_int(row["trials"], "trials", row) if row["trials"] else None,
         "outcome": outcome,
+        "utm_campaign": row.get("utm_campaign") or None,
         # denormalized from material/channel + derived:
         "platform": channel["platform"], "ai_made": material["ai_made"],
         "lane": material["lane"], "topic": material["topic"],

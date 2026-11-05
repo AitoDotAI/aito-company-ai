@@ -1,0 +1,7 @@
+[Unit]
+Description=Company AI — pull aito.ai visits from Amplitude (daily)
+Documentation=file://%h/aito-company-ai/docs/35-web-analytics.md
+
+[Service]
+Type=oneshot
+ExecStart=%h/aito-company-ai/ops/web-pull.sh
