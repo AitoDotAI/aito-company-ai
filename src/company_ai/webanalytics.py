@@ -582,3 +582,64 @@ def onward_drivers(client: AitoClient, since: str, until: str, path: str | None 
         where["landing_path"] = path
     return relations.relate(client, "web_sessions", {"onward_click": True},
                             where=where, top_n=top_n)
+
+
+# ---- the dashboard's Web view: one bundle per filter ----
+
+WEB_VIEW_FIELDS = ["day", "hour", "landing_path", "next_path", "source", "referrer_domain",
+                   "utm_campaign", "post_id", "device_class", "country", "views",
+                   "engaged_seconds", "onward_click", "signup_cta", "likely_bot"]
+
+
+def web_view(client: AitoClient, since: str, until: str, source: str | None = None,
+             campaign: str | None = None, path: str | None = None, device: str | None = None,
+             limit: int = 25, offset: int = 0) -> dict:
+    """What the Web view shows for one filter.
+    - totals and the per-day series: counts over the matching human sessions;
+    - facets: the filter choices, from the whole window, so a chosen filter
+      doesn't hide the alternatives;
+    - drivers: Aito's _relate of onward_click over the same population;
+    - next_paths: Aito's _predict next_path when a landing page is chosen;
+    - sessions: a page of the matching rows, newest first, bots included and
+      flagged.
+    Counting and paging are formatting; every relation and prediction is Aito's
+    (rule 2)."""
+    filt = {"source": source, "utm_campaign": campaign, "landing_path": path,
+            "device_class": device}
+    rows = _rows(client, since, until, WEB_VIEW_FIELDS, filt)
+    human = [r for r in rows if not r["likely_bot"]]
+    days: dict = {}
+    for r in human:
+        d = days.setdefault(r["day"], {"day": r["day"], "sessions": 0, "onward_clicks": 0,
+                                       "signup_ctas": 0})
+        d["sessions"] += 1
+        d["onward_clicks"] += r["onward_click"]
+        d["signup_ctas"] += r["signup_cta"]
+    n = len(human)
+    totals = {"sessions": n, "onward_clicks": sum(r["onward_click"] for r in human),
+              "signup_ctas": sum(r["signup_cta"] for r in human), "bots": len(rows) - n}
+    all_rows = rows if not any(filt.values()) else _rows(
+        client, since, until, ["source", "utm_campaign", "landing_path", "device_class", "likely_bot"])
+    all_human = [r for r in all_rows if not r["likely_bot"]]
+    facets = {
+        "source": sorted({r["source"] for r in all_human}),
+        "device_class": sorted({r["device_class"] for r in all_human}),
+        "utm_campaign": [v for v, _ in _top(Counter(r["utm_campaign"] for r in all_human
+                                                    if r.get("utm_campaign")), 30)],
+        "landing_path": [v for v, _ in _top(Counter(r["landing_path"] for r in all_human), 30)],
+    }
+    where = {"likely_bot": False, "$and": [*_window(since, until), *(
+        {k: v} for k, v in filt.items() if v is not None)]}
+    drivers = relations.relate(client, "web_sessions", {"onward_click": True},
+                               where=where, top_n=10) if n else None
+    next_paths = None
+    if path:
+        request, response = predict_next_path(client, path, source=source, device_class=device)
+        next_paths = {"request": request,
+                      "hits": [{"value": h["$value"], "p": h["$p"]} for h in response.get("hits", [])]}
+    ordered = sorted(rows, key=lambda r: (r["day"], r["hour"]), reverse=True)
+    return {"since": since, "until": until,
+            "filters": {k: v for k, v in filt.items() if v is not None},
+            "totals": totals, "days": [days[d] for d in sorted(days)], "facets": facets,
+            "drivers": drivers, "next_paths": next_paths,
+            "session_total": len(rows), "sessions": ordered[offset:offset + limit]}
