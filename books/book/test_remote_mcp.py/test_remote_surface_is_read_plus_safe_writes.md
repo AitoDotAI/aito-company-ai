@@ -1,6 +1,6 @@
 # the remote tool surface (read + safe writes)
 
-54 tools exposed over HTTP:
+57 tools exposed over HTTP:
   add_channel
   add_contact
   add_deal
@@ -26,6 +26,9 @@
   engagement_kpis
   experiment_board
   funnel
+  list_channels
+  list_materials
+  list_posts
   list_users
   log_deal_update
   log_decision

@@ -251,6 +251,11 @@ POSTS = {
         "reach_or_views": {"type": "Int", "nullable": True},  # per-platform outcome (set once measured)
         "upvotes": {"type": "Int", "nullable": True},         # logged, NEVER the target
         "trials": {"type": "Int", "nullable": True},          # PLG attribution for cold drops
+        # engagement as the platform reports it; recorded, never a scorer feature
+        "reactions": {"type": "Int", "nullable": True},
+        "comments": {"type": "Int", "nullable": True},
+        "reposts": {"type": "Int", "nullable": True},
+        "link_clicks": {"type": "Int", "nullable": True},
         "outcome": {"type": "String", "nullable": True},      # flop, modest, win (once measured)
         # the readable slug its links carry as ?utm_campaign= (docs/35), unique
         # when set; an experiment's drop uses the experiment_id
@@ -925,6 +930,7 @@ PIPELINE_AREAS = {"operations", "rnd", "experiments"}
 DEADLINE_AREAS = {"operations"}
 
 # marketing enums (materials, channels, posts / messaging formula)
+POST_ENGAGEMENT = ("reactions", "comments", "reposts", "link_clicks")
 MATERIAL_TYPES = {"blog", "whitepaper", "demo", "video", "talk", "thread", "note", "other"}
 # a channel rolls up to one of these platforms; the scorer predicts per platform.
 PLATFORMS = {"linkedin", "hackernews", "reddit", "blog"}

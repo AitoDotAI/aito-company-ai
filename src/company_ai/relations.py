@@ -21,7 +21,7 @@ LEAKS = {
     "touches": {"outcome", "good_outcome", "reached", "booked"},
     "deals": {"stage", "won", "lost_reason"},
     "contacts": {"ever_touched", "ever_reached", "ever_conversation", "ever_meeting"},
-    "posts": {"outcome"},
+    "posts": {"outcome", "won", *schema.POST_ENGAGEMENT},
     "sessions": {"signed_up", "started_trial", "converted_paid"},
     # what happened during the visit defines an onward click (docs/35)
     "web_sessions": {"onward_click", "next_path", "views", "signup_cta", "engaged_seconds"},

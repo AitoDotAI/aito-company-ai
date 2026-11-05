@@ -842,14 +842,18 @@ def add_post(client: AitoClient, material_id: str, channel_id: str, tone: str,
 
 def log_post_result(client: AitoClient, post_id: str, outcome: str,
                     reach_or_views: int, upvotes: int = 0, trials: int = 0,
-                    posted_at: str | None = None) -> dict:
+                    posted_at: str | None = None, reactions: int | None = None,
+                    comments: int | None = None, reposts: int | None = None,
+                    link_clicks: int | None = None) -> dict:
     """Mark a planned post posted and record its KPIs — the measure step.
     Re-derives `won`/`weekday`. Updated in place (v2 `_modify`) and read
     back; this used to drop and re-upload the whole posts table, so two
     results logged at once lost one of them and a reader in between found no
     table (the todos incident of 2026-09-26, same pattern).
     posted_at is a plain YYYY-MM-DD, not in the future; the weekday is the
-    date's own, with no timezone conversion."""
+    date's own, with no timezone conversion. reactions/comments/reposts/
+    link_clicks are the platform's engagement counts; one not given is left
+    as it is (null on a first result), never set to 0."""
     assert outcome in schema.POST_OUTCOMES, f"unknown outcome {outcome!r}"
     when = posted_at or date.today().isoformat()
     try:
@@ -858,6 +862,10 @@ def log_post_result(client: AitoClient, post_id: str, outcome: str,
         day = None
     assert day is not None and len(when) == 10, f"posted_at {when!r}: expected YYYY-MM-DD"
     assert day <= date.today(), f"posted_at {when!r} is in the future"
+    engagement = {"reactions": reactions, "comments": comments,
+                  "reposts": reposts, "link_clicks": link_clicks}
+    for name, value in engagement.items():
+        assert value is None or int(value) >= 0, f"{name} {value!r}: expected a count >= 0"
     match = client.query({"from": "posts", "where": {"post_id": post_id}, "limit": 2})["hits"]
     assert len(match) == 1, f"post_id {post_id!r}: expected one post, found {len(match)}"
     change = {
@@ -866,6 +874,7 @@ def log_post_result(client: AitoClient, post_id: str, outcome: str,
         "outcome": outcome, "reach_or_views": int(reach_or_views),
         "upvotes": int(upvotes), "trials": int(trials),
         "won": schema.post_won("posted", outcome),
+        **{k: int(v) for k, v in engagement.items() if v is not None},
     }
     client.update_entries("posts", {"post_id": post_id}, change)
     after = client.query({"from": "posts", "where": {"post_id": post_id}, "limit": 2})["hits"]
