@@ -610,3 +610,37 @@ def test_known_source_domains_survive_as_utm(t: bt.TestCaseRun) -> None:
         if got != want:
             wrong[raw] = got
     assert not wrong, wrong
+
+
+def test_an_external_referrer_keeps_only_its_domain(t: bt.TestCaseRun) -> None:
+    """Previous Page Location is another site's full URL: its path and query
+    (search terms, an email in a link, tracking ids) and any user@ part must
+    not land. Only the host does, redacted like a path segment."""
+    at = "%" + "40"
+
+    def visit(n: int, previous: str) -> dict:
+        return {"$insert_id": f"ref-{n}", "event_type": "Page View: /", "session_id": 1000 + n,
+                "event_time": f"{DAY} 10:0{n}:00.000000", "device_id": f"dev-ref-{n}",
+                "os_name": "Chrome", "device_family": "Windows", "platform": "Web",
+                "country": "Finland", "user_properties": {},
+                "event_properties": {"[Amplitude] Page Domain": "aito.ai",
+                                     "[Amplitude] Page URL": "https://aito.ai/",
+                                     "[Amplitude] Page Location": "https://aito.ai/",
+                                     "[Amplitude] Previous Page Type": "external",
+                                     "[Amplitude] Previous Page Location": previous}}
+    cases = {
+        f"https://www.google.com/search?q=jane{at}example.test&client=x": "google.com",
+        "https://jane:pw" + "@" + "news.ycombinator.com/item?id=4242#c": "news.ycombinator.com",
+        "https://www.linkedin.com/feed/update/urn:li:activity:7390000000000000000/": "linkedin.com",
+        "https://a1b2c3d4e5f6a7b8c9d0e1f2.tracker.example/x?id=1": "<token>",
+    }
+    rows = webanalytics.sessions_from_events(
+        [visit(i, prev) for i, prev in enumerate(cases)], DAY)
+    t.h1("referrer_domain from an external previous page")
+    stored = sorted(r["referrer_domain"] for r in rows)
+    for value in stored:
+        t.tln(f"  {value}")
+    assert stored == sorted(cases.values()), stored
+    flat = json.dumps(rows)
+    for leak in ("jane", "search", "item", "activity", "client", "id=", "pw"):
+        assert leak not in flat, f"{leak!r} from a referrer URL landed in a row"

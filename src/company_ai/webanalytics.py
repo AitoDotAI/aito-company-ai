@@ -171,10 +171,15 @@ def _device_class(family: str | None) -> str:
 
 def _referrer(props: dict) -> str | None:
     """The host a session arrived from: the first page view's previous page,
-    when the SDK marks it external. Direct and internal arrivals have none."""
+    when the SDK marks it external. Direct and internal arrivals have none.
+    Only the host is kept, never the other site's path or query, and a host
+    with a token-like label (a per-visitor tracking subdomain) is <token>."""
     if props.get("[Amplitude] Previous Page Type") != "external":
         return None
-    return _host(props.get("[Amplitude] Previous Page Location"))
+    host = _host(props.get("[Amplitude] Previous Page Location"))
+    if host and any(_is_token(label) or EMAIL.search(label) for label in host.split(".")):
+        return "<token>"
+    return host
 
 
 def _source(medium: str | None, referrer: str | None) -> str:
