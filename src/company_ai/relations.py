@@ -23,6 +23,14 @@ LEAKS = {
     "contacts": {"ever_touched", "ever_reached", "ever_conversation", "ever_meeting"},
     "posts": {"outcome"},
     "sessions": {"signed_up", "started_trial", "converted_paid"},
+    # what happened during the visit defines an onward click (docs/35)
+    "web_sessions": {"onward_click", "next_path", "views", "signup_cta", "engaged_seconds"},
+}
+# fields that are never a driver, whatever the outcome: bookkeeping and
+# per-row identity a relation would only restate
+NOT_DRIVERS = {
+    "posts": {"utm_campaign"},
+    "web_sessions": {"session_key", "day", "week", "pull_run", "link_basis", "likely_bot"},
 }
 # identity and free-text fields: unique per row, or words rather than values
 _ID_SUFFIXES = ("_id", "_thread_id", "_event_id")
@@ -69,6 +77,7 @@ def excluded_fields(table: str, outcome_field: str, extra: list[str] | None = No
     out = {outcome_field, *(extra or [])}
     if outcome_field in LEAKS.get(table, set()):
         out |= LEAKS[table]
+    out |= NOT_DRIVERS.get(table, set())
     for name, col in columns.items():
         # a link id (contact_id, deal_id) is one entity, not a pattern: a
         # relation to it says "this one contact", which is not generalisable

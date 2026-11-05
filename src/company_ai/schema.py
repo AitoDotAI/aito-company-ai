@@ -659,7 +659,7 @@ WEB_SESSIONS = {
     "type": "table",
     "columns": {
         "session_key": {"type": "String"},
-        "day": {"type": "String"},                 # YYYY-MM-DD, UTC, the session's first event
+        "day": {"type": "String"},                 # YYYY-MM-DD UTC of the session's first event
         "hour": {"type": "Int"},                   # 0-23 UTC
         "weekday": {"type": "String"},
         "week": {"type": "String"},                # ISO YYYY-Www
@@ -678,9 +678,11 @@ WEB_SESSIONS = {
         "device_class": {"type": "String"},        # DEVICE_CLASSES
         "country": {"type": "String"},
         "likely_bot": {"type": "Boolean"},
-        "post_id": {"type": "String", "nullable": True, "link": "posts.post_id"},
+        "post_id": {"type": "String", "nullable": True, "link": "posts.post_id"},       # exact
+        "candidate_post_id": {"type": "String", "nullable": True, "link": "posts.post_id"},  # referrer_day
         "experiment_id": {"type": "String", "nullable": True, "link": "experiments.experiment_id"},
         "link_basis": {"type": "String", "nullable": True},  # utm_campaign, referrer_day
+        "pull_run": {"type": "String"},            # the pull that wrote the row (replace-by-run)
     },
 }
 

@@ -408,17 +408,19 @@ def web_traffic(since: str, until: str | None = None, path: str | None = None,
                 campaign: str | None = None, source: str | None = None) -> dict:
     """aito.ai visits from the daily Amplitude pull (docs/35), ISO days
     since..until (default today): per-day sessions, views, onward clicks and
-    sign-up CTAs, the top landing pages and sources, and the posts the visits
-    link to (link_basis utm_campaign is exact, referrer_day a candidate). Bots
+    sign-up CTAs, the top landing pages and sources, the posts the visits link
+    to exactly (by utm_campaign), and candidate posts apart (referrer_day). Bots
     are excluded and counted apart. Narrow by landing path, utm_campaign or
     source (organic/social/referral/direct/paid/email/other). Also returns
-    Aito's onward-click drivers: which source, landing page, device and
-    campaign go with a visitor clicking on (_relate)."""
+    Aito's onward-click drivers in the same window: which arrival context
+    (source, referrer, utm, landing page, device, country, weekday, hour)
+    goes with a visitor clicking on (_relate)."""
     from . import webanalytics
     client = _client()
     out = webanalytics.web_traffic(client, since=since, until=until or clock.today().isoformat(),
                                    path=path, campaign=campaign, source=source)
-    out["onward_drivers"] = webanalytics.onward_drivers(client)
+    out["onward_drivers"] = webanalytics.onward_drivers(
+        client, since=since, until=until or clock.today().isoformat(), path=path)
     return out
 
 

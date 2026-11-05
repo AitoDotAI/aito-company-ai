@@ -15,13 +15,14 @@ privacy check fails when the scrubbing is stubbed out.
 import gzip
 import io
 import json
+import re
 import zipfile
 from datetime import date
 from pathlib import Path
 
 import booktest as bt
 
-from company_ai import engagements, loaders, log, webanalytics
+from company_ai import engagements, loaders, log, schema, webanalytics
 from company_ai.aito import AitoClient
 from company_ai.config import SEED_DIR, Config
 
@@ -89,13 +90,23 @@ SECRETS = ["visitor-alice-7f3", "visitor-bob-2c9", "dev-0a1b2c3d",
 PATH_FIELDS = ("landing_path", "next_path", "pages")
 
 
+TOKEN = re.compile(r"[0-9a-f]{16,}|[A-Za-z0-9_]{24,}")
+# the generated ids the table is allowed to hold (session_key is the 16-hex hash)
+ID_FIELDS = {"session_key", "post_id", "candidate_post_id", "experiment_id", "pull_run"}
+
+
 def _leaks(rows) -> list[str]:
-    """Every raw identifier or query-string trace found in any stored field."""
+    """Every raw identifier, query-string trace, email or long token found in
+    any stored field but the generated ids (ID_FIELDS)."""
     found = []
     for row in rows:
         for field, value in row.items():
             text = json.dumps(value)
             found += [f"{field}: {s}" for s in SECRETS if s in text]
+            if "@" in text:
+                found.append(f"{field}: email-shaped {value!r}")
+            if field not in ID_FIELDS and TOKEN.search(text):
+                found.append(f"{field}: long token in {value!r}")
             if field in PATH_FIELDS and value and any(c in str(value) for c in "?=#"):
                 found.append(f"{field}: query/fragment in {value!r}")
             if field in PATH_FIELDS and value and "utm_" in str(value):
@@ -107,16 +118,18 @@ def test_a_day_lands_as_session_rows(t: bt.TestCaseRun) -> None:
     client, li_post, hn_post = _seeded()
     t.h1("Store one day from the fixture")
     report = webanalytics.store_day(client, DAY, _events())
-    t.tln(json.dumps(report, sort_keys=True, indent=1))
+    t.tln(json.dumps({k: v for k, v in report.items() if k != "pull_run"}, sort_keys=True, indent=1))
     assert report["mapped"] == {"Page View": 8, "Viewed": 2}, report["mapped"]
     assert report["unmapped"] == {"Instance create": 1}, report["unmapped"]
     assert report["unknown_os"] == {"PlayStation": 1}, report["unknown_os"]
+    assert (report["utm_present"], report["referrer_present"]) == (1, 3), report
 
     rows = _rows(client)
     t.h1("Stored rows")
     names = {li_post: "<li-post>", hn_post: "<hn-post>"}
     for country in sorted(rows):
-        t.tln(_masked({k: v for k, v in rows[country].items() if k != "session_key"}, names))
+        t.tln(_masked({k: v for k, v in rows[country].items()
+                       if k not in ("session_key", "pull_run")}, names))
 
     li = rows["Finland"]
     t.h1("The LinkedIn session")
@@ -133,10 +146,11 @@ def test_a_day_lands_as_session_rows(t: bt.TestCaseRun) -> None:
     t.h1("The Hacker News bounce: a candidate link, not a bot")
     hn = rows["United States"]
     t.tln(_masked({k: hn.get(k) for k in ("views", "onward_click", "likely_bot", "source",
-                                          "post_id", "link_basis")}, names))
+                                          "post_id", "candidate_post_id", "link_basis")}, names))
     assert (hn["landing_path"], hn["referrer_domain"]) == ("/", "news.ycombinator.com")
     assert (hn["views"], hn["onward_click"], hn["likely_bot"]) == (1, False, False)
-    assert (hn.get("post_id"), hn.get("link_basis")) == (hn_post, "referrer_day")
+    assert (hn.get("post_id"), hn.get("candidate_post_id"), hn.get("link_basis")) == \
+        (None, hn_post, "referrer_day")
 
     t.h1("The probe is flagged, kept")
     bot = rows["Netherlands"]
@@ -182,9 +196,11 @@ def test_the_privacy_check_fails_without_the_scrubbing(t: bt.TestCaseRun) -> Non
 def test_a_repull_replaces_the_day(t: bt.TestCaseRun) -> None:
     client, _, _ = _seeded()
     webanalytics.store_day(client, DAY, _events())
-    first = _rows(client)
+    def without_run(rows):
+        return {k: {f: v for f, v in r.items() if f != "pull_run"} for k, r in rows.items()}
+    first = without_run(_rows(client))
     webanalytics.store_day(client, DAY, _events())
-    second = _rows(client)
+    second = without_run(_rows(client))
     t.h1("Stored twice")
     t.tln(f"{len(first)} rows, then {len(second)}")
     assert first == second, "a re-pull changed the stored rows"
@@ -247,3 +263,202 @@ def test_reads_and_the_dogfood_queries(t: bt.TestCaseRun) -> None:
     t.tln(f"response: {json.dumps(response, sort_keys=True)[:600]}")
     assert request["predict"] == "next_path" and request["from"] == "web_sessions"
     _clean(client)
+
+
+def _event(when: str, path: str, session_id, device_id="dev-midnight", **props) -> dict:
+    """One page view, in the export's shape, at `when` (YYYY-MM-DD HH:MM:SS UTC)."""
+    url = props.pop("url", f"https://aito.ai{path}")
+    return {"$insert_id": f"ins-{session_id}-{when}-{path}", "event_type": f"Page View: {path}",
+            "event_time": f"{when}.000000", "session_id": session_id, "device_id": device_id,
+            "user_id": None, "ip_address": "198.51.100.77", "os_name": "Windows",
+            "country": "Finland", "platform": "Web",
+            "event_properties": {"[Amplitude] Page Path": path, "[Amplitude] Page Domain": "aito.ai",
+                                 "[Amplitude] Page URL": url, **props},
+            "user_properties": {}}
+
+
+def test_onward_drivers_use_only_pre_visit_context(t: bt.TestCaseRun) -> None:
+    client, _, _ = _seeded()
+    webanalytics.store_day(client, DAY, _events())
+    t.h1("relate on onward_click: the fields left as drivers")
+    result = webanalytics.onward_drivers(client, since=DAY, until=DAY)
+    columns = set(schema.WEB_SESSIONS["columns"])
+    drivers = sorted(columns - set(result["excluded"]))
+    t.tln(f"drivers: {drivers}")
+    t.tln(f"where: {json.dumps(result['where'], sort_keys=True)}")
+    assert drivers == sorted(webanalytics.PRE_VISIT), \
+        f"onward_click is explained by {sorted(set(drivers) - set(webanalytics.PRE_VISIT))}"
+    _clean(client)
+
+
+def test_a_session_crossing_midnight_is_one_row_on_its_first_day(t: bt.TestCaseRun) -> None:
+    client, li_post, _ = _seeded()
+    campaign = "?utm_source=linkedin&utm_medium=social&utm_campaign=ecom-screen"
+    events = [
+        # starts on 5.10 at 23:58, goes on past midnight
+        _event("2026-10-05 23:58:00", "/blog/every-screen-a-decision/", 1759708680000,
+               url="https://aito.ai/blog/every-screen-a-decision/" + campaign,
+               referrer="https://www.linkedin.com/"),
+        _event("2026-10-06 00:01:00", "/pricing/", 1759708680000),
+        # started on 4.10, so it is not a 5.10 visit
+        _event("2026-10-04 23:59:00", "/docs/", 1759622340000, device_id="dev-early"),
+        _event("2026-10-05 00:02:00", "/docs/api/v2/quickstart/", 1759622340000, device_id="dev-early"),
+    ]
+    for day in ("2026-10-04", "2026-10-05", "2026-10-06"):
+        webanalytics.store_day(client, day, events)
+    rows = client.query({"from": "web_sessions", "where": {"$and": [
+        {"day": {"$gte": "2026-10-04"}}, {"day": {"$lte": "2026-10-06"}}]}, "limit": 100})["hits"]
+    t.h1("Rows over the three days")
+    for r in sorted(rows, key=lambda r: (r["day"], r["hour"])):
+        t.tln(f"{r['day']} {r['hour']:02d}h {r['landing_path']} -> {r.get('next_path')} "
+              f"views={r['views']} source={r['source']} linked={r.get('post_id') == li_post}")
+    assert len(rows) == 2, f"expected 2 sessions, got {len(rows)}"
+    late = next(r for r in rows if r["landing_path"] == "/blog/every-screen-a-decision/")
+    assert (late["day"], late["hour"], late["views"], late["next_path"], late["weekday"]) == \
+        ("2026-10-05", 23, 2, "/pricing/", "mon"), late
+    assert late.get("post_id") == li_post
+    early = next(r for r in rows if r["landing_path"] == "/docs/")
+    assert (early["day"], early["views"]) == ("2026-10-04", 2), early
+    assert not any(r["landing_path"] == "/pricing/" for r in rows), "a fake landing after midnight"
+    for day in ("2026-10-04", "2026-10-06"):
+        client.delete_entries("web_sessions", {"day": day})
+    _clean(client)
+
+
+def test_odd_events_are_counted_not_fatal(t: bt.TestCaseRun) -> None:
+    client, _, _ = _seeded()
+    pathless = _event("2026-10-05 08:00:00", "/x/", 1759651200000, device_id="dev-odd")
+    pathless["event_type"] = "Viewed Something odd"
+    pathless["event_properties"] = {"[Amplitude] Page Title": "Something odd"}
+    no_session = [_event("2026-10-05 12:00:00", "/a/", -1, device_id="dev-nosession"),
+                  _event("2026-10-05 15:00:00", "/b/", -1, device_id="dev-nosession")]
+    t.h1("A Viewed event without a path, and two events without a session")
+    report = webanalytics.store_day(client, DAY, [pathless, *no_session])
+    t.tln(json.dumps({k: report[k] for k in ("sessions", "mapped", "unmapped", "no_session_events")},
+                     sort_keys=True))
+    assert report["unmapped"] == {"Viewed (no path)": 1}, report["unmapped"]
+    assert (report["sessions"], report["no_session_events"]) == (2, 2), report
+    rows = client.query({"from": "web_sessions", "where": {"day": DAY}, "limit": 10})["hits"]
+    assert sorted(r["landing_path"] for r in rows) == ["/a/", "/b/"], rows
+    _clean(client)
+
+
+def test_a_failed_upload_keeps_the_old_rows(t: bt.TestCaseRun) -> None:
+    client, _, _ = _seeded()
+    webanalytics.store_day(client, DAY, _events())
+    before = sorted(r["session_key"] for r in _rows(client).values())
+    upload = client.upload_batch
+    client.upload_batch = lambda table, rows: (_ for _ in ()).throw(RuntimeError("upload died"))
+    try:
+        webanalytics.store_day(client, DAY, _events())
+        raise AssertionError("store_day returned after a failed upload")
+    except RuntimeError as e:
+        t.h1("A re-pull whose upload fails")
+        t.tln(f"raised: {e}")
+    finally:
+        client.upload_batch = upload
+    after = sorted(r["session_key"] for r in _rows(client).values())
+    t.tln(f"{len(before)} rows before, {len(after)} after")
+    assert after == before, "a failed upload emptied the day"
+    _clean(client)
+
+
+def test_pull_stores_days_independently_and_flags_empty_days(t: bt.TestCaseRun) -> None:
+    client, _, _ = _seeded()
+    events = _events()
+
+    def fetch(day):
+        if day == "2026-10-04":
+            raise RuntimeError("Amplitude 503")
+        return events if day == DAY else []
+
+    t.h1("Three days, the first fails, the third has no visits")
+    reports = webanalytics.pull(client, days=3, today=date(2026, 10, 7), fetch=fetch)
+    for r in reports:
+        t.tln(json.dumps({k: r.get(k) for k in ("day", "sessions", "error", "empty")}, sort_keys=True))
+    by_day = {r["day"]: r for r in reports}
+    assert by_day["2026-10-04"]["error"] == "RuntimeError: Amplitude 503"
+    assert by_day[DAY]["sessions"] == 5 and not by_day[DAY].get("error")
+    assert by_day["2026-10-06"]["empty"] is True
+    _clean(client)
+
+
+def test_paths_and_utm_values_are_redacted(t: bt.TestCaseRun) -> None:
+    client, _, _ = _seeded()
+    email = "jane" + "@" + "example.test"          # built here, so no tracked file holds one
+    token = "9f8e7d6c5b4a39281706f5e4d3c2b1a0"
+    events = [
+        _event("2026-10-05 07:00:00", f"/unsubscribe/{email}/", 1759647600000, device_id="dev-r1"),
+        _event("2026-10-05 07:01:00", f"/reset/{token}", 1759647600000, device_id="dev-r1"),
+        _event("2026-10-05 07:30:00", "/blog/", 1759649400000, device_id="dev-r2",
+               url=f"https://aito.ai/blog/?utm_source=News%20Letter&utm_campaign={email}"
+                   "&utm_medium=" + "x" * 90),
+    ]
+    rows = webanalytics.sessions_from_events(events, DAY)
+    t.h1("Stored paths and utm values")
+    for r in rows:
+        t.tln(json.dumps({k: r[k] for k in ("pages", "utm_source", "utm_medium", "utm_campaign")},
+                         sort_keys=True))
+    leaks = _leaks(rows)
+    t.tln(f"leaks: {leaks}")
+    assert not leaks, leaks
+    first = next(r for r in rows if r["landing_path"].startswith("/unsubscribe"))
+    assert first["pages"] == "/unsubscribe/<email>/ /reset/<token>", first["pages"]
+    blog = next(r for r in rows if r["landing_path"] == "/blog/")
+    assert (blog["utm_source"], blog["utm_campaign"], blog["utm_medium"]) == \
+        ("news_letter", "<invalid>", "<invalid>"), blog
+
+    t.h1("The same, with the redaction stubbed out, must leak")
+    redact = webanalytics._redact_segment
+    try:
+        webanalytics._redact_segment = lambda segment: segment
+        stubbed = webanalytics.sessions_from_events(events, DAY)
+    finally:
+        webanalytics._redact_segment = redact
+    found = _leaks(stubbed)
+    for leak in found:
+        t.tln(leak)
+    assert any("email" in f for f in found) and any("token" in f for f in found), found
+
+
+def test_a_duplicate_slug_links_nothing_and_is_reported(t: bt.TestCaseRun) -> None:
+    client, li_post, _ = _seeded()
+    twin = client.query({"from": "posts", "where": {"post_id": li_post}, "limit": 1})["hits"][0]
+    twin = {**twin, "post_id": "po-twin"}
+    client.upload_batch("posts", [twin])          # add_post refuses this; a race would not
+    t.h1("Two posts share the slug ecom-screen")
+    report = webanalytics.store_day(client, DAY, _events())
+    t.tln(json.dumps(report["duplicate_campaigns"], sort_keys=True).replace(li_post, "<li-post>"))
+    assert report["duplicate_campaigns"] == {"ecom-screen": sorted([li_post, "po-twin"])}
+    li = _rows(client)["Finland"]
+    assert li.get("post_id") is None and li.get("link_basis") is None, li
+    client.delete_entries("posts", {"post_id": "po-twin"})
+    _clean(client)
+
+
+def test_a_visit_before_the_post_is_not_credited(t: bt.TestCaseRun) -> None:
+    client, li_post, _ = _seeded()
+    client.update_entries("posts", {"post_id": li_post}, {"posted_at": "2026-10-09"})
+    t.h1("The ecom-screen post went out on 9.10, after the 5.10 visit")
+    report = webanalytics.store_day(client, DAY, _events())
+    li = _rows(client)["Finland"]
+    t.tln(json.dumps({"post_id": li.get("post_id"), "link_basis": li.get("link_basis"),
+                      "before_post": report["before_post"]}, sort_keys=True))
+    assert li.get("post_id") is None and report["before_post"] == 1, (li, report)
+    _clean(client)
+
+
+def test_the_weekly_kpis_work_before_web_sessions_exists(t: bt.TestCaseRun) -> None:
+    client = _client()
+    loaders.create_schema(client)
+    client.delete_table("web_sessions")
+    try:
+        t.h1("engagement_kpis on an instance without web_sessions")
+        out = engagements.weekly(client, as_of=date(2026, 10, 7), weeks=1)
+        t.tln(json.dumps({"web": out.get("web"),
+                          "week": {k: out["weeks"][-1][k] for k in ("web_sessions",
+                                                                    "web_onward_click_rate")}},
+                         sort_keys=True))
+        assert out["weeks"][-1]["web_sessions"] is None and "not created" in out["web"], out
+    finally:
+        loaders.create_schema(client)

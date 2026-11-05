@@ -36,11 +36,11 @@ carries a planted signal the funnel books depend on. Feeding the funnel from
 | field | type | from |
 |---|---|---|
 | session_key | String | sha256 of Amplitude session_id + device_id, first 16 hex characters. Stable, so a re-pull replaces the same row. One key per session: the same visitor's next session gets an unrelated key, so rows are not linkable across sessions. Still pseudonymous, not anonymous: someone holding the raw Amplitude data could recompute it. |
-| day | String (YYYY-MM-DD) | the session's first event, UTC |
+| day | String (YYYY-MM-DD) | UTC date of the session's first event; hour, weekday and week are of the same event |
 | hour | Int | 0-23 UTC |
 | weekday | String | derived from day |
 | week | String (YYYY-Www) | ISO week of day: the grain of the weekly rollups |
-| landing_path | String | path of the first page view, query string and fragment dropped. A page on another host (a demo such as ecommerce.aito.ai) is written host-first: `ecommerce.aito.ai/cart`; aito.ai pages are the bare path. |
+| landing_path | String | path of the first page view, query string and fragment dropped, an email-shaped segment as `<email>` and a token-like one (16+ hex, or 24+ characters without hyphens) as `<token>`. A page on another host (a demo such as ecommerce.aito.ai) is written host-first: `ecommerce.aito.ai/cart`; aito.ai pages are the bare path. |
 | next_path | String, nullable | the second page viewed, written like landing_path; null when the session ended on its landing page |
 | pages | Text | the paths viewed, in event-time order, space-joined, repeats kept (lets text match find "visited /pricing"; the order is the visit's) |
 | views | Int | page views in the session |
@@ -49,13 +49,15 @@ carries a planted signal the funnel books depend on. Feeding the funnel from
 | signup_cta | Boolean | a sign-up CTA or sign-up page was reached |
 | referrer_domain | String, nullable | the referrer's host, `www.` dropped; null when direct |
 | source | String | organic, social, referral, direct, paid, email, or other. Classified from utm_medium first, then referrer_domain, by a fixed table in code. This is a label lookup, not a heuristic score. |
-| utm_source, utm_medium, utm_campaign | String, nullable | from the landing URL's query string |
+| utm_source, utm_medium, utm_campaign | String, nullable | from the landing URL's query string (`[Amplitude] Page URL`, else `Page Location`), lowercased, spaces as `_`; a value that isn't a short plain slug (up to 64 of a-z 0-9 . _ -, no hex token) is stored as `<invalid>` and counted |
 | device_class | String | desktop, mobile, tablet, or unknown, from os_name by a fixed table. Each pull reports how many sessions came out unknown, and the OS names behind them. |
 | country | String | Amplitude's country |
 | likely_bot | Boolean | the landing path is a known probe (/admin, /wp-login.php, dotfile probes, /airdrops, …; a fixed prefix list). Flagged, never dropped (rule 3). A one-page session is NOT flagged: that is an ordinary bounce. |
-| post_id | String, nullable, link to posts | see Linking |
-| experiment_id | String, nullable, link to experiments | see Linking |
+| post_id | String, nullable, link to posts | the exact link: utm_campaign is that post's slug, and the visit is on or after the day it went out |
+| candidate_post_id | String, nullable, link to posts | the referrer_day candidate, kept apart from post_id so exact and guessed links never mix in a query |
+| experiment_id | String, nullable, link to experiments | utm_campaign equals an experiment_id |
 | link_basis | String, nullable | utm_campaign or referrer_day: how the link was made |
+| pull_run | String | the pull that wrote the row: a re-pull uploads under a new run, checks it, then deletes the old run's rows |
 
 ## Privacy
 
@@ -68,10 +70,16 @@ with query strings, and user properties. None of that is kept.
   the table above. Anything not named there (ip_address, user_id, device_id,
   user_properties, the full URL) is never copied. Paths are cut at `?` and
   `#`; the three utm values are the only part of a query string kept.
+- **Redaction.** A path segment that holds an email-shaped string becomes
+  `<email>`; one that holds a token (16+ hex characters, or 24+ characters
+  without hyphens, so a long blog slug survives) becomes `<token>`. utm
+  values are charset-limited (see Fields).
 - **A gate that can fail.** The book scans every field of every stored row
-  for the fixture's IPs, device ids and user ids, and for `?`, `=` and `utm_`
-  inside paths. It runs a second time with the path scrubber and the key hash
-  stubbed out, and must then report the leaks. That shows the check is live.
+  for the fixture's IPs, device ids and user ids, for `?`, `=` and `utm_`
+  inside paths, for any `@`, and for long tokens outside the generated id
+  fields. It runs again with the path scrubber and the key hash
+  stubbed out, and again with the segment redaction stubbed out, and each
+  time must report the leaks. That shows the check is live.
 - Real rows live only in the internal Aito; the repo ships a synthetic
   fixture (rule 6).
 
@@ -120,7 +128,7 @@ website lane, not a workaround here.
 
 ## Linking to posts and experiments
 
-1. **utm_campaign = the post's slug.** This is exact. Each post stores a
+1. **utm_campaign = the post's slug.** This is exact, and fills `post_id`. Each post stores a
    readable `utm_campaign` (posts.utm_campaign, set with `add_post`, unique
    when set), and its links carry it: `?utm_source=linkedin&utm_medium=social
    &utm_campaign=ecom-screen`. The convention was agreed with the CRO session
@@ -137,9 +145,14 @@ website lane, not a workaround here.
      linkedin referrer traffic.
 2. **Otherwise, referrer_day.** The referrer's platform matches exactly one
    post posted on that platform within the 3 days before the session (for
-   example news.ycombinator.com → the one HN post that week). It is marked
-   `link_basis = referrer_day`, and the tools show it as a candidate, not a
-   fact. With zero or several posts matching, nothing is linked.
+   example news.ycombinator.com → the one HN post that week). It fills
+   `candidate_post_id`, never `post_id`, and `link_basis = referrer_day`; the
+   tools list candidates apart. With zero or several posts matching, nothing
+   is linked.
+3. **Never credited:** a visit dated before the post went out (counted as
+   `before_post`), and a slug that two posts share. add_post refuses a
+   duplicate, but that check is not atomic, so the pull reports any
+   duplicate in `duplicate_campaigns` and links neither post.
 
 `log_experiment_result` is not changed. `web_traffic(campaign=<id>)` returns
 the numbers to pre-fill it: sessions, onward clicks, sign-up CTAs.
@@ -149,8 +162,30 @@ the numbers to pre-fill it: sessions, onward clicks, sign-up CTAs.
 - `company-ai pull-web [--day YYYY-MM-DD] [--days N]` calls Amplitude's
   Export API (`https://analytics.eu.amplitude.com/api/2/export`, one UTC day
   per call, a zip of gzipped JSON lines). It groups the page views into
-  sessions and replaces that day's rows: delete `day = D`, then upload.
-  Re-running a day gives the same rows.
+  sessions and replaces that day's rows. The new rows are uploaded under a
+  fresh `pull_run` and counted. Only then are the earlier runs' rows for the
+  day deleted, so a failed upload leaves the day as it was. Re-running a day
+  gives the same rows. A day that comes back with no sessions keeps what it
+  had and is flagged `empty`.
+- **A session belongs to the day of its first event.** Pulling day D reads
+  the Export API from D-1 00h to D+1 23h and keeps the sessions whose first
+  event is on D. A visit from 23:58 to 00:01 is one row on its first day,
+  and the morning half never shows up as a fake landing on the next day. The
+  Export API may select by upload time rather than event time, which the
+  wide window also covers; check it on the first real day.
+- **Each day is stored on its own.** A day that fails is reported with its
+  error, the other days still run, and the command exits non-zero at the
+  end.
+- **Counted, never fatal:** a page-view event with no path (`Viewed (no
+  path)` in `unmapped`), unknown OSes, and events with Amplitude's "no
+  session" id (-1). Each of those events becomes its own one-event
+  session, so a device's whole day is never merged into one, and is counted
+  in `no_session_events`.
+- **Silent nulls show up.** Each run counts sessions with a utm value
+  (`utm_present`) and with a referrer (`referrer_present`). In the real
+  Browser SDK these may sit elsewhere than the fixture assumes (user
+  properties, or Page Location instead of Page URL). Zeros on a real day mean
+  the parser is looking in the wrong place.
 - **Page views have two shapes**, and both are mapped: `Page View: /path`
   (one event type per path, 918 of them) and `Viewed …` (titled views with a
   path property). Each run reports how many events it mapped per shape, and
@@ -158,9 +193,6 @@ the numbers to pre-fill it: sessions, onward clicks, sign-up CTAs.
   event counts towards onward_click and signup_cta. Consolidating the site to
   one page-view event with a path property is a website-lane ticket; the
   parser keeps working on both shapes.
-- A session that crosses midnight UTC is split: each day's part becomes its
-  own row, keyed the same and filed under the day it was pulled for. That's
-  rare at this traffic, and accepted for v1.
 - The key is `AMPLITUDE_API_KEY` + `AMPLITUDE_SECRET_KEY` in `.env.aito`.
   Antti places them himself; no agent creates, reads or relays them. Without
   them the command fails loudly.
@@ -185,12 +217,19 @@ the numbers to pre-fill it: sessions, onward clicks, sign-up CTAs.
   default and counted separately.
 - The weekly KPIs (`engagement_kpis`, docs/34) get `web_sessions` and
   `web_onward_click_rate` per ISO week, bots excluded; a rate over no
-  sessions is null.
+  sessions is null. On an instance without the table yet, both are null and
+  `web` carries a note, rather than the KPIs failing.
 
 ## The dogfood query
 
-`_relate` over `web_sessions` (bots excluded) on `onward_click: true`, with
-source, landing_path, device_class, weekday and utm_campaign as drivers. It
+`_relate` over `web_sessions` (bots excluded, in the asked window and
+landing path) on `onward_click: true`. The drivers are only the context a
+visitor arrives with: source, referrer_domain, utm_source, utm_medium,
+utm_campaign, landing_path, device_class, country, weekday and hour. What
+happens during the visit (next_path, views, signup_cta, engaged_seconds)
+defines the click, so `relations.LEAKS` excludes it, and bookkeeping
+(session_key, day, week, pull_run, link fields, likely_bot) is never a
+driver. It
 answers "which source and landing page produce onward clicks". `_predict
 onward_click` given a planned post's platform and landing page gives a
 before-posting estimate, next to `score_post`. Both are Aito queries; Python

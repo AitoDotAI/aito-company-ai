@@ -2,6 +2,12 @@
 
 {
  "bots": 1,
+ "candidate_posts": [
+  {
+   "post_id": "<hn-post>",
+   "sessions": 1
+  }
+ ],
  "days": [
   {
    "day": "2026-10-05",
@@ -13,13 +19,7 @@
  ],
  "posts": [
   {
-   "link_basis": "utm_campaign",
    "post_id": "<li-post>",
-   "sessions": 1
-  },
-  {
-   "link_basis": "referrer_day",
-   "post_id": "<hn-post>",
    "sessions": 1
   }
  ],

@@ -1,9 +1,14 @@
 # Store one day from the fixture
 
 {
+ "before_post": 0,
  "bots": 1,
  "day": "2026-10-05",
+ "duplicate_campaigns": {},
+ "empty": false,
  "events": 12,
+ "invalid_utm": 0,
+ "kept_previous": 0,
  "linked": {
   "referrer_day": 1,
   "utm_campaign": 1
@@ -13,13 +18,16 @@
   "Viewed": 2
  },
  "multi_host_sessions": 1,
+ "no_session_events": 0,
+ "referrer_present": 3,
  "sessions": 5,
  "unknown_os": {
   "PlayStation": 1
  },
  "unmapped": {
   "Instance create": 1
- }
+ },
+ "utm_present": 1
 }
 
 # Stored rows
@@ -28,7 +36,7 @@
 {"country": "Germany", "day": "2026-10-05", "device_class": "desktop", "engaged_seconds": 180, "hour": 9, "landing_path": "/", "likely_bot": false, "next_path": "ecommerce.aito.ai/cart", "onward_click": true, "pages": "/ ecommerce.aito.ai/cart", "signup_cta": true, "source": "direct", "views": 2, "week": "2026-W41", "weekday": "mon"}
 {"country": "Netherlands", "day": "2026-10-05", "device_class": "desktop", "engaged_seconds": 0, "hour": 3, "landing_path": "/wp-login.php", "likely_bot": true, "onward_click": false, "pages": "/wp-login.php", "signup_cta": false, "source": "direct", "views": 1, "week": "2026-W41", "weekday": "mon"}
 {"country": "Sweden", "day": "2026-10-05", "device_class": "unknown", "engaged_seconds": 180, "hour": 16, "landing_path": "/docs/", "likely_bot": false, "next_path": "/docs/api/v2/quickstart/", "onward_click": true, "pages": "/docs/ /docs/api/v2/quickstart/ /docs/", "referrer_domain": "google.com", "signup_cta": false, "source": "organic", "views": 3, "week": "2026-W41", "weekday": "mon"}
-{"country": "United States", "day": "2026-10-05", "device_class": "desktop", "engaged_seconds": 0, "hour": 14, "landing_path": "/", "likely_bot": false, "link_basis": "referrer_day", "onward_click": false, "pages": "/", "post_id": "<hn-post>", "referrer_domain": "news.ycombinator.com", "signup_cta": false, "source": "social", "views": 1, "week": "2026-W41", "weekday": "mon"}
+{"candidate_post_id": "<hn-post>", "country": "United States", "day": "2026-10-05", "device_class": "desktop", "engaged_seconds": 0, "hour": 14, "landing_path": "/", "likely_bot": false, "link_basis": "referrer_day", "onward_click": false, "pages": "/", "referrer_domain": "news.ycombinator.com", "signup_cta": false, "source": "social", "views": 1, "week": "2026-W41", "weekday": "mon"}
 
 # The LinkedIn session
 
@@ -36,7 +44,7 @@ wrong: {}
 
 # The Hacker News bounce: a candidate link, not a bot
 
-{"likely_bot": false, "link_basis": "referrer_day", "onward_click": false, "post_id": "<hn-post>", "source": "social", "views": 1}
+{"candidate_post_id": "<hn-post>", "likely_bot": false, "link_basis": "referrer_day", "onward_click": false, "post_id": null, "source": "social", "views": 1}
 
 # The probe is flagged, kept
 
