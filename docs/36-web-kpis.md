@@ -57,6 +57,14 @@ So `_relate` can take any event as the target, not only the KPIs. Probed on
   in place since v2.8.1. So we use the `$and` form. Once aito-core's
   relate fix lands, the plain `$has` form works too, and the queries can
   move to it.
+- The `$and` form lists the target itself among its relations: in the probe,
+  `events $has sandbox_created` with lift 5.41 was the self-relation, not a
+  driver (aito-core, 5.11). `relations.relate` drops the outcome's whole
+  field, but that would also drop the co-occurring events here. So the
+  events insight drops only the same field AND value as the target and keeps
+  the field's other values. The phase-1 book asserts the self-relation is
+  gone and another event remains. The bare `$has` form, once fixed, excludes
+  it in the engine.
 
 ## Tables
 
