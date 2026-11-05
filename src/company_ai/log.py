@@ -815,15 +815,24 @@ def _material_channel_maps(client: AitoClient) -> tuple[dict, dict]:
 
 
 def add_post(client: AitoClient, material_id: str, channel_id: str, tone: str,
-             format: str, link_placement: str, status: str = "planned") -> dict:
+             format: str, link_placement: str, status: str = "planned",
+             utm_campaign: str | None = None) -> dict:
     """Plan a post: a material posted to a channel, with a go/no-go status
     (default planned). KPIs arrive once posted, via log_post_result. The
-    material's/channel's attributes are denormalized in (validated live)."""
+    material's/channel's attributes are denormalized in (validated live).
+    `utm_campaign` is the readable slug the post's links carry (docs/35):
+    a lowercase slug, unique across posts."""
+    if utm_campaign is not None:
+        assert re.fullmatch(r"[a-z0-9][a-z0-9-]{0,63}", utm_campaign), \
+            f"utm_campaign {utm_campaign!r}: expected a lowercase slug (a-z, 0-9, -)"
+        taken = client.query({"from": "posts", "where": {"utm_campaign": utm_campaign},
+                              "limit": 1})["hits"]
+        assert not taken, f"utm_campaign {utm_campaign!r} is already post {taken[0]['post_id']}"
     raw = {
         "post_id": _stamp("po"), "material_id": material_id, "channel_id": channel_id,
         "status": status, "posted_at": "", "tone": tone, "format": format,
         "link_placement": link_placement, "reach_or_views": "", "upvotes": "",
-        "trials": "", "outcome": "",
+        "trials": "", "outcome": "", "utm_campaign": utm_campaign or "",
     }
     materials, channels = _material_channel_maps(client)
     row = parse_post_row(raw, materials, channels)

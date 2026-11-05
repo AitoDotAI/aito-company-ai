@@ -209,12 +209,15 @@ Add a destination to the channels catalog (live Aito). name e.g.
 
 ## add_post
 
-params: ['channel_id', 'format', 'link_placement', 'material_id', 'status', 'tone']
+params: ['channel_id', 'format', 'link_placement', 'material_id', 'status', 'tone', 'utm_campaign']
 required: ['channel_id', 'format', 'link_placement', 'material_id', 'tone']
 Plan a post: a material posted to a channel, with a go/no-go status
     (planned/go/no_go/posted). KPIs arrive via log_post_result once posted.
     tone: narrate/announce/explainer/builder; link_placement: comment/body/n_a.
     The material's/channel's attributes denormalize in (validated live).
+    utm_campaign: the readable slug the post's links carry (?utm_campaign=),
+    unique across posts, so its aito.ai visits link to it exactly (docs/35);
+    for an experiment's drop, use the experiment_id.
 
 ## log_post_result
 
@@ -265,6 +268,30 @@ The weekly engagement KPIs (docs/34), the last `weeks` ISO weeks: volume
     email replies, meetings booked and held, meetings per 10 first touches;
     plus open deals by blocker and lost deals by reason. A rate over nothing
     is null, never 0.
+
+## web_traffic
+
+params: ['campaign', 'path', 'since', 'source', 'until']
+required: ['since']
+aito.ai visits from the daily Amplitude pull (docs/35), ISO days
+    since..until (default today): per-day sessions, views, onward clicks and
+    sign-up CTAs, the top landing pages and sources, the posts the visits link
+    to exactly (by utm_campaign), and candidate posts apart (referrer_day). Bots
+    are excluded and counted apart. Narrow by landing path, utm_campaign or
+    source (organic/social/referral/direct/paid/email/other). Also returns
+    Aito's onward-click drivers in the same window: which arrival context
+    (source, referrer, utm, landing page, device, country, weekday, hour)
+    goes with a visitor clicking on (_relate).
+
+## web_paths
+
+params: ['device_class', 'landing_path', 'since', 'source', 'until']
+required: ['since']
+Where aito.ai visitors went next (docs/35): landing -> next path counts
+    by source and device class, per ISO week, bots excluded. With a
+    landing_path, also Aito's prediction of the next page given how the
+    visitor arrived (P(next_path | landing, source, device), with $why): thin
+    data shows as low $p.
 
 ## deal_pipeline
 

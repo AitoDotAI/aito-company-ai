@@ -1,0 +1,9 @@
+[Unit]
+Description=Company AI — daily aito.ai web analytics pull (04:30 Europe/Helsinki)
+
+[Timer]
+OnCalendar=*-*-* 04:30:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -21,7 +21,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 from . import changelog, loaders, schema, search
-from .aito import AitoClient
+from .aito import AitoClient, AitoError
 
 # the import's columns, in order (the contract the backfill is written to)
 IMPORT_COLUMNS = ["touch_id", "contact_id", "deal_id", "ts", "channel", "direction",
@@ -275,6 +275,21 @@ def weekly(client: AitoClient, as_of: dt.date, weeks: int = 8) -> dict:
     by_week: dict[str, list[dict]] = defaultdict(list)
     for t in rows:
         by_week[_week(t["ts"])].append(t)
+    # aito.ai visits from the Amplitude pull (docs/35), bots excluded. An
+    # instance that predates web_sessions answers null with a note, not a 500.
+    web_note = None
+    web_by_week: dict[str, list[dict]] | None = defaultdict(list)
+    try:
+        web = client.query({"from": "web_sessions", "where": {"$and": [
+            {"day": {"$gte": start.isoformat()}}, {"day": {"$lte": as_of.isoformat()}},
+            {"likely_bot": False}]}, "select": ["week", "onward_click"], "limit": LIMIT})["hits"]
+    except AitoError as e:
+        if "web_sessions not found" not in str(e):
+            raise
+        web, web_by_week = [], None
+        web_note = "web_sessions not created yet (docs/35: run create-schema)"
+    for s in web:
+        web_by_week[s["week"]].append(s)
     series = []
     d = start
     while d <= as_of:
@@ -304,13 +319,16 @@ def weekly(client: AitoClient, as_of: dt.date, weeks: int = 8) -> dict:
                                  and t["outcome"] == "conversation"),
             "meetings_per_10_first_touches": (round(10 * booked / len(first), 1)
                                               if first else None),
+            "web_sessions": None if web_by_week is None else len(web_by_week.get(wk, [])),
+            "web_onward_click_rate": None if web_by_week is None else _rate(
+                sum(s["onward_click"] for s in web_by_week.get(wk, [])), len(web_by_week.get(wk, []))),
         })
         d += dt.timedelta(days=7)
     deals = client.query({"from": "deals", "select": ["stage", "blocker", "lost_reason"],
                           "limit": LIMIT})["hits"]
     open_deals = [x for x in deals if x["stage"] in schema.DEAL_OPEN_STAGES]
     return {
-        "as_of": as_of.isoformat(), "weeks": series,
+        "as_of": as_of.isoformat(), "weeks": series, "web": web_note,
         "open_deals_by_blocker": dict(Counter(x["blocker"] for x in open_deals).most_common()),
         "lost_by_reason": dict(Counter(x.get("lost_reason") or "not recorded"
                                        for x in deals if x["stage"] == "closed_lost").most_common()),

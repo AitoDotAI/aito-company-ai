@@ -252,6 +252,9 @@ POSTS = {
         "upvotes": {"type": "Int", "nullable": True},         # logged, NEVER the target
         "trials": {"type": "Int", "nullable": True},          # PLG attribution for cold drops
         "outcome": {"type": "String", "nullable": True},      # flop, modest, win (once measured)
+        # the readable slug its links carry as ?utm_campaign= (docs/35), unique
+        # when set; an experiment's drop uses the experiment_id
+        "utm_campaign": {"type": "String", "nullable": True},
         # denormalized from channel/material for a single-query predict:
         "platform": {"type": "String"},          # from the channel
         "ai_made": {"type": "String"},            # from the material
@@ -649,6 +652,40 @@ SEARCH_VECTORS = {
 
 # Creation order matters: touches links to contacts; posts denormalize from
 # materials + channels (load those first).
+# web_sessions — one row per aito.ai visit, pulled daily from Amplitude
+# (docs/35-web-analytics.md). Aggregated to the session: no user ids, device
+# ids, IPs or query strings. session_key is per session, pseudonymous.
+WEB_SESSIONS = {
+    "type": "table",
+    "columns": {
+        "session_key": {"type": "String"},
+        "day": {"type": "String"},                 # YYYY-MM-DD UTC of the session's first event
+        "hour": {"type": "Int"},                   # 0-23 UTC
+        "weekday": {"type": "String"},
+        "week": {"type": "String"},                # ISO YYYY-Www
+        "landing_path": {"type": "String"},        # other hosts host-first: ecommerce.aito.ai/cart
+        "next_path": {"type": "String", "nullable": True},
+        "pages": {"type": "Text", "analyzer": "whitespace"},  # visit order, repeats kept
+        "views": {"type": "Int"},
+        "engaged_seconds": {"type": "Int"},
+        "onward_click": {"type": "Boolean"},
+        "signup_cta": {"type": "Boolean"},
+        "referrer_domain": {"type": "String", "nullable": True},
+        "source": {"type": "String"},              # WEB_SOURCES
+        "utm_source": {"type": "String", "nullable": True},
+        "utm_medium": {"type": "String", "nullable": True},
+        "utm_campaign": {"type": "String", "nullable": True},
+        "device_class": {"type": "String"},        # DEVICE_CLASSES
+        "country": {"type": "String"},
+        "likely_bot": {"type": "Boolean"},
+        "post_id": {"type": "String", "nullable": True, "link": "posts.post_id"},       # exact
+        "candidate_post_id": {"type": "String", "nullable": True, "link": "posts.post_id"},  # referrer_day
+        "experiment_id": {"type": "String", "nullable": True, "link": "experiments.experiment_id"},
+        "link_basis": {"type": "String", "nullable": True},  # utm_campaign, referrer_day
+        "pull_run": {"type": "String"},            # the pull that wrote the row (replace-by-run)
+    },
+}
+
 TABLES = {
     "users": USERS, "assignments": ASSIGNMENTS, "tokens": TOKENS,
     # companies before contacts/deals — it is their `company_id` link target.
@@ -661,6 +698,7 @@ TABLES = {
     "chat_messages": CHAT_MESSAGES,
     "changelog": CHANGELOG,
     "search_contexts": SEARCH_CONTEXTS, "search_impressions": SEARCH_IMPRESSIONS,
+    "web_sessions": WEB_SESSIONS,
 }
 
 SEGMENTS = {"accounting", "erp", "ecommerce", "analytics", "consultancy", "other"}
@@ -689,6 +727,9 @@ OUTCOMES = {
     "reply",
     "no_reply",
 }
+WEB_SOURCES = {"organic", "social", "referral", "direct", "paid", "email", "other"}
+DEVICE_CLASSES = {"desktop", "mobile", "tablet", "unknown"}
+WEB_LINK_BASES = {"utm_campaign", "referrer_day"}
 WEEKDAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 
 # The operator's week. These defaults are THIS repository's operator

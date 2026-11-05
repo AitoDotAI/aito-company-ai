@@ -296,14 +296,19 @@ def add_channel(name: str, platform: str) -> dict:
 
 @mcp.tool()
 def add_post(material_id: str, channel_id: str, tone: str, format: str,
-             link_placement: str, status: str = "planned") -> dict:
+             link_placement: str, status: str = "planned",
+             utm_campaign: str | None = None) -> dict:
     """Plan a post: a material posted to a channel, with a go/no-go status
     (planned/go/no_go/posted). KPIs arrive via log_post_result once posted.
     tone: narrate/announce/explainer/builder; link_placement: comment/body/n_a.
-    The material's/channel's attributes denormalize in (validated live)."""
+    The material's/channel's attributes denormalize in (validated live).
+    utm_campaign: the readable slug the post's links carry (?utm_campaign=),
+    unique across posts, so its aito.ai visits link to it exactly (docs/35);
+    for an experiment's drop, use the experiment_id."""
     return logbook.add_post(
         _client(), material_id=material_id, channel_id=channel_id, tone=tone,
-        format=format, link_placement=link_placement, status=status)
+        format=format, link_placement=link_placement, status=status,
+        utm_campaign=utm_campaign)
 
 
 @mcp.tool()
@@ -396,6 +401,46 @@ def engagement_kpis(weeks: int = 8) -> dict:
     plus open deals by blocker and lost deals by reason. A rate over nothing
     is null, never 0."""
     return engagements.weekly(_client(), as_of=clock.today(), weeks=weeks)
+
+
+@mcp.tool()
+def web_traffic(since: str, until: str | None = None, path: str | None = None,
+                campaign: str | None = None, source: str | None = None) -> dict:
+    """aito.ai visits from the daily Amplitude pull (docs/35), ISO days
+    since..until (default today): per-day sessions, views, onward clicks and
+    sign-up CTAs, the top landing pages and sources, the posts the visits link
+    to exactly (by utm_campaign), and candidate posts apart (referrer_day). Bots
+    are excluded and counted apart. Narrow by landing path, utm_campaign or
+    source (organic/social/referral/direct/paid/email/other). Also returns
+    Aito's onward-click drivers in the same window: which arrival context
+    (source, referrer, utm, landing page, device, country, weekday, hour)
+    goes with a visitor clicking on (_relate)."""
+    from . import webanalytics
+    client = _client()
+    out = webanalytics.web_traffic(client, since=since, until=until or clock.today().isoformat(),
+                                   path=path, campaign=campaign, source=source)
+    out["onward_drivers"] = webanalytics.onward_drivers(
+        client, since=since, until=until or clock.today().isoformat(), path=path)
+    return out
+
+
+@mcp.tool()
+def web_paths(since: str, until: str | None = None, landing_path: str | None = None,
+              source: str | None = None, device_class: str | None = None) -> dict:
+    """Where aito.ai visitors went next (docs/35): landing -> next path counts
+    by source and device class, per ISO week, bots excluded. With a
+    landing_path, also Aito's prediction of the next page given how the
+    visitor arrived (P(next_path | landing, source, device), with $why): thin
+    data shows as low $p."""
+    from . import webanalytics
+    client = _client()
+    out = webanalytics.web_paths(client, since=since, until=until or clock.today().isoformat(),
+                                 landing_path=landing_path, source=source,
+                                 device_class=device_class)
+    if landing_path:
+        _, response = webanalytics.predict_next_path(client, landing_path, source, device_class)
+        out["next_path_prediction"] = response.get("hits", [])
+    return out
 
 
 @mcp.tool()
