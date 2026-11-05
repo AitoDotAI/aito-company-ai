@@ -22,7 +22,7 @@ _recommend: {"from": "sessions", "goal": {"converted_paid": true}, "limit": 8, "
     cause source=referral with=0.1410 without=0.0479 mi=0.0029
     cause device=mobile with=0.0321 without=0.0759 mi=0.0015
     cause landing_page=/blog with=0.0238 without=0.0696 mi=0.0012
-    lever source: referral=0.1500, organic=0.0718, paid_search=0.0520, direct=0.0435, social=0.0357
+    lever source: referral=0.1390, organic=0.0670, paid_search=0.0470, direct=0.0339, social=0.0253
 
 # Website funnel: source=referral
 
@@ -74,4 +74,4 @@ _recommend: {"from": "sessions", "goal": {"converted_paid": true}, "limit": 8, "
     cause landing_page=/pricing with=0.1220 without=0.0113 mi=0.0086
     cause source=referral with=0.0789 without=0.0222 mi=0.0023
     cause landing_page=/blog with=0.0000 without=0.0417 mi=0.0020
-    lever source: referral=0.1413, organic=0.0592, paid_search=0.0554, direct=0.0516, social=0.0374
+    lever source: referral=0.1305, organic=0.0550, paid_search=0.0498, direct=0.0400, social=0.0261

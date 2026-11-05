@@ -24,7 +24,7 @@ _recommend: {"from": "contacts", "goal": {"ever_meeting": true}, "limit": 8, "re
     cause country=Netherlands with=0.5000 without=0.0517 mi=0.0138
     cause role=COO with=0.5000 without=0.0517 mi=0.0138
     cause segment=consultancy with=0.5000 without=0.0517 mi=0.0138
-    lever source: referral=0.2499, warm=0.1600, trigger=0.0768, cold=0.0454
+    lever source: referral=0.1452, warm=0.1265, trigger=0.0124, cold=0.0073
 
 # Sales funnel: segment=accounting
 
@@ -53,4 +53,4 @@ _recommend: {"from": "contacts", "goal": {"ever_meeting": true}, "limit": 8, "re
     cause notes_tags=founder-led with=0.3333 without=0.0000 mi=0.0534
     cause source=referral with=0.3333 without=0.0000 mi=0.0534
     cause role=Head of Finance with=0.2500 without=0.0000 mi=0.0326
-    lever source: referral=0.5841, trigger=0.1380, cold=0.0888, warm=0.0733
+    lever source: referral=0.2763, warm=0.0682, trigger=0.0121, cold=0.0076

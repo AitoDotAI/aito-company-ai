@@ -22,7 +22,7 @@ _recommend: {"from": "sessions", "goal": {"converted_paid": true}, "limit": 8, "
     cause source=referral with=0.2000 without=0.0000 mi=0.0211
     cause device=desktop with=0.1111 without=0.0000 mi=0.0124
     cause landing_page=/pricing with=0.1111 without=0.0000 mi=0.0124
-    lever source: referral=0.2851, direct=0.1991, social=0.1422, paid_search=0.0996, organic=0.0905
+    lever source: referral=0.1607, direct=0.0250, social=0.0179, paid_search=0.0125, organic=0.0114
 
 # Sales funnel, tiny dataset
 
@@ -50,4 +50,4 @@ _recommend: {"from": "contacts", "goal": {"ever_meeting": true}, "limit": 8, "re
     cause ai_lifecycle=operating with=1.0000 without=0.2222 mi=0.0409
     cause country=Germany with=1.0000 without=0.2222 mi=0.0409
     cause role=Finance Manager with=1.0000 without=0.2222 mi=0.0409
-    lever source: trigger=0.6630, cold=0.3978, referral=0.3315, warm=0.2473
+    lever source: trigger=0.5556, cold=0.3333, referral=0.2778, warm=0.1667
