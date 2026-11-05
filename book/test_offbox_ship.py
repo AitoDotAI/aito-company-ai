@@ -29,7 +29,11 @@ def _run(dest: str | None, sas: str | None) -> tuple[int, str, list[str]]:
         for tool in ("azcopy", "rsync"):
             stub = tmp / tool
             # each stub also echoes its arguments, as a failing azcopy prints its URL
-            stub.write_text(f'#!/usr/bin/env bash\necho "{tool} $*" >> "{calls}"\necho "{tool} $*"\n')
+            # and azcopy leaves a job plan holding the URL, as the real one does
+            plan = ('mkdir -p "$AZCOPY_JOB_PLAN_LOCATION" && echo "$AZCOPY_JOB_PLAN_LOCATION" '
+                    f'>> "{tmp}/plandirs" && echo "$*" > "$AZCOPY_JOB_PLAN_LOCATION/job.plan"\n'
+                    if tool == "azcopy" else "")
+            stub.write_text(f'#!/usr/bin/env bash\necho "{tool} $*" >> "{calls}"\necho "{tool} $*"\n{plan}')
             stub.chmod(0o755)
         env = {k: v for k, v in os.environ.items() if not k.startswith("COMPANY_AI_OFFBOX")}
         env.update({"AZCOPY": str(tmp / "azcopy"), "RSYNC": str(tmp / "rsync")})
@@ -40,6 +44,10 @@ def _run(dest: str | None, sas: str | None) -> tuple[int, str, list[str]]:
         done = subprocess.run([str(SHIP), str(staging), staging.name], env=env,
                               capture_output=True, text=True)
         recorded = calls.read_text().splitlines() if calls.exists() else []
+        plandirs = tmp / "plandirs"
+        for d in (plandirs.read_text().split() if plandirs.exists() else []):
+            assert not Path(d).exists(), f"azcopy's job plan was left behind in {d}"
+            assert not d.startswith(str(Path.home())), f"job plans under the home dir: {d}"
         out = (done.stdout + done.stderr).replace(str(tmp), "<tmp>")
         return done.returncode, out, [c.replace(str(tmp), "<tmp>") for c in recorded]
 

@@ -32,6 +32,11 @@ case "$dest" in
       echo "offbox-ship: $dest is an Azure container but COMPANY_AI_OFFBOX_SAS is not set — refusing to run." >&2
       exit 2
     fi
+    # azcopy keeps job plans and logs under ~/.azcopy, and a plan can hold the
+    # full URL with the SAS: keep them in a private temp dir, removed on exit
+    work="$(mktemp -d)"
+    trap 'rm -rf "$work"' EXIT
+    export AZCOPY_JOB_PLAN_LOCATION="$work/plans" AZCOPY_LOG_LOCATION="$work/logs"
     echo "offbox-ship: azcopy -> ${dest%/}/$name/"
     "${AZCOPY:-azcopy}" copy "$staging/*" "${dest%/}/$name?$sas" --recursive \
       --overwrite=true --check-length=false --put-md5 --log-level=ERROR 2>&1 \
