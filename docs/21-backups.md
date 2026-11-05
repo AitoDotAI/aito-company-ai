@@ -107,6 +107,17 @@ systemctl --user edit company-ai-backup-offbox.service   # set COMPANY_AI_OFFBOX
 systemctl --user enable --now company-ai-backup-offbox.timer  # daily 03:50
 ```
 
+**Azure blob destination.** With `COMPANY_AI_OFFBOX_DEST=https://<account>.blob.core.windows.net/company-ai`
+the dump is uploaded with azcopy (from nixpkgs, nothing to install) under one
+dated prefix per run, `offbox-<UTC stamp>/`. It is authorised by
+`COMPANY_AI_OFFBOX_SAS`, which the operator sets in the same service drop-in:
+a container-scoped SAS with **create and write only**, no delete or list, so
+this machine cannot wipe the history. It expires and is rotated yearly. The SAS
+never appears in the script's output (`ops/offbox-ship.sh` blanks it;
+`book/test_offbox_ship.py`). The storage account is aito-azure's: Standard_LRS,
+Cool tier, West Europe. Retention is a lifecycle rule (delete after 90 days)
+plus a 14-day soft delete on that side, for under €0.10/month.
+
 The destination has **no default** and the script refuses to run without
 `COMPANY_AI_OFFBOX_DEST` — an on-box-only copy that *looks* like a backup is
 worse than none. Staging lands in `.backups/` (gitignored: it is the real

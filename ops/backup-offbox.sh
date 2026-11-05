@@ -8,8 +8,12 @@
 #
 #   COMPANY_AI_OFFBOX_DEST=/mnt/backups/company-ai        ops/backup-offbox.sh
 #   COMPANY_AI_OFFBOX_DEST=user@host:/srv/backups/company-ai ops/backup-offbox.sh
+#   COMPANY_AI_OFFBOX_DEST=https://<account>.blob.core.windows.net/company-ai \
+#     COMPANY_AI_OFFBOX_SAS=<create+write SAS> ops/backup-offbox.sh
 #
-# Any rsync-addressable destination works (local path, remote over ssh). The
+# Any rsync-addressable destination works (local path, remote over ssh), and
+# an https:// Azure blob container is uploaded with azcopy (ops/offbox-ship.sh;
+# azcopy comes from nixpkgs, so nothing needs installing). The
 # dump is the REAL dataset, so the destination is operator-configured and never
 # defaulted: with no destination this refuses to run rather than quietly leave
 # the dump on the box it is meant to survive (rule 3 — no silent data handling).
@@ -27,7 +31,8 @@ export COMPANY_AI_ENV="${COMPANY_AI_ENV:-.env.aito}"
 if [ -z "${COMPANY_AI_OFFBOX_DEST:-}" ]; then
   echo "backup-offbox: COMPANY_AI_OFFBOX_DEST is not set — refusing to run." >&2
   echo "  An on-box-only copy is not an off-box backup. Set it to an rsync" >&2
-  echo "  destination, e.g. /mnt/backups/company-ai or user@host:/srv/backups." >&2
+  echo "  destination, e.g. /mnt/backups/company-ai or user@host:/srv/backups," >&2
+  echo "  or an Azure container https://<account>.blob.core.windows.net/<container>." >&2
   exit 2
 fi
 
@@ -49,8 +54,10 @@ if [ "$count" -eq 0 ]; then
 fi
 echo "backup-offbox: $count tables exported"
 
-echo "backup-offbox: syncing -> $COMPANY_AI_OFFBOX_DEST/offbox-$stamp"
-rsync -a --mkpath "$staging/" "$COMPANY_AI_OFFBOX_DEST/offbox-$stamp/"
+case "$COMPANY_AI_OFFBOX_DEST" in
+  https://*) nix-shell -p azure-storage-azcopy --run "'$REPO/ops/offbox-ship.sh' '$staging' 'offbox-$stamp'" ;;
+  *)         "$REPO/ops/offbox-ship.sh" "$staging" "offbox-$stamp" ;;
+esac
 
 # rotate local staging only; the off-box side is retained by whatever policy
 # the destination has (that is deliberately not this script's business).
