@@ -132,6 +132,31 @@ def _session_key(session_id, device_id) -> str:
     return hashlib.sha256(f"{session_id}:{device_id}".encode()).hexdigest()[:16]
 
 
+# the labels _source returns besides MEDIUM_SOURCES' values
+_SOURCE_LABELS = {"other", "direct", "organic", "social", "referral"}
+
+
+def _vocabulary_problems(medium_sources: dict, os_devices: dict) -> list[str]:
+    """Labels the classification tables can produce that the web_sessions
+    vocabularies don't hold. Checked at import, so a mismatch fails the
+    books rather than a real day (2026-11-03 failed on one)."""
+    problems = [f"source {label!r} (from utm_medium {medium!r}) is not in WEB_SESSION_SOURCES"
+                for medium, label in medium_sources.items()
+                if label not in schema.WEB_SESSION_SOURCES]
+    problems += [f"source {label!r} is not in WEB_SESSION_SOURCES"
+                 for label in sorted(_SOURCE_LABELS - schema.WEB_SESSION_SOURCES)]
+    problems += [f"device_class {label!r} (from device_family {family!r}) is not in DEVICE_CLASSES"
+                 for family, label in os_devices.items()
+                 if label not in schema.DEVICE_CLASSES]
+    if "unknown" not in schema.DEVICE_CLASSES:
+        problems.append("device_class 'unknown' is not in DEVICE_CLASSES")
+    return problems
+
+
+_problems = _vocabulary_problems(MEDIUM_SOURCES, OS_DEVICES)
+assert not _problems, _problems
+
+
 def _host(url: str | None) -> str | None:
     if not url:
         return None
