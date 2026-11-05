@@ -65,6 +65,22 @@ So `_relate` can take any event as the target, not only the KPIs. Probed on
   the field's other values. The phase-1 book asserts the self-relation is
   gone and another event remains. The bare `$has` form, once fixed, excludes
   it in the engine.
+- **Don't depend on same-field co-occurrence from `_relate`.** aito-core's
+  relate fix makes the `$and` form exclude every field it names. On a
+  multi-valued `events` field, that likely drops every other event value too,
+  not only the self-relation. aito-core is checking, and a semantics ticket for
+  Antti may follow. So co-occurrence never comes from the field the condition
+  names:
+  - For the preselected KPIs: relate against the `kpi_*` Boolean columns,
+    which are separate fields, so the other KPIs come back as relations
+    whatever the engine decides.
+  - For any event: each session row also carries `co_events`, a second Text
+    field with the same tokens as `events`. The condition names `events`, and
+    the co-occurring events are read from `co_events`, a field it doesn't
+    name. The target's own token in `co_events` is dropped as the
+    self-relation. The lifts stay Aito's, with no Python arithmetic.
+  - Once Antti decides the semantics, this can be simplified, but it is
+    correct under either outcome.
 
 ## Tables
 
@@ -73,6 +89,7 @@ So `_relate` can take any event as the target, not only the KPIs. Probed on
 | Field | Type | Meaning |
 |---|---|---|
 | events | Text, whitespace | every event token in the session, in order |
+| co_events | Text, whitespace | the same tokens, for co-occurrence relations (see above) |
 | kpi_pricing_page … kpi_api_keys | Boolean | one per KPI: the session had one of its events |
 | visitor_key | String | HMAC-SHA256(salt, device_id), see Privacy |
 
