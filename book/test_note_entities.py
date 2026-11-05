@@ -102,3 +102,34 @@ def test_contact_endpoint_ensures_company(t: bt.TestCaseRun) -> None:
     })["hits"]
     t.tln(f"contact.company_id.name={hits[0].get('company_id.name')!r}")
     assert hits[0].get("company_id.name") == "OrbitWorks"
+
+
+def test_every_write_naming_a_company_ensures_it(t: bt.TestCaseRun) -> None:
+    """add_contact, add_deal and add_document each create the company row
+    when they name a company that has none. MCP calls them directly, without
+    the endpoint's ensure step, and on 5.11.2026 internal had 15 contacts
+    pointing at 14 companies that had no row: dangling links the knowledge
+    graph could not draw."""
+    client = _client()
+    loaders.create_schema(client)
+    loaders.load_companies(client, SEED_DIR)
+    loaders.load_rolodex(client, SEED_DIR)
+    loaders.load_deals(client, SEED_DIR)
+    loaders.load_documents(client, SEED_DIR)
+    names = {"contact": "Quarkline Oy", "deal": "Bramble Analytics", "document": "Tessellate AB"}
+    for name in names.values():
+        assert loaders.company_slug(name) not in _company_ids(client)
+
+    log.add_contact(client, name="Ivo Lind", company=names["contact"], role="CFO",
+                    segment="other", tier="C", ai_lifecycle="none", source="cold",
+                    country="Finland", phone_present=False, email_present=True)
+    log.add_deal(client, company=names["deal"], segment="other", stage="lead",
+                 value_eur=5000, probability=10, champion_present=False)
+    log.add_document(client, title="Intro call", body="Talked about pricing.",
+                     kind="internal", company=names["document"])
+    t.h1("A write naming a new company, through the log layer MCP uses")
+    ids = _company_ids(client)
+    for via, name in names.items():
+        cid = loaders.company_slug(name)
+        t.tln(f"  {via:8} {name!r} -> company row {cid!r}: {cid in ids}")
+    assert all(loaders.company_slug(n) in ids for n in names.values())
