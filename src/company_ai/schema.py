@@ -676,7 +676,7 @@ WEB_SESSIONS = {
         "onward_click": {"type": "Boolean"},
         "signup_cta": {"type": "Boolean"},
         "referrer_domain": {"type": "String", "nullable": True},
-        "source": {"type": "String"},              # WEB_SOURCES
+        "source": {"type": "String"},              # WEB_SESSION_SOURCES
         "utm_source": {"type": "String", "nullable": True},
         "utm_medium": {"type": "String", "nullable": True},
         "utm_campaign": {"type": "String", "nullable": True},
@@ -732,7 +732,9 @@ OUTCOMES = {
     "reply",
     "no_reply",
 }
-WEB_SOURCES = {"organic", "social", "referral", "direct", "paid", "email", "other"}
+# web_sessions' own; the sessions table's WEB_SOURCES (below) is a different,
+# configurable vocabulary, and sharing the name let it shadow this one
+WEB_SESSION_SOURCES = {"organic", "social", "referral", "direct", "paid", "email", "other"}
 DEVICE_CLASSES = {"desktop", "mobile", "tablet", "unknown"}
 WEB_LINK_BASES = {"utm_campaign", "referrer_day"}
 WEEKDAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
