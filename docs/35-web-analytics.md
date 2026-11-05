@@ -40,7 +40,7 @@ carries a planted signal the funnel books depend on. Feeding the funnel from
 | hour | Int | 0-23 UTC |
 | weekday | String | derived from day |
 | week | String (YYYY-Www) | ISO week of day: the grain of the weekly rollups |
-| landing_path | String | path of the first page view, query string and fragment dropped, an email-shaped segment as `<email>` and a token-like one (16+ hex, or 24+ characters without hyphens) as `<token>`. A page on another host (a demo such as ecommerce.aito.ai) is written host-first: `ecommerce.aito.ai/cart`; aito.ai pages are the bare path. |
+| landing_path | String | path of the first page view, query string and fragment dropped, each segment judged after percent-decoding: an email-shaped one becomes `<email>`, a token-like one `<token>` (see Privacy). A page on another host (a demo such as ecommerce.aito.ai) is written host-first: `ecommerce.aito.ai/cart`; aito.ai pages are the bare path. |
 | next_path | String, nullable | the second page viewed, written like landing_path; null when the session ended on its landing page |
 | pages | Text | the paths viewed, in event-time order, space-joined, repeats kept (lets text match find "visited /pricing"; the order is the visit's) |
 | views | Int | page views in the session |
@@ -49,7 +49,7 @@ carries a planted signal the funnel books depend on. Feeding the funnel from
 | signup_cta | Boolean | a sign-up CTA or sign-up page was reached |
 | referrer_domain | String, nullable | the referrer's host, `www.` dropped; null when direct |
 | source | String | organic, social, referral, direct, paid, email, or other. Classified from utm_medium first, then referrer_domain, by a fixed table in code. This is a label lookup, not a heuristic score. |
-| utm_source, utm_medium, utm_campaign | String, nullable | from the landing URL's query string (`[Amplitude] Page URL`, else `Page Location`), lowercased, spaces as `_`; a value that isn't a short plain slug (up to 64 of a-z 0-9 . _ -, no hex token) is stored as `<invalid>` and counted |
+| utm_source, utm_medium, utm_campaign | String, nullable | from the landing URL's query string (`[Amplitude] Page URL`, else `Page Location`), lowercased, spaces as `_`. A value that isn't a short plain slug (up to 64 of a-z 0-9 - _, no dots, no token) is stored as `<invalid>` and counted, so an email or a domain never lands. |
 | device_class | String | desktop, mobile, tablet, or unknown, from os_name by a fixed table. Each pull reports how many sessions came out unknown, and the OS names behind them. |
 | country | String | Amplitude's country |
 | likely_bot | Boolean | the landing path is a known probe (/admin, /wp-login.php, dotfile probes, /airdrops, …; a fixed prefix list). Flagged, never dropped (rule 3). A one-page session is NOT flagged: that is an ordinary bounce. |
@@ -70,14 +70,18 @@ with query strings, and user properties. None of that is kept.
   the table above. Anything not named there (ip_address, user_id, device_id,
   user_properties, the full URL) is never copied. Paths are cut at `?` and
   `#`; the three utm values are the only part of a query string kept.
-- **Redaction.** A path segment that holds an email-shaped string becomes
-  `<email>`; one that holds a token (16+ hex characters, or 24+ characters
-  without hyphens, so a long blog slug survives) becomes `<token>`. utm
-  values are charset-limited (see Fields).
+- **Redaction.** Each path segment is percent-decoded and then judged. One
+  holding an email-shaped string becomes `<email>`. One holding a token
+  becomes `<token>`. A token is a UUID, a JWT, 16+ hex characters with a
+  digit, 16+ mixed-case alphanumerics with a digit, or 24+ base64url
+  characters with an uppercase letter and a digit. Lowercase slugs survive,
+  including `predictive_database_benchmarks` and
+  `2020-state-of-ai-in-finland-report-highlights`. utm values are
+  charset-limited (see Fields).
 - **A gate that can fail.** The book scans every field of every stored row
   for the fixture's IPs, device ids and user ids, for `?`, `=` and `utm_`
-  inside paths, for any `@`, and for long tokens outside the generated id
-  fields. It runs again with the path scrubber and the key hash
+  inside paths, for any `@` or `%40`, and for long tokens outside the
+  generated id fields. It runs again with the path scrubber and the key hash
   stubbed out, and again with the segment redaction stubbed out, and each
   time must report the leaks. That shows the check is live.
 - Real rows live only in the internal Aito; the repo ships a synthetic
@@ -164,12 +168,25 @@ the numbers to pre-fill it: sessions, onward clicks, sign-up CTAs.
   per call, a zip of gzipped JSON lines). It groups the page views into
   sessions and replaces that day's rows. The new rows are uploaded under a
   fresh `pull_run` and counted. Only then are the earlier runs' rows for the
-  day deleted, so a failed upload leaves the day as it was. Re-running a day
+  day deleted, so a failed upload leaves the day as it was. If the count or
+  a delete fails after the upload, the new run's rows are deleted before the
+  error is raised, so the day is never doubled. Re-running a day
   gives the same rows. A day that comes back with no sessions keeps what it
   had and is flagged `empty`.
+- **One pull at a time.** A pull takes a lock per instance (a file in the
+  temp directory). A second pull, say the timer and a manual run, exits at
+  once with a message instead of doubling a day.
+- **A broken run exits non-zero.** These fail the run:
+  - a day that errored;
+  - a day with events but no sessions, meaning the page-view events were
+    renamed or the parser is looking in the wrong place;
+  - a newest stored day more than 2 days old, or no day at all.
+  A day with no events at all is only a warning.
 - **A session belongs to the day of its first event.** Pulling day D reads
   the Export API from D-1 00h to D+1 23h and keeps the sessions whose first
-  event is on D. A visit from 23:58 to 00:01 is one row on its first day,
+  event is on D. The window's end is clamped to the current hour. What the
+  API does with an end in the future is unverified, so it is never sent
+  one. A visit from 23:58 to 00:01 is one row on its first day,
   and the morning half never shows up as a fake landing on the next day. The
   Export API may select by upload time rather than event time, which the
   wide window also covers; check it on the first real day.

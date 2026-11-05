@@ -15,9 +15,10 @@ privacy check fails when the scrubbing is stubbed out.
 import gzip
 import io
 import json
+import os
 import re
 import zipfile
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 import booktest as bt
@@ -103,7 +104,7 @@ def _leaks(rows) -> list[str]:
         for field, value in row.items():
             text = json.dumps(value)
             found += [f"{field}: {s}" for s in SECRETS if s in text]
-            if "@" in text:
+            if "@" in text or "%40" in text.lower():
                 found.append(f"{field}: email-shaped {value!r}")
             if field not in ID_FIELDS and TOKEN.search(text):
                 found.append(f"{field}: long token in {value!r}")
@@ -417,7 +418,7 @@ def test_paths_and_utm_values_are_redacted(t: bt.TestCaseRun) -> None:
         webanalytics._redact_segment = redact
     found = _leaks(stubbed)
     for leak in found:
-        t.tln(leak)
+        t.tln(leak.split(" '")[0])      # the kind, not the value: no email in a tracked book
     assert any("email" in f for f in found) and any("token" in f for f in found), found
 
 
@@ -462,3 +463,133 @@ def test_the_weekly_kpis_work_before_web_sessions_exists(t: bt.TestCaseRun) -> N
         assert out["weeks"][-1]["web_sessions"] is None and "not created" in out["web"], out
     finally:
         loaders.create_schema(client)
+
+
+def test_a_failed_check_after_upload_removes_the_new_run(t: bt.TestCaseRun) -> None:
+    client, _, _ = _seeded()
+    webanalytics.store_day(client, DAY, _events())
+    before = sorted(r["session_key"] for r in _rows(client).values())
+    query = client.query
+
+    def miscount(body):
+        where = body.get("where") or {}
+        if body.get("limit") == 0 and isinstance(where, dict) and "pull_run" in where:
+            return {"total": -1, "hits": []}
+        return query(body)
+
+    client.query = miscount
+    try:
+        webanalytics.store_day(client, DAY, _events())
+        raise RuntimeError("store_day returned after a failed check")
+    except AssertionError as e:
+        t.h1("A re-pull whose landed-row check fails")
+        t.tln(f"raised: {str(e)[:120]}")
+    finally:
+        client.query = query
+    hits = client.query({"from": "web_sessions", "where": {"day": DAY}, "limit": 1000})["hits"]
+    t.tln(f"{len(before)} rows before, {len(hits)} after, runs {len({h['pull_run'] for h in hits})}")
+    assert sorted(h["session_key"] for h in hits) == before, "the failed run was left in place"
+    _clean(client)
+
+
+def test_a_second_pull_at_once_is_refused(t: bt.TestCaseRun) -> None:
+    client = _client()
+    t.h1("A pull while another holds the lock")
+    with webanalytics.pull_lock(client):
+        try:
+            webanalytics.pull(client, days=1, today=date(2026, 10, 6), fetch=lambda d: [])
+            raise RuntimeError("a second pull ran")
+        except webanalytics.PullLocked as e:
+            t.tln(f"refused: {str(e).split(' (lock')[0]}")
+    t.h1("Once released, a pull runs")
+    reports = webanalytics.pull(client, days=1, today=date(2026, 10, 6), fetch=lambda d: [])
+    t.tln(f"{len(reports)} day(s) pulled")
+    assert len(reports) == 1
+
+
+def test_broken_tracking_and_a_stale_table_fail_the_run(t: bt.TestCaseRun) -> None:
+    today = date(2026, 10, 10)
+    ok = {"day": "2026-10-09", "events_on_day": 40, "sessions": 12, "empty": False}
+    renamed = {"day": "2026-10-09", "events_on_day": 40, "sessions": 0, "empty": True}
+    quiet = {"day": "2026-10-09", "events_on_day": 0, "sessions": 0, "empty": True}
+    failed = {"day": "2026-10-09", "error": "RuntimeError: Amplitude 503"}
+    cases = [("a normal day", [ok], "2026-10-09"),
+             ("events but no sessions: tracking renamed", [renamed], "2026-10-09"),
+             ("a quiet day: a warning only", [quiet], "2026-10-09"),
+             ("a day that failed", [failed], "2026-10-09"),
+             ("the newest stored day is 3 days old", [ok], "2026-10-07"),
+             ("nothing stored at all", [quiet], None)]
+    t.h1("Run health")
+    got = {}
+    for name, reports, newest in cases:
+        problems, warnings = webanalytics.health(reports, newest, today)
+        got[name] = bool(problems)
+        t.tln(f"{name}: problems={problems} warnings={warnings}")
+    assert got == {"a normal day": False, "events but no sessions: tracking renamed": True,
+                   "a quiet day: a warning only": False, "a day that failed": True,
+                   "the newest stored day is 3 days old": True, "nothing stored at all": True}, got
+
+
+def test_redaction_covers_the_token_shapes(t: bt.TestCaseRun) -> None:
+    at = "%" + "40"
+    email = "jane" + "@" + "example.test"
+    cases = {
+        "/invite/3f2b8c1e-9a4d-4e7b-b1c2-0d5e6f7a8b9c": "/invite/<token>",
+        "/auth/eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.c2ln": "/auth/<token>",
+        "/r/aB3dE5fG7hJ9kL1mN3pQ": "/r/<token>",
+        "/s/Zq8RtY2LmN4pWx6KvB3sD9fH": "/s/<token>",
+        f"/unsubscribe/jane{at}example.test": "/unsubscribe/<email>",
+        f"/u/{email}": "/u/<email>",
+        "/reset/9f8e7d6c5b4a39281706f5e4d3c2b1a0": "/reset/<token>",
+        # slugs survive
+        "/blog/predictive_database_benchmarks/": "/blog/predictive_database_benchmarks/",
+        "/blog/2020-state-of-ai-in-finland-report-highlights/":
+            "/blog/2020-state-of-ai-in-finland-report-highlights/",
+        "/docs/api/v2/quickstart/": "/docs/api/v2/quickstart/",
+        "/blog/aito-v2-generally-available/": "/blog/aito-v2-generally-available/",
+    }
+    t.h1("_redact_path")
+    wrong = {}
+    for raw, want in cases.items():
+        got = webanalytics._redact_path(raw)
+        t.tln(f"{want}  <-  {'(an email)' if '@' in raw or at in raw else raw}")
+        if got != want:
+            wrong[raw] = got
+    assert not wrong, wrong
+    t.h1("utm values")
+    for raw, want in {"jane.doe.example.com": "<invalid>", "linkedin": "linkedin",
+                      "ecom-screen-co": "ecom-screen-co", "News Letter": "news_letter",
+                      email: "<invalid>"}.items():
+        got = webanalytics._clean_utm(raw)
+        t.tln(f"{want}")
+        assert got == want, (raw, got)
+
+
+def test_fetch_reads_the_day_before_and_after(t: bt.TestCaseRun) -> None:
+    calls = []
+
+    class Answer:
+        status_code = 404
+        text = ""
+
+    def get(url, params, auth, timeout):
+        calls.append({"url": url, **params})
+        return Answer()
+
+    get_, env = webanalytics.requests.get, dict(os.environ)
+    webanalytics.requests.get = get
+    os.environ.update({"AMPLITUDE_API_KEY": "test-only", "AMPLITUDE_SECRET_KEY": "test-only"})
+    try:
+        t.h1("A past day: the whole D-1..D+1 window")
+        webanalytics.fetch_day(DAY, now=datetime(2026, 10, 20, 9, 0, tzinfo=timezone.utc))
+        t.h1("Yesterday: the end is clamped to the current hour")
+        webanalytics.fetch_day("2026-10-19", now=datetime(2026, 10, 20, 9, 30, tzinfo=timezone.utc))
+    finally:
+        webanalytics.requests.get = get_
+        os.environ.clear()
+        os.environ.update(env)
+    for c in calls:
+        t.tln(json.dumps(c, sort_keys=True))
+    assert (calls[0]["start"], calls[0]["end"]) == ("20261004T00", "20261006T23"), calls[0]
+    assert (calls[1]["start"], calls[1]["end"]) == ("20261018T00", "20261020T09"), calls[1]
+    assert calls[0]["url"] == "https://analytics.eu.amplitude.com/api/2/export"

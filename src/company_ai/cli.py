@@ -474,18 +474,23 @@ def main() -> None:
     elif args.command == "pull-web":
         import json
         from . import webanalytics
-        reports = webanalytics.pull(client, days=args.days, day=args.day)
+        import datetime as _dt
+        try:
+            reports = webanalytics.pull(client, days=args.days, day=args.day)
+        except webanalytics.PullLocked as e:
+            raise SystemExit(f"✗ {e}")
         for report in reports:
             print(json.dumps(report, sort_keys=True))
         newest = client.query({"from": "web_sessions", "orderBy": {"$desc": "day"},
                                "select": ["day"], "limit": 1})["hits"]
-        print(f"newest day stored: {newest[0]['day'] if newest else 'none'}")
-        failed = [r["day"] for r in reports if r.get("error")]
-        empty = [r["day"] for r in reports if r.get("empty")]
-        if empty:
-            print(f"empty days (no sessions pulled): {', '.join(empty)}")
-        if failed:
-            raise SystemExit(f"✗ pull-web failed for {', '.join(failed)}")
+        newest = newest[0]["day"] if newest else None
+        print(f"newest day stored: {newest or 'none'}")
+        problems, warnings = webanalytics.health(
+            reports, newest, _dt.datetime.now(_dt.timezone.utc).date())
+        for w in warnings:
+            print(f"warning: {w}")
+        if problems:
+            raise SystemExit("✗ pull-web: " + "; ".join(problems))
     elif args.command == "compact":
         import time
         have = client.get_schema()["schema"]

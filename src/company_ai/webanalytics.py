@@ -14,21 +14,26 @@ OS, probe paths) is a fixed label lookup, not a score. Every prediction is an
 Aito query (rule 2): `predict_next_path`, and `onward_drivers` (_relate).
 """
 
+import fcntl
 import gzip
 import hashlib
 import io
 import json
 import os
 import re
+import tempfile
 import uuid
 import zipfile
 from collections import Counter
+from contextlib import contextmanager
 from datetime import date, datetime, timedelta, timezone
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import parse_qs, unquote, urlsplit
 
 import requests
 
 from . import relations, schema
+from pathlib import Path
+
 from .aito import AitoClient
 
 EXPORT_URL = "https://analytics.eu.amplitude.com/api/2/export"
@@ -63,9 +68,26 @@ OS_DEVICES = {"ios": "mobile", "android": "mobile", "ipados": "tablet",
               "linux": "desktop", "chrome os": "desktop", "ubuntu": "desktop"}
 
 EMAIL = re.compile(r"[^/@\s]+@[^/@\s]+")
-HEX_TOKEN = re.compile(r"[0-9a-fA-F]{16,}")
-B64_TOKEN = re.compile(r"[A-Za-z0-9_]{24,}")      # no hyphens: a long slug is not a token
-UTM_VALUE = re.compile(r"[a-z0-9][a-z0-9._-]{0,63}")
+UUID = re.compile(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
+JWT = re.compile(r"eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+")
+HEX_RUN = re.compile(r"[0-9a-fA-F]{16,}")
+ALNUM_RUN = re.compile(r"[A-Za-z0-9]{16,}")
+B64_RUN = re.compile(r"[A-Za-z0-9_-]{24,}")
+UTM_VALUE = re.compile(r"[a-z0-9][a-z0-9_-]{0,63}")
+STALE_DAYS = 2      # a newest stored day older than this fails the run
+
+
+def _is_token(text: str) -> bool:
+    """A secret-looking string: a UUID, a JWT, 16+ hex with a digit, 16+
+    mixed-case alphanumerics with a digit, or 24+ base64url characters with
+    an uppercase letter and a digit. Lowercase slugs (with - or _) are not."""
+    if UUID.search(text) or JWT.search(text):
+        return True
+    if any(re.search(r"\d", m) for m in HEX_RUN.findall(text)):
+        return True
+    mixed = lambda m: re.search(r"\d", m) and re.search(r"[A-Z]", m) and re.search(r"[a-z]", m)
+    return any(mixed(m) for m in ALNUM_RUN.findall(text)) or any(
+        re.search(r"\d", m) and re.search(r"[A-Z]", m) for m in B64_RUN.findall(text))
 
 
 def _strip_query(url: str) -> str:
@@ -74,10 +96,12 @@ def _strip_query(url: str) -> str:
 
 
 def _redact_segment(segment: str) -> str:
-    """A path segment, or <email>/<token> when it carries one."""
-    if EMAIL.search(segment):
+    """A path segment, or <email>/<token> when it carries one, judged after
+    percent-decoding (so %40 is an @)."""
+    decoded = unquote(segment)
+    if EMAIL.search(decoded):
         return "<email>"
-    if HEX_TOKEN.search(segment) or B64_TOKEN.search(segment):
+    if _is_token(decoded):
         return "<token>"
     return segment
 
@@ -88,11 +112,12 @@ def _redact_path(path: str) -> str:
 
 def _clean_utm(value: str | None) -> str | None:
     """A utm value, lowercased, spaces as _; <invalid> when it isn't a short
-    plain slug (an email, a token, a 90-character string)."""
+    plain slug of a-z, 0-9, - and _ (an email, a domain, a token, a
+    90-character string)."""
     if value is None:
         return None
     value = value.strip().lower().replace(" ", "_")
-    return value if UTM_VALUE.fullmatch(value) and not HEX_TOKEN.search(value) else "<invalid>"
+    return value if UTM_VALUE.fullmatch(value) and not _is_token(value) else "<invalid>"
 
 
 def _session_key(session_id, device_id) -> str:
@@ -165,7 +190,8 @@ def _build(events: list[dict], day: str) -> tuple[list[dict], dict]:
     the run's counts over those sessions' events."""
     rows: list[dict] = []
     stats = {"mapped": Counter(), "unmapped": Counter(), "unknown_os": Counter(),
-             "no_session_events": 0, "utm_present": 0, "referrer_present": 0, "invalid_utm": 0}
+             "no_session_events": 0, "utm_present": 0, "referrer_present": 0, "invalid_utm": 0,
+             "events_on_day": sum(e["event_time"][:10] == day for e in events)}
     for key, group in _sessions(events).items():
         group.sort(key=_time)
         start = _time(group[0])
@@ -295,11 +321,16 @@ def store_day(client: AitoClient, day: str, events: list[dict]) -> dict:
     kept = 0
     if rows:
         client.upload_batch("web_sessions", rows)
-        landed = client.query({"from": "web_sessions", "where": {"day": day, "pull_run": run},
-                               "limit": 0})["total"]
-        assert landed == len(rows), f"web_sessions {day}: {landed} of {len(rows)} rows landed"
-        for previous in sorted(p for p in old if p):
-            client.delete_entries("web_sessions", {"day": day, "pull_run": previous})
+        try:
+            landed = client.query({"from": "web_sessions", "where": {"day": day, "pull_run": run},
+                                   "limit": 0})["total"]
+            assert landed == len(rows), f"web_sessions {day}: {landed} of {len(rows)} rows landed"
+            for previous in sorted(p for p in old if p):
+                client.delete_entries("web_sessions", {"day": day, "pull_run": previous})
+        except Exception:
+            # the old rows stay the day's rows; the new run must not double it
+            client.delete_entries("web_sessions", {"day": day, "pull_run": run})
+            raise
     else:
         kept = client.query({"from": "web_sessions", "where": {"day": day}, "limit": 0})["total"]
     linked = Counter(r["link_basis"] for r in rows if r["link_basis"])
@@ -309,6 +340,7 @@ def store_day(client: AitoClient, day: str, events: list[dict]) -> dict:
             "mapped": dict(stats["mapped"]), "unmapped": dict(stats["unmapped"]),
             "unknown_os": dict(stats["unknown_os"]),
             "no_session_events": stats["no_session_events"],
+            "events_on_day": stats["events_on_day"],
             "utm_present": stats["utm_present"], "referrer_present": stats["referrer_present"],
             "invalid_utm": stats["invalid_utm"],
             # a page on another host is written host-first, not starting with "/"
@@ -329,25 +361,74 @@ def events_from_export(blob: bytes) -> list[dict]:
     return events
 
 
-def fetch_day(day: str) -> list[dict]:
+def fetch_day(day: str, now: datetime | None = None) -> list[dict]:
     """The events from the day before `day` to the day after, so a session
     that started on `day` is whole, and one that started the day before is
     seen as such. The Export API may select by upload time rather than event
     time (docs/35); the wide window covers late uploads too. The keys come
     from the environment (AMPLITUDE_API_KEY, AMPLITUDE_SECRET_KEY), placed by
     the operator; they are used for the request and never logged. No data is
-    an empty list (Amplitude answers 404)."""
+    an empty list (Amplitude answers 404). The window's end is clamped to the
+    current hour: what the API does with an end in the future is unverified,
+    so it is never sent one."""
     key, secret = os.environ.get("AMPLITUDE_API_KEY"), os.environ.get("AMPLITUDE_SECRET_KEY")
     assert key and secret, "AMPLITUDE_API_KEY and AMPLITUDE_SECRET_KEY are not set (docs/35)"
     d = date.fromisoformat(day)
-    first, last = (d - timedelta(days=1)).strftime("%Y%m%d"), (d + timedelta(days=1)).strftime("%Y%m%d")
-    response = requests.get(EXPORT_URL, params={"start": f"{first}T00", "end": f"{last}T23"},
+    now = (now or datetime.now(timezone.utc)).astimezone(timezone.utc).replace(tzinfo=None)
+    start = datetime.combine(d - timedelta(days=1), datetime.min.time())
+    end = min(datetime.combine(d + timedelta(days=1), datetime.min.time()) + timedelta(hours=23),
+              now.replace(minute=0, second=0, microsecond=0))
+    response = requests.get(EXPORT_URL, params={"start": start.strftime("%Y%m%dT%H"),
+                                                "end": end.strftime("%Y%m%dT%H")},
                             auth=(key, secret), timeout=300)
     if response.status_code == 404:
         return []
     assert response.status_code == 200, \
         f"Amplitude export {day}: HTTP {response.status_code} {response.text[:200]}"
     return events_from_export(response.content)
+
+
+class PullLocked(RuntimeError):
+    """Another pull of the same instance is running."""
+
+
+@contextmanager
+def pull_lock(client: AitoClient):
+    """One pull per instance at a time: the timer and a manual run would
+    each upload a day before either deletes, doubling it until the next pull.
+    A lock file in the temp directory, keyed by the instance URL."""
+    tag = hashlib.sha256(str(getattr(client, "base_url", "")).encode()).hexdigest()[:12]
+    path = Path(tempfile.gettempdir()) / f"company-ai-web-pull-{tag}.lock"
+    with open(path, "w") as handle:
+        try:
+            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            raise PullLocked(f"another pull-web is running (lock {path})") from None
+        try:
+            yield
+        finally:
+            fcntl.flock(handle, fcntl.LOCK_UN)
+
+
+def health(reports: list[dict], newest: str | None, today: date) -> tuple[list[str], list[str]]:
+    """(problems, warnings) for a run. Problems fail it: a day that errored,
+    a day with events but no sessions (tracking renamed or the parser
+    looking in the wrong place), and a table whose newest day is more than
+    STALE_DAYS old. A day with no events at all is only a warning."""
+    problems, warnings = [], []
+    for r in reports:
+        if r.get("error"):
+            problems.append(f"{r['day']}: {r['error']}")
+        elif r.get("events_on_day") and not r.get("sessions"):
+            problems.append(f"{r['day']}: {r['events_on_day']} events but no sessions: "
+                            "page-view events renamed, or not where the parser looks")
+        elif r.get("empty"):
+            warnings.append(f"{r['day']}: no visits pulled")
+    if newest is None:
+        problems.append("web_sessions holds no day at all")
+    elif date.fromisoformat(newest) < today - timedelta(days=STALE_DAYS):
+        problems.append(f"newest stored day is {newest}, more than {STALE_DAYS} days old")
+    return problems, warnings
 
 
 def pull(client: AitoClient, days: int = LOOKBACK_DAYS, day: str | None = None,
@@ -361,11 +442,12 @@ def pull(client: AitoClient, days: int = LOOKBACK_DAYS, day: str | None = None,
         today = today or datetime.now(timezone.utc).date()
         wanted = [(today - timedelta(days=n)).isoformat() for n in range(days, 0, -1)]
     reports = []
-    for d in wanted:
-        try:
-            reports.append(store_day(client, d, fetch(d)))
-        except Exception as e:  # noqa: BLE001 — reported per day; the caller exits non-zero
-            reports.append({"day": d, "error": f"{type(e).__name__}: {e}"})
+    with pull_lock(client):
+        for d in wanted:
+            try:
+                reports.append(store_day(client, d, fetch(d)))
+            except Exception as e:  # noqa: BLE001 — reported per day; the caller exits non-zero
+                reports.append({"day": d, "error": f"{type(e).__name__}: {e}"})
     return reports
 
 

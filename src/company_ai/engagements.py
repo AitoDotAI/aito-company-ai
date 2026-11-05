@@ -284,7 +284,7 @@ def weekly(client: AitoClient, as_of: dt.date, weeks: int = 8) -> dict:
             {"day": {"$gte": start.isoformat()}}, {"day": {"$lte": as_of.isoformat()}},
             {"likely_bot": False}]}, "select": ["week", "onward_click"], "limit": LIMIT})["hits"]
     except AitoError as e:
-        if "not found" not in str(e):
+        if "web_sessions not found" not in str(e):
             raise
         web, web_by_week = [], None
         web_note = "web_sessions not created yet (docs/35: run create-schema)"

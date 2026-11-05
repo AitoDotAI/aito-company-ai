@@ -7,6 +7,7 @@
  "duplicate_campaigns": {},
  "empty": false,
  "events": 12,
+ "events_on_day": 12,
  "invalid_utm": 0,
  "kept_previous": 0,
  "linked": {
