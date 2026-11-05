@@ -277,7 +277,21 @@ cmd_dev() {
 
 cmd_logs() { resolve "${1:-}"; tail -f "$LOGFILE"; }
 
-cmd_test() { exec uv run booktest "${@:-book}"; }
+# A run that executed no test is an error, not a green: booktest itself exits
+# 0 on "0/0" (td-20260926220026663014). Interactive review runs (-i, -w) keep
+# the terminal to themselves and skip the check.
+cmd_test() {
+  local arg
+  for arg in "$@"; do
+    case "$arg" in -i|-w|--interactive|--review|-[a-z]*[iw]*) exec uv run booktest "$@" ;; esac
+  done
+  local out rc=0
+  out=$(mktemp)
+  uv run booktest "${@:-book}" 2>&1 | tee "$out" || rc=$?
+  if [ "$rc" -eq 0 ]; then uv run python scripts/booktest_ran.py "$out" || rc=$?; fi
+  rm -f "$out"
+  return "$rc"
+}
 
 cmd_test_ui() {
   [ -d frontend/node_modules ] || ( cd frontend && npm install --no-audit --no-fund )

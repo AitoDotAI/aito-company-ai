@@ -31,6 +31,11 @@ should be testable and reviewable, including this repo's.
    accepted on before/after prediction output, not on performance numbers.
    A change that "speeds things up" while altering predictions
    unreviewed is a defect.
+5. **A run that ran nothing is red.** `./do test` fails unless booktest's
+   summary shows at least one test ran (`scripts/booktest_ran.py`):
+   booktest itself exits 0 on "0/0", and an aborted run has printed a clean
+   count. Runs are not concurrent: two at once share `books/.out` and corrupt
+   each other, so run the suite one invocation at a time.
 
 ## Conventions
 
