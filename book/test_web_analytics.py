@@ -673,3 +673,20 @@ def test_every_source_class_can_be_stored(t: bt.TestCaseRun) -> None:
     t.tln(f"sources: {stored}")
     assert stored == sorted(["direct", "paid", "email", "other", "social", "referral", "organic"]), stored
     _clean(client)
+
+
+def test_the_classification_tables_match_the_schema(t: bt.TestCaseRun) -> None:
+    """Every label _source and _device_class can return must be in the
+    web_sessions vocabularies, checked when the module is imported, so a
+    mismatch fails the books instead of a real day (as 2026-11-03 did)."""
+    t.h1("The shipped tables")
+    t.tln(f"problems: {webanalytics._vocabulary_problems(webanalytics.MEDIUM_SOURCES, webanalytics.OS_DEVICES)}")
+    assert not webanalytics._vocabulary_problems(webanalytics.MEDIUM_SOURCES, webanalytics.OS_DEVICES)
+    t.h1("A planted mismatch")
+    planted = webanalytics._vocabulary_problems(
+        {**webanalytics.MEDIUM_SOURCES, "ppc": "paid_search"},
+        {**webanalytics.OS_DEVICES, "tizen": "tv"})
+    for p in planted:
+        t.tln(f"  {p}")
+    assert planted == ["source 'paid_search' (from utm_medium 'ppc') is not in WEB_SESSION_SOURCES",
+                       "device_class 'tv' (from device_family 'tizen') is not in DEVICE_CLASSES"], planted
