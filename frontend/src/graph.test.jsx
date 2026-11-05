@@ -1,11 +1,12 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { GraphView } from "./views.jsx";
+import { layout } from "./graphlayout.js";
 import { api } from "./api.js";
 
 // Each card shows the request as it was sent: the endpoint and the body,
 // nested `from` included. The base rate the headline quotes is a card too.
-vi.mock("./api.js", () => ({ api: { graph: vi.fn() } }));
+vi.mock("./api.js", () => ({ api: { graph: vi.fn(), graphNetwork: vi.fn() } }));
 
 afterEach(() => vi.clearAllMocks());
 
@@ -39,5 +40,69 @@ describe("knowledge graph query panes", () => {
     });
     render(<GraphView />);
     expect(await screen.findByText(/no deal has closed yet/)).toBeInTheDocument();
+  });
+});
+
+
+const NET = {
+  nodes: [
+    { id: "company:acme-o", kind: "company", label: "Acme Oy", company_id: "acme-o",
+      facts: { industry: "accounting", relationship: "customer", country: "Estonia", mrr_eur: 17291,
+               open_deals: 2, contact_count: 1, technical_contact: false } },
+    { id: "company:wonka-oy", kind: "company", label: "Wonka Oy", company_id: "wonka-oy",
+      facts: { industry: "analytics", relationship: "prospect", country: "Finland", mrr_eur: 0,
+               open_deals: 1, contact_count: 1, technical_contact: true } },
+    { id: "contact:sc001", kind: "contact", label: "Grace Marsh", role: "CFO", company_id: "acme-o" },
+    { id: "deal:sd001", kind: "deal", label: "negotiation", stage: "negotiation", value_eur: 24500, company_id: "acme-o" },
+  ],
+  edges: [
+    { source: "contact:sc001", target: "company:acme-o", kind: "works_at" },
+    { source: "deal:sd001", target: "company:acme-o", kind: "deal_with" },
+  ],
+  counts: { company: 2, contact: 1, deal: 1 }, matched: [], query: null, filters: {},
+  kinds: ["company", "contact", "deal"], unlinked_documents: 0, dropped_edges: 0, requests: [],
+  facets: { industry: ["accounting", "analytics"], relationship: ["customer", "prospect"], country: ["Estonia", "Finland"] },
+};
+
+describe("knowledge graph explorer", () => {
+  it("draws the companies and opens a node's facts and links", async () => {
+    api.graph.mockResolvedValue({ answers: [], ok: 0, failed: [] });
+    api.graphNetwork.mockResolvedValue(NET);
+    render(<GraphView />);
+    expect(await screen.findByText("Acme Oy")).toBeInTheDocument();
+    expect(screen.getByText("Wonka Oy")).toBeInTheDocument();
+    expect(screen.getByText(/2 companies · 1 people · 1 deals/)).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("node-company:acme-o"));
+    const panel = within(screen.getByRole("complementary"));
+    expect(await panel.findByText("customer")).toBeInTheDocument();
+    expect(panel.getByText(/€17[\s,.]?291/)).toBeInTheDocument();
+    expect(panel.getByRole("link", { name: /Open company/ })).toHaveAttribute("href", "#/company/acme-o");
+    expect(panel.getByRole("button", { name: /Grace Marsh/ })).toBeInTheDocument();
+  });
+
+  it("searches and filters through the API", async () => {
+    api.graph.mockResolvedValue({ answers: [], ok: 0, failed: [] });
+    api.graphNetwork.mockResolvedValue(NET);
+    render(<GraphView />);
+    await screen.findByText("Acme Oy");
+    fireEvent.change(screen.getByPlaceholderText(/Search the graph/), { target: { value: "acme" } });
+    await waitFor(() => expect(api.graphNetwork).toHaveBeenLastCalledWith(
+      expect.objectContaining({ q: "acme" })));
+    fireEvent.change(screen.getByLabelText("Relationship"), { target: { value: "customer" } });
+    await waitFor(() => expect(api.graphNetwork).toHaveBeenLastCalledWith(
+      expect.objectContaining({ relationship: "customer" })));
+    fireEvent.click(screen.getByLabelText("Notes"));
+    await waitFor(() => expect(api.graphNetwork).toHaveBeenLastCalledWith(
+      expect.objectContaining({ kinds: "company,contact,deal,document" })));
+  });
+
+  it("lays the same graph out the same way, inside the box", () => {
+    const a = layout(NET.nodes, NET.edges, { width: 400, height: 300 });
+    const b = layout(NET.nodes, NET.edges, { width: 400, height: 300 });
+    expect([...a.entries()]).toEqual([...b.entries()]);
+    for (const { x, y } of a.values()) {
+      expect(x).toBeGreaterThanOrEqual(0); expect(x).toBeLessThanOrEqual(400);
+      expect(y).toBeGreaterThanOrEqual(0); expect(y).toBeLessThanOrEqual(300);
+    }
   });
 });

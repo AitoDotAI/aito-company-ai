@@ -459,6 +459,17 @@ def create_app(config: Config | None = None) -> FastAPI:
         from . import graph
         return _guarded(lambda: graph.board(client()))
 
+    @app.get("/api/graph/network")
+    def graph_network_route(q: str = "", kinds: str = "company,contact,deal",
+                            industry: str = "", relationship: str = "", country: str = ""):
+        # the graph itself, nodes and links, for the explorer (docs/31); the
+        # same function backs MCP graph_search
+        from . import graph
+        return _guarded(lambda: graph.network(
+            client(), query=q or None, kinds=[k for k in kinds.split(",") if k],
+            industry=industry or None, relationship=relationship or None,
+            country=country or None))
+
     # ---- Companies (contacts rolled up by company, joined to deals) ----
     @app.get("/api/companies")
     def companies_route():

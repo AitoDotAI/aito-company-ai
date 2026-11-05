@@ -1,9 +1,9 @@
 """The company list — contacts rolled up by company, joined to their deals.
 
-There is no accounts table: `company` is a denormalized string on both contacts
-and deals (docs/03, docs/13). This is the read surface that treats it as one —
-each distinct company with how many contacts it has, its furthest sales-funnel
-stage, and any pipeline behind it. No prediction here: grouping and counting is
+Each distinct company with how many contacts it has, its furthest
+sales-funnel stage, and any pipeline behind it. The `companies` table (the
+knowledge graph's hub, docs/31) holds each account's harvested facts;
+`detail` returns them with the linked contacts, deals and notes. No prediction here: grouping and counting is
 formatting (rule 2 governs *predictive* logic, which this isn't). The Sales
 dashboard renders it as the Companies tab; the agent reads the same via MCP.
 """
@@ -124,8 +124,9 @@ def detail(client: AitoClient, company_id: str) -> Result:
         result.calls.append(("_query", request, response))
         return response["hits"]
 
+    from .graph import COMPANY_FACTS
     co = q({"from": "companies", "where": {"company_id": company_id},
-            "select": ["company_id", "name"], "limit": 1})
+            "select": ["company_id", "name", *COMPANY_FACTS], "limit": 1})
     name = co[0]["name"] if co else company_id
     contacts = q({"from": "contacts", "where": {"company_id": company_id},
                   "select": ["contact_id", "name", "role", "segment", "tier"], "limit": 10000})
@@ -137,6 +138,8 @@ def detail(client: AitoClient, company_id: str) -> Result:
               reverse=True)
     result.derived = {
         "company_id": company_id, "name": name,
+        # the node's harvested facts (docs/31); None when the company row is missing
+        "facts": {k: co[0].get(k) for k in COMPANY_FACTS} if co else None,
         "contacts": [{"id": c["contact_id"], "name": c["name"], "role": c.get("role"),
                       "segment": c.get("segment"), "tier": c.get("tier")} for c in contacts],
         "deals": [{"deal_id": d["deal_id"], "stage": d["stage"], "value_eur": d.get("value_eur"),

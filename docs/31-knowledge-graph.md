@@ -150,10 +150,33 @@ unconditioned one. Measure the base rate before quoting a lift.
 
 ## The surface
 
-`src/company_ai/graph.py` holds the questions, one Aito query each; `/api/graph`
-runs them; the **Knowledge graph** view renders each question beside the query
-that answered it, because the claim being made is that the two are nearly the
-same sentence.
+`src/company_ai/graph.py` holds two things.
+
+**The graph itself.** `graph.network()` returns nodes and links:
+- the nodes are companies (with their facts), contacts, deals and documents;
+- the links are works_at, deal_with, about (document → company) and mentions
+  (document → contact).
+
+It's filtered by industry, relationship and country. Each filter runs in Aito
+across the link (`company_id.relationship` on contacts, deals and documents), so
+the neighbourhood is one query per table. A search box finds nodes by name,
+title or role and keeps their direct neighbours. That's a literal lookup, like
+the top-bar finder, not a ranking. A note linked to no company is counted, not
+drawn.
+
+`/api/graph/network` serves it, and the **Knowledge graph** view draws it: a
+seeded force layout (`frontend/src/graphlayout.js`), zoom and pan, and a side
+panel with a node's facts, its links and a way into the company page.
+
+**The questions.** One Aito query each, served by `/api/graph` and shown under the
+graph, each question beside the query that answered it, because the claim
+being made is that the two are nearly the same sentence.
+
+**For agents (MCP and the remote connector):**
+- `graph_search` is the same `network()`;
+- `company_detail(company_id)` is a node's facts plus its contacts, deals and
+  notes (`companies.detail`, also the dashboard's company page);
+- `graph_questions` is the question board with its requests.
 
 ## Sharp edges
 

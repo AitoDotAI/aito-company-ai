@@ -24,7 +24,42 @@ required: []
 Every company (contacts rolled up by company, joined to their deals),
     each with its contact count, furthest sales-funnel stage, deal count, open
     deals, and open pipeline value. Sorted by open pipeline value, then size.
-    There is no accounts table — company is a string; this is the rollup.
+    Each row carries its company_id: pass it to company_detail for the node's
+    facts and links, or use graph_search to walk the knowledge graph.
+
+## company_detail
+
+params: ['company_id']
+required: ['company_id']
+One company node of the knowledge graph: its harvested facts (industry,
+    relationship customer/prospect/lost/none, country, mrr_eur, open_deals,
+    contact_count, technical_contact) and everything linked to it by
+    company_id: contacts (name, role, tier), deals (stage, value, probability)
+    and notes (documents). company_id is the slug company_list and
+    graph_search return.
+
+## graph_search
+
+params: ['country', 'industry', 'kinds', 'query', 'relationship']
+required: []
+The knowledge graph as nodes and links. Nodes are companies (with their
+    facts), contacts, deals and documents; links are works_at
+    (contact→company), deal_with (deal→company), about (document→company) and
+    mentions (document→contact). `kinds` picks the node kinds (default
+    company, contact, deal; add "document" for notes). `industry`,
+    `relationship` and `country` filter companies, and the rest through the
+    link, in Aito. `query` finds nodes by name, title or role and keeps their
+    direct neighbours. `facets` lists the filter values present. `requests`
+    are the Aito queries that built it.
+
+## graph_questions
+
+params: []
+required: []
+The knowledge graph's showcase questions, each answered by one Aito
+    query over the links (for example: what kind of company is this, judged
+    by who works there; the odds of a deal given account facts). Each answer
+    carries its question, the exact request and the hits, plus the base rate.
 
 ## search
 
