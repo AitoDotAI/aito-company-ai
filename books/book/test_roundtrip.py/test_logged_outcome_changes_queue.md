@@ -1,10 +1,10 @@
 # Queue before
 
-sc024 Zara Day $p=0.3108
-sc011 Zara Pike $p=0.2532
-sc016 Grace Lane $p=0.2340
-sc037 Grace Marsh $p=0.2146
-sc038 Victor Brooks $p=0.1949
+sc024 Zara Day $p=0.3226
+sc011 Zara Pike $p=0.2703
+sc016 Grace Lane $p=0.2437
+sc037 Grace Marsh $p=0.2253
+sc013 Grace Ford $p=0.2024
 
 # Log a touch for the top contact
 
@@ -12,11 +12,11 @@ sc038 Victor Brooks $p=0.1949
 
 # Queue after
 
-sc016 Grace Lane $p=0.2949
-sc037 Grace Marsh $p=0.2932
-sc011 Zara Pike $p=0.2771
-sc013 Grace Ford $p=0.2528
-sc038 Victor Brooks $p=0.2329
+sc037 Grace Marsh $p=0.3100
+sc016 Grace Lane $p=0.3098
+sc011 Zara Pike $p=0.2964
+sc013 Grace Ford $p=0.2701
+sc038 Victor Brooks $p=0.2423
 
 change confirmed: sc024 left the queue, order shifted
 

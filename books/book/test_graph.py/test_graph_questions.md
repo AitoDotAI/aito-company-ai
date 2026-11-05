@@ -14,8 +14,8 @@
 
   request:  {'from': 'deals', 'where': {'company_id.industry': 'accounting', 'champion_present': True, 'blocker': 'none'}, 'predict': 'won', 'select': ['$value', '$p', '$why']}
   total:    2
-    {'$p': 0.7076767341934111, '$value': True}
-    {'$p': 0.2923232658065889, '$value': False}
+    {'$p': 0.7069165325069414, '$value': True}
+    {'$p': 0.2930834674930587, '$value': False}
     why: blocker=none                               x1.75
     why: company_id.industry=accounting             x1.45
     why: champion_present=True                      x1.42

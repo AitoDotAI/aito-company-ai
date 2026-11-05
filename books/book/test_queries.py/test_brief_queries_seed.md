@@ -201,21 +201,21 @@ response: total=60 (rows omitted)
 request:  {"from": "touches", "limit": 5000, "offset": 0, "select": ["contact_id", "ts", "next_action_due"]}
 response: total=150 (rows omitted)
 request:  {"from": "touches", "limit": 8, "predict": "outcome", "where": {"contact_id.ai_lifecycle": "operating", "contact_id.segment": "consultancy", "contact_id.tier": "B", "days_since_prev_touch": "22+", "weekday": "fri", "window": "0800"}}
-response: {"hits": [{"$p": 0.2847605803118647, "$value": "no_answer"}, {"$p": 0.2428641731590634, "$value": "conversation"}, {"$p": 0.20704986620534288, "$value": "reply"}, {"$p": 0.11263760762869192, "$value": "no_reply"}, {"$p": 0.06564519515984141, "$value": "bounced"}, {"$p": 0.05411700351897197, "$value": "meeting_booked"}, {"$p": 0.01909606757780468, "$value": "declined"}, {"$p": 0.013829506438419042, "$value": "callback_requested"}], "kind": "rows", "offset": 0, "total": 8}
+response: {"hits": [{"$p": 0.2817859647882939, "$value": "no_answer"}, {"$p": 0.2592573045702055, "$value": "conversation"}, {"$p": 0.20397482704478404, "$value": "reply"}, {"$p": 0.11129981562066901, "$value": "no_reply"}, {"$p": 0.06131327154106063, "$value": "bounced"}, {"$p": 0.04931264951996421, "$value": "meeting_booked"}, {"$p": 0.019034381354023293, "$value": "declined"}, {"$p": 0.01402178556099949, "$value": "callback_requested"}], "kind": "rows", "offset": 0, "total": 8}
 request:  {"from": "touches", "limit": 8, "predict": "outcome", "where": {"contact_id.ai_lifecycle": "none", "contact_id.segment": "ecommerce", "contact_id.tier": "B", "days_since_prev_touch": "first", "weekday": "fri", "window": "0800"}}
-response: {"hits": [{"$p": 0.3263576932693491, "$value": "no_answer"}, {"$p": 0.2427565282691741, "$value": "conversation"}, {"$p": 0.1902865008168446, "$value": "no_reply"}, {"$p": 0.12110646070849156, "$value": "reply"}, {"$p": 0.06961799073685548, "$value": "declined"}, {"$p": 0.03948081801085559, "$value": "bounced"}, {"$p": 0.007700579599800943, "$value": "callback_requested"}, {"$p": 0.002693428588628675, "$value": "meeting_booked"}], "kind": "rows", "offset": 0, "total": 8}
+response: {"hits": [{"$p": 0.32053873344539413, "$value": "no_answer"}, {"$p": 0.2600420013867451, "$value": "conversation"}, {"$p": 0.18503181242858163, "$value": "no_reply"}, {"$p": 0.11848335567558721, "$value": "reply"}, {"$p": 0.0699785121640592, "$value": "declined"}, {"$p": 0.03567135189993493, "$value": "bounced"}, {"$p": 0.007706463001059945, "$value": "callback_requested"}, {"$p": 0.0025477699986378556, "$value": "meeting_booked"}], "kind": "rows", "offset": 0, "total": 8}
 request:  {"from": "touches", "limit": 8, "predict": "outcome", "where": {"contact_id.ai_lifecycle": "operating", "contact_id.segment": "erp", "contact_id.tier": "A", "days_since_prev_touch": "22+", "weekday": "fri", "window": "0800"}}
-response: {"hits": [{"$p": 0.3681929679462948, "$value": "no_reply"}, {"$p": 0.20347537394658305, "$value": "reply"}, {"$p": 0.1750090668426739, "$value": "conversation"}, {"$p": 0.16705305990433997, "$value": "no_answer"}, {"$p": 0.03172912284106878, "$value": "meeting_booked"}, {"$p": 0.027285835561911928, "$value": "callback_requested"}, {"$p": 0.022110905255566676, "$value": "bounced"}, {"$p": 0.005143667701560892, "$value": "declined"}], "kind": "rows", "offset": 0, "total": 8}
+response: {"hits": [{"$p": 0.3642384118706789, "$value": "no_reply"}, {"$p": 0.20079240698481127, "$value": "reply"}, {"$p": 0.18703691221195626, "$value": "conversation"}, {"$p": 0.16549815266353343, "$value": "no_answer"}, {"$p": 0.02894555550743343, "$value": "meeting_booked"}, {"$p": 0.027697025095507546, "$value": "callback_requested"}, {"$p": 0.020675560717628483, "$value": "bounced"}, {"$p": 0.0051159749484506, "$value": "declined"}], "kind": "rows", "offset": 0, "total": 8}
 request:  {"from": "touches", "limit": 8, "predict": "outcome", "where": {"contact_id.ai_lifecycle": "operating", "contact_id.segment": "analytics", "contact_id.tier": "B", "days_since_prev_touch": "22+", "weekday": "fri", "window": "0800"}}
-response: {"hits": [{"$p": 0.3496706950691187, "$value": "no_reply"}, {"$p": 0.24518559375839064, "$value": "no_answer"}, {"$p": 0.18106435880935856, "$value": "conversation"}, {"$p": 0.1116585440414892, "$value": "reply"}, {"$p": 0.053968738101086475, "$value": "bounced"}, {"$p": 0.02493968385293493, "$value": "declined"}, {"$p": 0.02306457696092509, "$value": "meeting_booked"}, {"$p": 0.010447809406696519, "$value": "callback_requested"}], "kind": "rows", "offset": 0, "total": 8}
-request:  {"from": "touches", "limit": 8, "predict": "outcome", "where": {"contact_id.ai_lifecycle": "operating", "contact_id.segment": "accounting", "contact_id.tier": "B", "days_since_prev_touch": "8-21", "weekday": "fri", "window": "0800"}}
-response: {"hits": [{"$p": 0.34370995592956455, "$value": "reply"}, {"$p": 0.2458117436958566, "$value": "no_reply"}, {"$p": 0.18155905838000005, "$value": "no_answer"}, {"$p": 0.13376331272966768, "$value": "conversation"}, {"$p": 0.0568040816786566, "$value": "meeting_booked"}, {"$p": 0.0220874328348783, "$value": "declined"}, {"$p": 0.011919686612060918, "$value": "bounced"}, {"$p": 0.004344728139315302, "$value": "callback_requested"}], "kind": "rows", "offset": 0, "total": 8}
+response: {"hits": [{"$p": 0.3461122707379946, "$value": "no_reply"}, {"$p": 0.24304191038953224, "$value": "no_answer"}, {"$p": 0.19361867860687915, "$value": "conversation"}, {"$p": 0.11024906042633505, "$value": "reply"}, {"$p": 0.050494089099958096, "$value": "bounced"}, {"$p": 0.024819552963454523, "$value": "declined"}, {"$p": 0.02105313725628265, "$value": "meeting_booked"}, {"$p": 0.010611300519563719, "$value": "callback_requested"}], "kind": "rows", "offset": 0, "total": 8}
+request:  {"from": "touches", "limit": 8, "predict": "outcome", "where": {"contact_id.ai_lifecycle": "none", "contact_id.segment": "ecommerce", "contact_id.tier": "B", "days_since_prev_touch": "22+", "weekday": "fri", "window": "0800"}}
+response: {"hits": [{"$p": 0.3108244257502147, "$value": "no_answer"}, {"$p": 0.2282609019138237, "$value": "no_reply"}, {"$p": 0.18853481387509713, "$value": "conversation"}, {"$p": 0.11506744659489228, "$value": "reply"}, {"$p": 0.07247933716525536, "$value": "bounced"}, {"$p": 0.07093064436679572, "$value": "declined"}, {"$p": 0.010052856998315225, "$value": "callback_requested"}, {"$p": 0.003849573335605984, "$value": "meeting_booked"}], "kind": "rows", "offset": 0, "total": 8}
 
 ## Derived
 
 [
   {
-    "$p": 0.31081068311645443,
+    "$p": 0.3225917396511692,
     "company": "Vance BV",
     "contact_id": "sc024",
     "name": "Zara Day",
@@ -230,7 +230,7 @@ response: {"hits": [{"$p": 0.34370995592956455, "$value": "reply"}, {"$p": 0.245
     }
   },
   {
-    "$p": 0.2531505364576037,
+    "$p": 0.2702962343864429,
     "company": "Wayne O\u00dc",
     "contact_id": "sc011",
     "name": "Zara Pike",
@@ -245,7 +245,7 @@ response: {"hits": [{"$p": 0.34370995592956455, "$value": "reply"}, {"$p": 0.245
     }
   },
   {
-    "$p": 0.2340240252456546,
+    "$p": 0.24367949281489723,
     "company": "Nakatomi O\u00dc",
     "contact_id": "sc016",
     "name": "Grace Lane",
@@ -260,7 +260,7 @@ response: {"hits": [{"$p": 0.34370995592956455, "$value": "reply"}, {"$p": 0.245
     }
   },
   {
-    "$p": 0.21457674517698017,
+    "$p": 0.22528311638272552,
     "company": "Wonka Oy",
     "contact_id": "sc037",
     "name": "Grace Marsh",
@@ -275,15 +275,15 @@ response: {"hits": [{"$p": 0.34370995592956455, "$value": "reply"}, {"$p": 0.245
     }
   },
   {
-    "$p": 0.1949121225476396,
-    "company": "Pied Oy",
-    "contact_id": "sc038",
-    "name": "Victor Brooks",
+    "$p": 0.20243724420901835,
+    "company": "Pendant Oy",
+    "contact_id": "sc013",
+    "name": "Grace Ford",
     "phone_present": true,
     "why": {
-      "ai_lifecycle": "operating",
-      "days_since_prev_touch": "8-21",
-      "segment": "accounting",
+      "ai_lifecycle": "none",
+      "days_since_prev_touch": "22+",
+      "segment": "ecommerce",
       "tier": "B",
       "weekday": "fri",
       "window": "0800"
