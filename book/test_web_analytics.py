@@ -690,3 +690,40 @@ def test_the_classification_tables_match_the_schema(t: bt.TestCaseRun) -> None:
         t.tln(f"  {p}")
     assert planted == ["source 'paid_search' (from utm_medium 'ppc') is not in WEB_SESSION_SOURCES",
                        "device_class 'tv' (from device_family 'tizen') is not in DEVICE_CLASSES"], planted
+
+
+def test_the_web_view_bundles_one_filter(t: bt.TestCaseRun) -> None:
+    """The dashboard's Web view reads one bundle per filter: the KPI totals,
+    the per-day series, the filter choices, Aito's onward-click drivers for
+    the same population, the next-page prediction when a landing page is
+    chosen, and a page of the matching sessions."""
+    client, _, _ = _seeded()
+    webanalytics.store_day(client, DAY, _events())
+
+    t.h1("Everything on the day")
+    v = webanalytics.web_view(client, DAY, DAY)
+    t.tln(f"  totals: {v['totals']}")
+    t.tln(f"  days: {v['days']}")
+    t.tln(f"  facets: {v['facets']}")
+    t.tln(f"  drivers request: {json.dumps(v['drivers']['request'], sort_keys=True)}")
+    t.tln(f"  sessions: {v['session_total']} rows, page of {len(v['sessions'])}")
+    t.tln(f"  thin below: {v['thin_below']} sessions")
+    assert v["thin_below"] == webanalytics.WEB_THIN
+    t.tln(f"  first row fields: {sorted(v['sessions'][0])}")
+    assert v["totals"]["sessions"] == sum(d["sessions"] for d in v["days"])
+    assert v["session_total"] == v["totals"]["sessions"] + v["totals"]["bots"]
+    assert v["next_paths"] is None
+
+    t.h1("One source, one landing page")
+    source = v["facets"]["source"][0]
+    landing = next(r["landing_path"] for r in v["sessions"] if r["source"] == source)
+    f = webanalytics.web_view(client, DAY, DAY, source=source, path=landing)
+    t.tln(f"  filter source={source} landing={landing}")
+    t.tln(f"  totals: {f['totals']}")
+    t.tln(f"  facets still list every source: {f['facets']['source'] == v['facets']['source']}")
+    t.tln(f"  drivers where: {json.dumps(f['drivers']['where'], sort_keys=True)}")
+    t.tln(f"  next_paths: {f['next_paths']}")
+    assert all(r["source"] == source and r["landing_path"] == landing for r in f["sessions"])
+    assert f["facets"]["source"] == v["facets"]["source"]
+    assert f["next_paths"] is not None
+    _clean(client)

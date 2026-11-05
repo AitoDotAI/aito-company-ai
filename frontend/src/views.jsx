@@ -12,6 +12,7 @@ import { Block, KpiRow, FunnelChart, QuarterBars, WhyList, Levers, BarRow, Selec
 import { Markdown } from "./markdown.jsx";
 import { ChatThread } from "./assistant.jsx";
 import { conversations, useConversations } from "./conversations.js";
+import { WebView } from "./web.jsx";
 import { layout as graphLayout, degrees as graphDegrees } from "./graphlayout.js";
 
 function Placeholder({ needs }) {
@@ -2874,6 +2875,9 @@ export const VIEWS = {
            prims: ["kpi-row"],
            data: [{ table: "decisions" }],
            render: () => <Decisions /> },
+  web: { title: "Web", desc: "aito.ai visits from Amplitude: sessions, onward clicks and sign-up CTAs by source, landing page and campaign, with what goes with an onward click, from Aito.",
+         prims: ["web-query"],
+         render: () => <WebView /> },
   data: { title: "Data", desc: "Every row of any table as a sheet — the whole pipeline, old cases and all.",
            prims: ["sheet"],
            render: () => <DataView /> },

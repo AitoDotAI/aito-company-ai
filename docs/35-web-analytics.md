@@ -240,6 +240,19 @@ the numbers to pre-fill it: sessions, onward clicks, sign-up CTAs.
   `web_onward_click_rate` per ISO week, bots excluded; a rate over no
   sessions is null. On an instance without the table yet, both are null and
   `web` carries a note, rather than the KPIs failing.
+- The dashboard's **Web** view (Analytics → Web, `GET /api/web`,
+  `webanalytics.web_view`) is laid out like the e-commerce demo's Analytics
+  page:
+  - left: the KPIs (sessions, onward-click rate, sign-up-CTA rate) and filters
+    (period, source, landing page, campaign, device). The filter choices come
+    from the whole window;
+  - right: the chosen KPI per day; Aito's `_relate` of onward_click over the
+    same population, each relation with its counts, and those under the
+    relations THIN shown as "thin, no claim"; and, when a landing page is
+    chosen, Aito's `_predict next_path`;
+  - bottom: the matching sessions, 25 a page, with bots shown greyed out.
+
+  The docs/36 KPIs join this view when they're built.
 
 ## The dogfood query
 
