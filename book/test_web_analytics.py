@@ -644,3 +644,32 @@ def test_an_external_referrer_keeps_only_its_domain(t: bt.TestCaseRun) -> None:
     flat = json.dumps(rows)
     for leak in ("jane", "search", "item", "activity", "client", "id=", "pw"):
         assert leak not in flat, f"{leak!r} from a referrer URL landed in a row"
+
+
+def test_every_source_class_can_be_stored(t: bt.TestCaseRun) -> None:
+    """utm_medium maps to paid, email or other, as well as the four the
+    sessions table shares. On 2026-11-03 a utm_medium=aito-panel visit
+    (source other) failed the whole day, because web_sessions was checked
+    against the sessions table's WEB_SOURCES, which shadowed its own."""
+    client, _, _ = _seeded()
+
+    def visit(n: int, query: str) -> dict:
+        url = f"https://aito.ai/?{query}" if query else "https://aito.ai/"
+        return {"$insert_id": f"src-{n}", "event_type": "Page View: /", "session_id": 2000 + n,
+                "event_time": f"{DAY} 11:0{n}:00.000000", "device_id": f"dev-src-{n}",
+                "os_name": "Chrome", "device_family": "Windows", "platform": "Web",
+                "country": "Finland", "user_properties": {},
+                "event_properties": {"[Amplitude] Page Domain": "aito.ai",
+                                     "[Amplitude] Page URL": "https://aito.ai/",
+                                     "[Amplitude] Page Location": url,
+                                     "[Amplitude] Previous Page Type": "direct"}}
+    queries = ["", "utm_medium=cpc", "utm_medium=newsletter", "utm_medium=aito-panel&utm_source=demo",
+               "utm_medium=social", "utm_medium=referral", "utm_medium=organic"]
+    report = webanalytics.store_day(client, DAY, [visit(i, q) for i, q in enumerate(queries)])
+    t.h1("One visit per source class")
+    t.tln(f"sessions stored: {report['sessions']}")
+    stored = sorted(r["source"] for r in client.query(
+        {"from": "web_sessions", "where": {"day": DAY}, "limit": 100})["hits"])
+    t.tln(f"sources: {stored}")
+    assert stored == sorted(["direct", "paid", "email", "other", "social", "referral", "organic"]), stored
+    _clean(client)

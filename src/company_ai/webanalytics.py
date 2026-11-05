@@ -338,7 +338,7 @@ def store_day(client: AitoClient, day: str, events: list[dict]) -> dict:
     refused = _link(client, rows, day)
     run = uuid.uuid4().hex[:12]
     for r in rows:
-        assert r["source"] in schema.WEB_SOURCES and r["device_class"] in schema.DEVICE_CLASSES, r
+        assert r["source"] in schema.WEB_SESSION_SOURCES and r["device_class"] in schema.DEVICE_CLASSES, r
         r["pull_run"] = run
     old = {r.get("pull_run") for r in client.query(
         {"from": "web_sessions", "where": {"day": day}, "select": ["pull_run"], "limit": 100000})["hits"]}
