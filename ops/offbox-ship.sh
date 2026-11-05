@@ -7,9 +7,10 @@
 # An https:// destination is an Azure blob container: the dump is uploaded
 # with azcopy under <container>/<name>/, authorised by COMPANY_AI_OFFBOX_SAS, a
 # create+write SAS the operator places (no delete or list, so this machine
-# cannot wipe the history). The SAS is never printed: azcopy's output goes
-# through a filter that blanks it. Anything else is an rsync destination (a
-# local path, or user@host:/path over ssh).
+# cannot wipe the history; without read, azcopy must not check lengths or
+# ask before overwriting, hence the flags below). The SAS is never printed:
+# azcopy's output goes through a filter that blanks it. Anything else is an
+# rsync destination (a local path, or user@host:/path over ssh).
 #
 # AZCOPY / RSYNC override the tools (the booktest passes stubs).
 set -euo pipefail
@@ -32,7 +33,8 @@ case "$dest" in
       exit 2
     fi
     echo "offbox-ship: azcopy -> ${dest%/}/$name/"
-    "${AZCOPY:-azcopy}" copy "$staging/*" "${dest%/}/$name?$sas" --recursive --log-level=ERROR 2>&1 \
+    "${AZCOPY:-azcopy}" copy "$staging/*" "${dest%/}/$name?$sas" --recursive \
+      --overwrite=true --check-length=false --put-md5 --log-level=ERROR 2>&1 \
       | sed -e "s|$sas|<SAS>|g" -e 's|sig=[^&[:space:]]*|sig=<redacted>|g'
     ;;
   *)

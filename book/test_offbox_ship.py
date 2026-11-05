@@ -67,6 +67,7 @@ def test_offbox_ship_picks_the_tool_and_keeps_the_sas_out_of_the_output(t: bt.Te
         if dest == blob and sas:
             assert calls == [f"azcopy copy <tmp>/offbox-2026-11-05T035000Z/* "
                              f"{blob}/offbox-2026-11-05T035000Z?{SAS} --recursive "
+                             f"--overwrite=true --check-length=false --put-md5 "
                              f"--log-level=ERROR"], calls
     assert got == {
         "an Azure container with a SAS": (0, ["azcopy"]),

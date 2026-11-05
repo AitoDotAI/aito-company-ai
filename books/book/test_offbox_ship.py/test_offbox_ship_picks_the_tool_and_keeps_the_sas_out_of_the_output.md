@@ -1,14 +1,14 @@
 # an Azure container with a SAS
 
 exit 0
-  called: azcopy copy <tmp>/offbox-2026-11-05T035000Z/* https://aitobackup.blob.core.windows.net/company-ai/offbox-2026-11-05T035000Z?<SAS> --recursive --log-level=ERROR
-  output: offbox-ship: azcopy -> https://aitobackup.blob.core.windows.net/company-ai/offbox-2026-11-05T035000Z/ | azcopy copy <tmp>/offbox-2026-11-05T035000Z/* https://aitobackup.blob.core.windows.net/company-ai/offbox-2026-11-05T035000Z?<SAS> --recursive --log-level=ERROR
+  called: azcopy copy <tmp>/offbox-2026-11-05T035000Z/* https://aitobackup.blob.core.windows.net/company-ai/offbox-2026-11-05T035000Z?<SAS> --recursive --overwrite=true --check-length=false --put-md5 --log-level=ERROR
+  output: offbox-ship: azcopy -> https://aitobackup.blob.core.windows.net/company-ai/offbox-2026-11-05T035000Z/ | azcopy copy <tmp>/offbox-2026-11-05T035000Z/* https://aitobackup.blob.core.windows.net/company-ai/offbox-2026-11-05T035000Z?<SAS> --recursive --overwrite=true --check-length=false --put-md5 --log-level=ERROR
 
 # a SAS given with its leading ?
 
 exit 0
-  called: azcopy copy <tmp>/offbox-2026-11-05T035000Z/* https://aitobackup.blob.core.windows.net/company-ai/offbox-2026-11-05T035000Z?<SAS> --recursive --log-level=ERROR
-  output: offbox-ship: azcopy -> https://aitobackup.blob.core.windows.net/company-ai/offbox-2026-11-05T035000Z/ | azcopy copy <tmp>/offbox-2026-11-05T035000Z/* https://aitobackup.blob.core.windows.net/company-ai/offbox-2026-11-05T035000Z?<SAS> --recursive --log-level=ERROR
+  called: azcopy copy <tmp>/offbox-2026-11-05T035000Z/* https://aitobackup.blob.core.windows.net/company-ai/offbox-2026-11-05T035000Z?<SAS> --recursive --overwrite=true --check-length=false --put-md5 --log-level=ERROR
+  output: offbox-ship: azcopy -> https://aitobackup.blob.core.windows.net/company-ai/offbox-2026-11-05T035000Z/ | azcopy copy <tmp>/offbox-2026-11-05T035000Z/* https://aitobackup.blob.core.windows.net/company-ai/offbox-2026-11-05T035000Z?<SAS> --recursive --overwrite=true --check-length=false --put-md5 --log-level=ERROR
 
 # an Azure container without a SAS
 
