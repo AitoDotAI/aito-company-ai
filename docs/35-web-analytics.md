@@ -47,10 +47,10 @@ carries a planted signal the funnel books depend on. Feeding the funnel from
 | engaged_seconds | Int | last event minus first event |
 | onward_click | Boolean | the session went past its landing page: a second page view, or a CTA/sign-up event |
 | signup_cta | Boolean | a sign-up CTA or sign-up page was reached |
-| referrer_domain | String, nullable | the referrer's host, `www.` dropped; null when direct |
+| referrer_domain | String, nullable | the host of the first page view's `[Amplitude] Previous Page Location` when its `Previous Page Type` is `external`, `www.` dropped; null for direct and internal arrivals. Only the host lands, never the other site's path, query or `user@` part, and a host with a token-like label is `<token>`. |
 | source | String | organic, social, referral, direct, paid, email, or other. Classified from utm_medium first, then referrer_domain, by a fixed table in code. This is a label lookup, not a heuristic score. |
-| utm_source, utm_medium, utm_campaign | String, nullable | from the landing URL's query string (`[Amplitude] Page URL`, else `Page Location`), lowercased, spaces as `_`. A value that isn't a short plain slug (up to 64 of a-z 0-9 - _, no dots, no token) is stored as `<invalid>` and counted, so an email or a domain never lands. The exception is a known source's own domain (`linkedin.com`, `news.ycombinator.com`, the search engines; `KNOWN_UTM_DOMAINS`), kept as is. |
-| device_class | String | desktop, mobile, tablet, or unknown, from os_name by a fixed table. Each pull reports how many sessions came out unknown, and the OS names behind them. |
+| utm_source, utm_medium, utm_campaign | String, nullable | from the landing URL's query string (`[Amplitude] Page Location`, else `Page URL`: the export strips the query from Page URL), lowercased, spaces as `_`. A value that isn't a short plain slug (up to 64 of a-z 0-9 - _, no dots, no token) is stored as `<invalid>` and counted, so an email or a domain never lands. The exception is a known source's own domain (`linkedin.com`, `news.ycombinator.com`, the search engines; `KNOWN_UTM_DOMAINS`), kept as is. |
+| device_class | String | desktop, mobile, tablet, or unknown, from `device_family` (the OS; the export's `os_name` is the browser) by a fixed table. Each pull reports how many sessions came out unknown, and the device families behind them. |
 | country | String | Amplitude's country |
 | likely_bot | Boolean | the landing path is a known probe (/admin, /wp-login.php, dotfile probes, /airdrops, …; a fixed prefix list). Flagged, never dropped (rule 3). A one-page session is NOT flagged: that is an ordinary bounce. |
 | post_id | String, nullable, link to posts | the exact link: utm_campaign is that post's slug, and the visit is on or after the day it went out |
@@ -199,10 +199,14 @@ the numbers to pre-fill it: sessions, onward clicks, sign-up CTAs.
   session, so a device's whole day is never merged into one, and is counted
   in `no_session_events`.
 - **Silent nulls show up.** Each run counts sessions with a utm value
-  (`utm_present`) and with a referrer (`referrer_present`). In the real
-  Browser SDK these may sit elsewhere than the fixture assumes (user
-  properties, or Page Location instead of Page URL). Zeros on a real day mean
-  the parser is looking in the wrong place.
+  (`utm_present`) and with a referrer (`referrer_present`). Zeros on a real
+  day mean the parser is looking in the wrong place. That happened on the
+  first real pull (2026-11-04: 0 and 0 of 97 sessions). The export puts the
+  query string only in `Page Location`, has no `referrer` property (the
+  arrival is `Previous Page Type`/`Previous Page Location`), and carries the
+  browser in `os_name` and the OS in `device_family`. The fixture now has that
+  shape. `user_properties` holds the visitor's email and name on signed-in
+  events: the pull never reads it.
 - **Page views have two shapes**, and both are mapped: `Page View: /path`
   (one event type per path, 918 of them) and `Viewed …` (titled views with a
   path property). Each run reports how many events it mapped per shape, and
