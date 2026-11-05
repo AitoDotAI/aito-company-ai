@@ -54,7 +54,9 @@ So `_relate` can take any event as the target, not only the KPIs. Probed on
   returns the co-occurring events, as `{"events": {"$has": …}}` hits;
 - a top-level `{"events": {"$has": …}}` is rejected (400). aito-core
   traced it: an object value in `relate` is read as v1's nested-entity form,
-  in place since v2.8.1. So we use the `$and` form.
+  in place since v2.8.1. So we use the `$and` form. Once aito-core's
+  relate fix lands, the plain `$has` form works too, and the queries can
+  move to it.
 
 ## Tables
 
