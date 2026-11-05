@@ -98,6 +98,7 @@ def add_contact(
     row = parse_rolodex_row(raw)
     row.update({"ever_touched": False, "ever_reached": False,
                 "ever_conversation": False, "ever_meeting": False})
+    add_company(client, company)       # the link target, so company_id never dangles
     client.upload_batch("contacts", [row])
     search.refresh(client)
     return row
@@ -153,6 +154,7 @@ def add_deal(
         "source": source or "", "first_meeting_date": first_meeting_date or "",
     }
     row = parse_deal_row(raw)
+    add_company(client, company)       # the link target, so company_id never dangles
     client.upload_batch("deals", [row])
     _deal_event(client, row, None, as_of)
     changelog.record(client, "deal", row["deal_id"], "created",
@@ -1141,6 +1143,8 @@ def add_document(client: AitoClient, title: str, body: str, kind: str = "interna
                            datetime.now())
     if earlier is not None:
         return {**earlier, "already_recorded": True}
+    if company:
+        add_company(client, company)   # the link target, so company_id never dangles
     client.upload_batch("documents", [row])
 
     def follow_up():
