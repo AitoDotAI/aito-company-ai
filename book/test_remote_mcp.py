@@ -61,6 +61,27 @@ def test_bearer_gate(t: bt.TestCaseRun) -> None:
     assert no_auth.status_code == 401 and wrong.status_code == 401 and ok.status_code == 200
 
 
+def test_graph_tools_sit_behind_the_same_gate(t: bt.TestCaseRun) -> None:
+    """graph_search and company_detail return people and their roles, which
+    is personal data. They are behind the one bearer gate like every other
+    tool: a call without the token, or with a wrong one, is refused before
+    any tool runs."""
+    app = create_app(_cfg(TOKEN))
+    calls = {name: {"jsonrpc": "2.0", "id": 9, "method": "tools/call",
+                    "params": {"name": name, "arguments": args}}
+             for name, args in (("graph_search", {"query": "a"}),
+                                ("company_detail", {"company_id": "acme-o"}),
+                                ("graph_questions", {}))}
+    t.h1("graph tools without a valid token")
+    with TestClient(app) as c:
+        for name, body in calls.items():
+            no_auth = c.post("/mcp", json=body)
+            wrong = c.post("/mcp", headers={"Authorization": "Bearer nope"}, json=body)
+            t.tln(f"  {name:16} no token → {no_auth.status_code}, wrong token → {wrong.status_code}")
+            assert no_auth.status_code == 401 and wrong.status_code == 401, name
+            assert "contact" not in no_auth.text and "contact" not in wrong.text, name
+
+
 def test_remote_surface_is_read_plus_safe_writes(t: bt.TestCaseRun) -> None:
     app = create_app(_cfg(TOKEN))
     with TestClient(app) as c:

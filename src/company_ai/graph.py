@@ -308,6 +308,8 @@ def network(client: AitoClient, query: str | None = None, kinds: list[str] | Non
     (`company_id.relationship`), so the neighbourhood is one query per table.
     `query` is a literal lookup over node labels, like the top-bar finder
     (search.quick_find): the matches stay with their one-hop neighbourhood.
+    If fuzzy matching is wanted, this lookup can move to the search index
+    (search.serve), which ranks in Aito.
     No ranking or scoring here (rule 2): the order is the database's, then by
     label for a stable layout."""
     kinds = list(kinds or ("company", "contact", "deal"))
