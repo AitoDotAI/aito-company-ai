@@ -148,4 +148,5 @@ names, numbers, or non-public company data anywhere in tracked files.
 - Public demo mode (read-only, anonymous visitors, `COMPANY_AI_PUBLIC_DEMO`): `docs/33-public-demo.md`
 - Engagements (touches as full engagements: deal/company links, direction, answered_by, kinds, hook; deal reasons + `deal_events` stage history; idempotent bulk import `./do import-engagements`; weekly KPIs): `docs/34-engagements.md`
 - Web analytics (aito.ai visits pulled daily from Amplitude into `web_sessions`, one row per session, scrubbed in memory; landing → next path, onward clicks, links to posts by `utm_campaign`; `pull-web` + `ops/web-pull.sh` timer; MCP `web_traffic`/`web_paths`): `docs/35-web-analytics.md`
+- Web KPIs, acquisition and journeys (preselected KPIs from real event names + `_relate` on any event via the `events` Text field; web_visitors first touch; salted HMAC keys; Web view laid out like the e-commerce Analytics page): `docs/36-web-kpis.md` (spec, for review)
 - Extending it (add a table / view / routine — the checklist): `docs/19-extending.md`; contributor setup in `CONTRIBUTING.md`
