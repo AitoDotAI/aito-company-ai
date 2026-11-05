@@ -593,3 +593,20 @@ def test_fetch_reads_the_day_before_and_after(t: bt.TestCaseRun) -> None:
     assert (calls[0]["start"], calls[0]["end"]) == ("20261004T00", "20261006T23"), calls[0]
     assert (calls[1]["start"], calls[1]["end"]) == ("20261018T00", "20261020T09"), calls[1]
     assert calls[0]["url"] == "https://analytics.eu.amplitude.com/api/2/export"
+
+
+def test_known_source_domains_survive_as_utm(t: bt.TestCaseRun) -> None:
+    email = "jane" + "@" + "example.test"
+    cases = {"linkedin.com": "linkedin.com", "news.ycombinator.com": "news.ycombinator.com",
+             "LinkedIn.com": "linkedin.com", "bing.com": "bing.com",
+             # a domain off the list, or one dressed as a known one, stays out
+             "jane.doe.example.com": "<invalid>", "linkedin.com.example.test": "<invalid>",
+             "evil-linkedin.com": "<invalid>", email: "<invalid>"}
+    t.h1("utm values shaped like a domain")
+    wrong = {}
+    for raw, want in cases.items():
+        got = webanalytics._clean_utm(raw)
+        t.tln(f"{'(an email)' if '@' in raw else raw} -> {got}")
+        if got != want:
+            wrong[raw] = got
+    assert not wrong, wrong
