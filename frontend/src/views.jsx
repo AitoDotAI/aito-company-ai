@@ -2221,7 +2221,10 @@ function GraphExplorer() {
                 if (!p) return null;
                 const r = n.kind === "company" ? 7 + Math.min(Math.sqrt(deg.get(n.id) || 0) * 2, 12) : 4.5;
                 const dim = sel && n.id !== sel.id && !near.has(n.id);
-                const showLabel = n.kind === "company" || matched.has(n.id) || (sel && (n.id === sel.id || near.has(n.id)));
+                // deals and notes sit in a tight ring around their company: their labels
+                // would pile up, so the panel lists them and the canvas names only people
+                const showLabel = n.kind === "company" || matched.has(n.id) || (sel && n.id === sel.id)
+                  || (sel && near.has(n.id) && n.kind === "contact");
                 return (
                   <g key={n.id} data-testid={"node-" + n.id} className={"gx-node" + (dim ? " dim" : "")}
                      onClick={(ev) => { ev.stopPropagation(); setSelected(n.id === selected ? null : n.id); }}>
@@ -2273,6 +2276,8 @@ function GraphNodePanel({ node, neighbours, onPick }) {
         {neighbours.map((n) => (
           <button key={n.id} onClick={() => onPick(n.id)}>
             <span className="gx-dot" style={{ background: GX_KIND[n.kind].color }} />{n.label}
+            {n.kind === "deal" && n.value_eur != null && <span className="muted"> · {eur(n.value_eur)}</span>}
+            {n.kind === "contact" && n.role && <span className="muted"> · {n.role}</span>}
           </button>
         ))}
       </div>
