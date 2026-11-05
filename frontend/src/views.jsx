@@ -12,6 +12,7 @@ import { Block, KpiRow, FunnelChart, QuarterBars, WhyList, Levers, BarRow, Selec
 import { Markdown } from "./markdown.jsx";
 import { ChatThread } from "./assistant.jsx";
 import { conversations, useConversations } from "./conversations.js";
+import { layout as graphLayout, degrees as graphDegrees } from "./graphlayout.js";
 
 function Placeholder({ needs }) {
   return (
@@ -2105,10 +2106,191 @@ function GraphAnswer({ a }) {
 // "a CTO", "an IT Manager" — the role is this deployment's, so is its article
 const article = (w) => (w && /^[aeiou]/i.test(w) ? "an " : "a ") + (w || "technical contact");
 
+// ---- The knowledge graph itself: nodes and links, searchable and filterable.
+// The same graph.network() backs MCP graph_search, so an agent and this view
+// see one graph. The layout is presentation; every node and link comes from
+// Aito, and the filters cross the link in Aito (company_id.<fact>).
+const GX_KIND = {
+  company: { color: "var(--purple)", word: "companies" },
+  contact: { color: "var(--turquoise)", word: "people" },
+  deal: { color: "var(--warn)", word: "deals" },
+  document: { color: "var(--ink-faint)", word: "notes" },
+};
+const GX_W = 900, GX_H = 560;
+
+function GraphExplorer() {
+  const [q, setQ] = useState("");
+  const [query, setQuery] = useState("");
+  const [kinds, setKinds] = useState({ contact: true, deal: true, document: false });
+  const [filters, setFilters] = useState({ industry: "", relationship: "", country: "" });
+  const [net, setNet] = useState(null);
+  const [err, setErr] = useState(null);
+  const [selected, setSelected] = useState(null);
+  const [view, setView] = useState({ x: 0, y: 0, w: GX_W, h: GX_H });
+  const drag = useRef(null);
+  const latest = useRef(0);
+
+  useEffect(() => {                                   // debounce the search box
+    const t = setTimeout(() => setQuery(q.trim()), 300);
+    return () => clearTimeout(t);
+  }, [q]);
+
+  const kindList = ["company", ...["contact", "deal", "document"].filter((k) => kinds[k])].join(",");
+  useEffect(() => {
+    const call = ++latest.current;                    // a slow older answer never wins
+    Promise.resolve(api.graphNetwork({ q: query, kinds: kindList, ...filters }))
+      .then((d) => { if (call === latest.current && d) { setNet(d); setErr(null); } })
+      .catch((e) => { if (call === latest.current) setErr(String(e.message || e)); });
+  }, [query, kindList, filters.industry, filters.relationship, filters.country]);
+
+  const pos = React.useMemo(() => (net ? graphLayout(net.nodes, net.edges, { width: GX_W, height: GX_H }) : new Map()), [net]);
+  const deg = React.useMemo(() => (net ? graphDegrees(net.edges) : new Map()), [net]);
+  const byId = React.useMemo(() => new Map((net ? net.nodes : []).map((n) => [n.id, n])), [net]);
+  const sel = selected && byId.get(selected);
+  const neighbours = sel ? net.edges.filter((e) => e.source === sel.id || e.target === sel.id)
+    .map((e) => byId.get(e.source === sel.id ? e.target : e.source)).filter(Boolean) : [];
+  const near = new Set(neighbours.map((n) => n.id));
+  const matched = new Set(net ? net.matched : []);
+
+  const onWheel = (e) => {
+    e.preventDefault();
+    const f = e.deltaY > 0 ? 1.15 : 1 / 1.15;
+    setView((v) => {
+      const w = Math.min(Math.max(v.w * f, GX_W / 8), GX_W * 2), h = w * (GX_H / GX_W);
+      return { x: v.x + (v.w - w) / 2, y: v.y + (v.h - h) / 2, w, h };
+    });
+  };
+  const onDown = (e) => { drag.current = { x: e.clientX, y: e.clientY, v: view }; };
+  const onMove = (e) => {
+    if (!drag.current) return;
+    const s = view.w / (e.currentTarget.clientWidth || GX_W);
+    const d = drag.current;
+    setView({ ...d.v, x: d.v.x - (e.clientX - d.x) * s, y: d.v.y - (e.clientY - d.y) * s });
+  };
+  const onUp = () => { drag.current = null; };
+
+  const setFilter = (k) => (e) => setFilters((f) => ({ ...f, [k]: e.target.value }));
+  const counts = net ? net.counts : {};
+  const summary = ["company", "contact", "deal", "document"]
+    .filter((k) => k === "company" || kinds[k])
+    .map((k) => `${counts[k] || 0} ${GX_KIND[k].word}`).join(" · ");
+
+  return (
+    <section className="gx">
+      <div className="gx-controls">
+        <input className="gx-search" placeholder="Search the graph: a company, person, deal or note"
+               value={q} onChange={(e) => setQ(e.target.value)} />
+        {[["contact", "People"], ["deal", "Deals"], ["document", "Notes"]].map(([k, label]) => (
+          <label key={k} className="gx-kind">
+            <input type="checkbox" checked={!!kinds[k]}
+                   onChange={() => setKinds((s) => ({ ...s, [k]: !s[k] }))} />
+            <span className="gx-dot" style={{ background: GX_KIND[k].color }} />{label}
+          </label>
+        ))}
+        {[["industry", "Industry"], ["relationship", "Relationship"], ["country", "Country"]].map(([k, label]) => (
+          <label key={k} className="gx-filter">{label}
+            <select aria-label={label} value={filters[k]} onChange={setFilter(k)}>
+              <option value="">all</option>
+              {((net && net.facets[k]) || []).map((v) => <option key={v} value={v}>{v}</option>)}
+            </select>
+          </label>
+        ))}
+        <button className="gx-reset" onClick={() => setView({ x: 0, y: 0, w: GX_W, h: GX_H })}>Fit</button>
+      </div>
+      {err && <ErrorBox msg={err} />}
+      {!net && !err && <Loading label="Drawing the graph…" />}
+      {net && (
+        <>
+          <div className="gx-meta">
+            {summary}{net.edges.length ? ` · ${net.edges.length} links` : ""}
+            {net.query && ` · ${net.matched.length} match "${net.query}"`}
+            {kinds.document && net.unlinked_documents > 0 && ` · ${net.unlinked_documents} notes linked to no company are not drawn`}
+          </div>
+          <div className="gx-body">
+            <svg className="gx-canvas" viewBox={`${view.x} ${view.y} ${view.w} ${view.h}`}
+                 onWheel={onWheel} onMouseDown={onDown} onMouseMove={onMove} onMouseUp={onUp} onMouseLeave={onUp}>
+              {net.edges.map((e, i) => {
+                const a = pos.get(e.source), b = pos.get(e.target);
+                if (!a || !b) return null;
+                const lit = sel && (e.source === sel.id || e.target === sel.id);
+                return <line key={i} x1={a.x} y1={a.y} x2={b.x} y2={b.y}
+                             className={"gx-edge" + (lit ? " lit" : "")} />;
+              })}
+              {net.nodes.map((n) => {
+                const p = pos.get(n.id);
+                if (!p) return null;
+                const r = n.kind === "company" ? 7 + Math.min(Math.sqrt(deg.get(n.id) || 0) * 2, 12) : 4.5;
+                const dim = sel && n.id !== sel.id && !near.has(n.id);
+                // deals and notes sit in a tight ring around their company: their labels
+                // would pile up, so the panel lists them and the canvas names only people
+                const showLabel = n.kind === "company" || matched.has(n.id) || (sel && n.id === sel.id)
+                  || (sel && near.has(n.id) && n.kind === "contact");
+                return (
+                  <g key={n.id} data-testid={"node-" + n.id} className={"gx-node" + (dim ? " dim" : "")}
+                     onClick={(ev) => { ev.stopPropagation(); setSelected(n.id === selected ? null : n.id); }}>
+                    <circle cx={p.x} cy={p.y} r={r} fill={GX_KIND[n.kind].color}
+                            className={(matched.has(n.id) ? "match " : "") + (sel && n.id === sel.id ? "on" : "")} />
+                    {showLabel && <text x={p.x + r + 3} y={p.y + 3}>{n.label}</text>}
+                    {!showLabel && <title>{n.label}</title>}
+                  </g>
+                );
+              })}
+            </svg>
+            <aside className="gx-panel">
+              {sel ? <GraphNodePanel node={sel} neighbours={neighbours} onPick={setSelected} />
+                   : <div className="muted">Click a node to see its facts and links. Scroll to zoom, drag to pan.</div>}
+            </aside>
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
+function GraphNodePanel({ node, neighbours, onPick }) {
+  const f = node.facts || {};
+  return (
+    <div className="gx-detail">
+      <div className="gx-kindtag" style={{ color: GX_KIND[node.kind].color }}>{node.kind}</div>
+      <h3>{node.label}</h3>
+      {node.kind === "company" && (
+        <dl className="gx-facts">
+          <dt>Relationship</dt><dd>{f.relationship || "—"}</dd>
+          <dt>Industry</dt><dd>{f.industry || "—"}</dd>
+          <dt>Country</dt><dd>{f.country || "—"}</dd>
+          <dt>MRR</dt><dd>{eur(f.mrr_eur)}</dd>
+          <dt>Open deals</dt><dd>{f.open_deals ?? "—"}</dd>
+          <dt>People</dt><dd>{f.contact_count ?? "—"}</dd>
+          <dt>Technical contact</dt><dd>{f.technical_contact ? "yes" : "no"}</dd>
+        </dl>
+      )}
+      {node.kind === "contact" && <div className="muted">{[node.role, node.tier && `tier ${node.tier}`].filter(Boolean).join(" · ")}</div>}
+      {node.kind === "deal" && <div className="muted">{node.stage}{node.value_eur != null ? ` · ${eur(node.value_eur)}` : ""}</div>}
+      {node.kind === "document" && node.noted_on && <div className="muted">{node.noted_on}</div>}
+      <div className="gx-links">
+        {node.company_id && <a href={`#/company/${node.company_id}`}>Open company →</a>}
+        {node.kind === "document" && <a href={`#/documents/${node.id.slice("document:".length)}`}>Open note →</a>}
+      </div>
+      <h4>Linked ({neighbours.length})</h4>
+      <div className="gx-neigh">
+        {neighbours.map((n) => (
+          <button key={n.id} onClick={() => onPick(n.id)}>
+            <span className="gx-dot" style={{ background: GX_KIND[n.kind].color }} />{n.label}
+            {n.kind === "deal" && n.value_eur != null && <span className="muted"> · {eur(n.value_eur)}</span>}
+            {n.kind === "contact" && n.role && <span className="muted"> · {n.role}</span>}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function GraphView() {
   const r = useAsync(() => api.graph(), []);
   return (
     <>
+      <GraphExplorer />
+      <h2 className="gq-heading">Questions the graph answers</h2>
       <div className="gq-intro">
         The company is a <b>node</b>; contacts, deals and documents link to it.
         Aito walks those links in both directions — <code>company_id.industry</code>{" "}

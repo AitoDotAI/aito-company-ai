@@ -156,3 +156,74 @@ def test_a_multi_role_condition_runs_on_a_real_engine(t: bt.TestCaseRun) -> None
     t.tln(f"failed queries: {board['failed'] or 'none'}")
     t.tln(f"technical-contact card answered: {'error' not in cto and bool(cto.get('hits'))}")
     t.tln(f"the view's label: {board['technical_role']!r}")
+
+
+def _seed_with_documents(client: AitoClient) -> None:
+    _seed(client)
+    loaders.load_documents(client, SEED_DIR)
+
+
+def _check_edges(net: dict) -> None:
+    ids = {n["id"] for n in net["nodes"]}
+    dangling = [e for e in net["edges"] if e["source"] not in ids or e["target"] not in ids]
+    assert not dangling, dangling[:3]
+
+
+def test_the_network_is_the_graph_itself(t: bt.TestCaseRun) -> None:
+    """The Knowledge graph view and the graph_search tool read the graph as
+    nodes and links: companies, the people and deals linked to them, and the
+    notes about them. Filters run in Aito across the link (company_id.<fact>)."""
+    client = _client()
+    _seed_with_documents(client)
+
+    t.h1("Everything, documents included")
+    net = graph.network(client, kinds=["company", "contact", "deal", "document"])
+    t.tln(f"  nodes: {net['counts']}")
+    t.tln(f"  edges: {dict(sorted(_edge_kinds(net).items()))}")
+    t.tln(f"  facets: { {k: len(v) for k, v in net['facets'].items()} }")
+    t.tln(f"  documents with no company: {net['unlinked_documents']}, links dropped: {net['dropped_edges']}")
+    _check_edges(net)
+    contacts = client.query({"from": "contacts", "select": ["contact_id", "company_id"],
+                             "limit": 100000})["hits"]
+    works_at = {e["source"]: e["target"] for e in net["edges"] if e["kind"] == "works_at"}
+    wrong = [c for c in contacts if works_at.get(f"contact:{c['contact_id']}") != f"company:{c['company_id']}"]
+    assert not wrong, wrong[:3]
+
+    t.h1("Only customers: the filter crosses the link")
+    net = graph.network(client, relationship="customer")
+    companies = [n for n in net["nodes"] if n["kind"] == "company"]
+    t.tln(f"  nodes: {net['counts']}")
+    for r in net["requests"]:
+        t.tln(f"  {r['from']}: where {r.get('where')}")
+    assert companies and all(n["facts"]["relationship"] == "customer" for n in companies)
+    _check_edges(net)
+
+    t.h1("A search: the matches and their neighbourhood")
+    first = sorted(n["label"] for n in companies)[0]
+    needle = first.split()[0][:4].lower()
+    net = graph.network(client, query=needle)
+    t.tln(f"  query {needle!r}: matched {sorted(net['matched'])}")
+    t.tln(f"  nodes: {net['counts']}")
+    assert f"company:{loaders.company_slug(first)}" in net["matched"]
+    assert net["counts"].get("contact", 0) > 0
+    _check_edges(net)
+
+
+def _edge_kinds(net: dict) -> dict:
+    out: dict[str, int] = {}
+    for e in net["edges"]:
+        out[e["kind"]] = out.get(e["kind"], 0) + 1
+    return out
+
+
+def test_company_detail_carries_the_node_facts(t: bt.TestCaseRun) -> None:
+    from company_ai import companies
+    client = _client()
+    _seed_with_documents(client)
+    row = next(r for r in loaders.companies_from_csvs(SEED_DIR) if r["relationship"] == "customer")
+    d = companies.detail(client, row["company_id"]).derived
+    t.h1(f"company_detail({row['company_id']})")
+    t.tln(f"  facts: {d['facts']}")
+    t.tln(f"  contacts {len(d['contacts'])}, deals {len(d['deals'])}, documents {len(d['documents'])}")
+    assert d["facts"]["relationship"] == "customer"
+    assert d["facts"]["mrr_eur"] == row["mrr_eur"]

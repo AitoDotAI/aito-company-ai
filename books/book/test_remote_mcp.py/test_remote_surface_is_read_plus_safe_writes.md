@@ -1,6 +1,6 @@
 # the remote tool surface (read + safe writes)
 
-57 tools exposed over HTTP:
+60 tools exposed over HTTP:
   add_channel
   add_contact
   add_deal
@@ -14,6 +14,7 @@
   assign
   claim_todo
   classify_todo
+  company_detail
   company_list
   complete_todo
   deal_pipeline
@@ -26,6 +27,8 @@
   engagement_kpis
   experiment_board
   funnel
+  graph_questions
+  graph_search
   list_channels
   list_materials
   list_posts

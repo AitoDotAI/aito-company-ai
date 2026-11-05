@@ -286,3 +286,118 @@ def board(client: AitoClient) -> dict:
         "ok": sum(1 for a in answers if "error" not in a),
         "failed": [a["id"] for a in answers if "error" in a],
     }
+
+
+# ---- the graph itself: nodes and links (the explorer view, MCP graph_search) ----
+
+NODE_KINDS = ("company", "contact", "deal", "document")
+COMPANY_FACTS = ("industry", "relationship", "country", "mrr_eur", "open_deals",
+                 "contact_count", "technical_contact")
+# the company facts a caller may filter on; the filter crosses the link
+# (company_id.<fact>) so Aito, not Python, picks the neighbourhood
+FILTER_FACTS = ("industry", "relationship", "country")
+
+
+def network(client: AitoClient, query: str | None = None, kinds: list[str] | None = None,
+            industry: str | None = None, relationship: str | None = None,
+            country: str | None = None) -> dict:
+    """The knowledge graph as nodes and links: companies, the contacts and
+    deals linked to them by company_id, and the documents about them (and the
+    contact a document names). `industry`/`relationship`/`country` filter the
+    companies in Aito, and the other tables through the forward link
+    (`company_id.relationship`), so the neighbourhood is one query per table.
+    `query` is a literal lookup over node labels, like the top-bar finder
+    (search.quick_find): the matches stay with their one-hop neighbourhood.
+    If fuzzy matching is wanted, this lookup can move to the search index
+    (search.serve), which ranks in Aito.
+    No ranking or scoring here (rule 2): the order is the database's, then by
+    label for a stable layout."""
+    kinds = list(kinds or ("company", "contact", "deal"))
+    unknown = set(kinds) - set(NODE_KINDS)
+    assert not unknown, f"unknown node kinds {sorted(unknown)}; have {list(NODE_KINDS)}"
+    filters = {k: v for k, v in (("industry", industry), ("relationship", relationship),
+                                 ("country", country)) if v}
+    requests = []
+
+    def q(table: str, where: dict, select: list[str]) -> list[dict]:
+        request = {"from": table, "select": select, "limit": 100000}
+        if where:
+            request["where"] = where
+        requests.append(request)
+        return client.query(request)["hits"]
+
+    linked = {f"company_id.{k}": v for k, v in filters.items()}
+    companies = q("companies", dict(filters), ["company_id", "name", *COMPANY_FACTS])
+    # the filter choices come from every company, so a chosen filter does not
+    # hide the values it could change to
+    facet_rows = q("companies", {}, list(FILTER_FACTS)) if filters else companies
+    contacts = q("contacts", linked, ["contact_id", "name", "role", "tier", "company_id"]) \
+        if "contact" in kinds else []
+    deals = q("deals", linked, ["deal_id", "stage", "value_eur", "company_id"]) \
+        if "deal" in kinds else []
+    documents = q("documents", linked,
+                  ["doc_id", "title", "noted_on", "company_id", "stakeholder_id"]) \
+        if "document" in kinds else []
+
+    nodes: dict[str, dict] = {}
+    edges: list[dict] = []
+    for c in companies:
+        nodes[f"company:{c['company_id']}"] = {
+            "id": f"company:{c['company_id']}", "kind": "company", "label": c["name"],
+            "company_id": c["company_id"], "facts": {k: c.get(k) for k in COMPANY_FACTS}}
+    for c in contacts:
+        nodes[f"contact:{c['contact_id']}"] = {
+            "id": f"contact:{c['contact_id']}", "kind": "contact", "label": c["name"],
+            "role": c.get("role"), "tier": c.get("tier"), "company_id": c["company_id"]}
+        edges.append({"source": f"contact:{c['contact_id']}",
+                      "target": f"company:{c['company_id']}", "kind": "works_at"})
+    for d in deals:
+        nodes[f"deal:{d['deal_id']}"] = {
+            "id": f"deal:{d['deal_id']}", "kind": "deal", "label": d["stage"],
+            "stage": d["stage"], "value_eur": d.get("value_eur"), "company_id": d["company_id"]}
+        edges.append({"source": f"deal:{d['deal_id']}",
+                      "target": f"company:{d['company_id']}", "kind": "deal_with"})
+    # a note linked to no company has no edge to draw: counted, not drawn
+    unlinked_documents = sum(1 for d in documents if not d.get("company_id"))
+    for d in documents:
+        if not d.get("company_id"):
+            continue
+        nodes[f"document:{d['doc_id']}"] = {
+            "id": f"document:{d['doc_id']}", "kind": "document", "label": d["title"],
+            "noted_on": d.get("noted_on"), "company_id": d["company_id"]}
+        edges.append({"source": f"document:{d['doc_id']}",
+                      "target": f"company:{d['company_id']}", "kind": "about"})
+        if d.get("stakeholder_id"):
+            edges.append({"source": f"document:{d['doc_id']}",
+                          "target": f"contact:{d['stakeholder_id']}", "kind": "mentions"})
+    # a link to a node outside the loaded set (an unloaded kind, a filtered-out
+    # company) is dropped and counted, never drawn dangling
+    edges_out = [e for e in edges if e["source"] in nodes and e["target"] in nodes]
+    dropped = len(edges) - len(edges_out)
+
+    matched: list[str] = []
+    if query and query.strip():
+        needle = query.strip().lower()
+        matched = sorted(nid for nid, n in nodes.items()
+                         if needle in (n["label"] or "").lower()
+                         or needle in (n.get("role") or "").lower())
+        keep = set(matched)
+        for e in edges_out:
+            if e["source"] in matched:
+                keep.add(e["target"])
+            if e["target"] in matched:
+                keep.add(e["source"])
+        nodes = {nid: n for nid, n in nodes.items() if nid in keep}
+        edges_out = [e for e in edges_out if e["source"] in nodes and e["target"] in nodes]
+
+    ordered = sorted(nodes.values(), key=lambda n: (NODE_KINDS.index(n["kind"]), n["label"] or ""))
+    counts: dict[str, int] = {}
+    for n in ordered:
+        counts[n["kind"]] = counts.get(n["kind"], 0) + 1
+    return {
+        "nodes": ordered, "edges": edges_out, "counts": counts, "matched": matched,
+        "query": query or None, "filters": filters, "kinds": kinds,
+        "facets": {k: sorted({c[k] for c in facet_rows if c.get(k)}) for k in FILTER_FACTS},
+        "dropped_edges": dropped, "unlinked_documents": unlinked_documents,
+        "requests": requests,
+    }
