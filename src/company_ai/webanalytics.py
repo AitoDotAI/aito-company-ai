@@ -60,6 +60,12 @@ SOCIAL_HOSTS = {"linkedin.com": "linkedin", "lnkd.in": "linkedin",
                 "news.ycombinator.com": "hackernews", "reddit.com": "reddit",
                 "old.reddit.com": "reddit", "x.com": None, "twitter.com": None, "t.co": None,
                 "facebook.com": None, "bsky.app": None, "mastodon.social": None}
+# domains a utm value may name as is (utm_source=linkedin.com): the social
+# hosts and the search engines' own domains. Any other value with a dot is
+# <invalid>, so a person's domain or an email never lands.
+KNOWN_UTM_DOMAINS = set(SOCIAL_HOSTS) | {"google.com", "bing.com", "duckduckgo.com",
+                                         "ecosia.org", "baidu.com", "search.brave.com",
+                                         "startpage.com"}
 MEDIUM_SOURCES = {"social": "social", "email": "email", "newsletter": "email",
                   "cpc": "paid", "ppc": "paid", "paid": "paid", "paid_social": "paid",
                   "referral": "referral", "organic": "organic"}
@@ -112,11 +118,13 @@ def _redact_path(path: str) -> str:
 
 def _clean_utm(value: str | None) -> str | None:
     """A utm value, lowercased, spaces as _; <invalid> when it isn't a short
-    plain slug of a-z, 0-9, - and _ (an email, a domain, a token, a
-    90-character string)."""
+    plain slug of a-z, 0-9, - and _ (an email, a token, a 90-character
+    string) or one of KNOWN_UTM_DOMAINS."""
     if value is None:
         return None
     value = value.strip().lower().replace(" ", "_")
+    if value in KNOWN_UTM_DOMAINS:
+        return value
     return value if UTM_VALUE.fullmatch(value) and not _is_token(value) else "<invalid>"
 
 

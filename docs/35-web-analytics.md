@@ -49,7 +49,7 @@ carries a planted signal the funnel books depend on. Feeding the funnel from
 | signup_cta | Boolean | a sign-up CTA or sign-up page was reached |
 | referrer_domain | String, nullable | the referrer's host, `www.` dropped; null when direct |
 | source | String | organic, social, referral, direct, paid, email, or other. Classified from utm_medium first, then referrer_domain, by a fixed table in code. This is a label lookup, not a heuristic score. |
-| utm_source, utm_medium, utm_campaign | String, nullable | from the landing URL's query string (`[Amplitude] Page URL`, else `Page Location`), lowercased, spaces as `_`. A value that isn't a short plain slug (up to 64 of a-z 0-9 - _, no dots, no token) is stored as `<invalid>` and counted, so an email or a domain never lands. |
+| utm_source, utm_medium, utm_campaign | String, nullable | from the landing URL's query string (`[Amplitude] Page URL`, else `Page Location`), lowercased, spaces as `_`. A value that isn't a short plain slug (up to 64 of a-z 0-9 - _, no dots, no token) is stored as `<invalid>` and counted, so an email or a domain never lands. The exception is a known source's own domain (`linkedin.com`, `news.ycombinator.com`, the search engines; `KNOWN_UTM_DOMAINS`), kept as is. |
 | device_class | String | desktop, mobile, tablet, or unknown, from os_name by a fixed table. Each pull reports how many sessions came out unknown, and the OS names behind them. |
 | country | String | Amplitude's country |
 | likely_bot | Boolean | the landing path is a known probe (/admin, /wp-login.php, dotfile probes, /airdrops, …; a fixed prefix list). Flagged, never dropped (rule 3). A one-page session is NOT flagged: that is an ordinary bounce. |
