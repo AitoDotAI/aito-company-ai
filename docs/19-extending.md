@@ -26,9 +26,12 @@ Worked examples to copy: `events` (a simple lifecycle table) and `materials` +
    `LOADERS`, and `LOAD_ORDER`. If the table has derived columns, list them so
    `export_table` drops them.
 3. **Writes** — `src/company_ai/log.py`: `add_foo(...)` (reuse `parse_foo_row`),
-   and for edits, a full-table-rewrite `update_foo` (Aito exposes no per-row
-   id, so updates read-all → swap → `delete_table` + `create_table` + upload;
-   copy `update_todo` / `log_deal_update`).
+   and for edits, an `update_foo` that changes one row in place with
+   `_write_row(client, "foo", "foo_id", foo_id, mutate)` (a v2 `_modify` on the
+   key plus a read-back assert); removals use `delete_entries` on the key. Never
+   drop and recreate the table on a write path: two writers at once lose each
+   other's rows (td-20261012114045038839). Add a two-writers case to
+   `book/test_row_writes.py`.
 4. **Seed** — `scripts/generate_seed.py`: a `make_foo(...)` (deterministic — no
    `random` without the seeded `rng`); wire it into `generate()` and both call
    sites; `python scripts/generate_seed.py`.

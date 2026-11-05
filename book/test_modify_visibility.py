@@ -76,3 +76,22 @@ def test_modify_update_is_visible_to_the_next_read(t: bt.TestCaseRun) -> None:
     assert after_flush == "AFTER", "the update did not land even after a flush"
     assert _val(client, "r1") == "before", "the update touched the wrong row"
     client.delete_table(TABLE)
+
+
+def test_modify_delete_removes_only_the_matching_row(t: bt.TestCaseRun) -> None:
+    """docs/24 bug 4: a predicate delete removed a different row (5 rows
+    r0..r4, delete r1: r1 stayed, r4 went). The row-level write paths
+    (assignments, chats, documents, web_sessions) depend on it not doing so."""
+    client = _client()
+    t.h1(f"engine build: {client.version().get('version')}")
+    client.delete_table(TABLE)
+    client.create_table(TABLE, SCHEMA)
+    client.upload_batch(TABLE, [{"id": f"r{i}", "val": "before"} for i in range(5)])
+    client.delete_entries(TABLE, {"id": "r1"})
+    left = sorted(h["id"] for h in client.query({"from": TABLE, "limit": 10})["hits"])
+    t.tln(f"  after delete r1: {left}")
+    t.h1("verdict")
+    t.tln("  docs/24 bug 4 does NOT reproduce on this build" if left == ["r0", "r2", "r3", "r4"]
+          else "  docs/24 bug 4 REPRODUCES — the delete hit another row")
+    client.delete_table(TABLE)
+    assert left == ["r0", "r2", "r3", "r4"], left
