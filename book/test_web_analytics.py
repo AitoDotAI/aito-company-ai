@@ -707,6 +707,8 @@ def test_the_web_view_bundles_one_filter(t: bt.TestCaseRun) -> None:
     t.tln(f"  facets: {v['facets']}")
     t.tln(f"  drivers request: {json.dumps(v['drivers']['request'], sort_keys=True)}")
     t.tln(f"  sessions: {v['session_total']} rows, page of {len(v['sessions'])}")
+    t.tln(f"  thin below: {v['thin_below']} sessions")
+    assert v["thin_below"] == webanalytics.WEB_THIN
     t.tln(f"  first row fields: {sorted(v['sessions'][0])}")
     assert v["totals"]["sessions"] == sum(d["sessions"] for d in v["days"])
     assert v["session_total"] == v["totals"]["sessions"] + v["totals"]["bots"]

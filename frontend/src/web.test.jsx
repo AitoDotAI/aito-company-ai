@@ -18,6 +18,7 @@ const BUNDLE = {
     { field: "country", value: "Finland", lift: 3.1, rate_with: 0.5, rate_without: 0.14, rows_with: 4, thin: true },
   ], request: { from: "web_sessions" } },
   next_paths: null,
+  thin_below: 10,
   session_total: 124,
   sessions: [{ day: "2026-11-04", hour: 9, landing_path: "/pricing/", next_path: "/contact-us/",
                source: "organic", referrer_domain: "google.com", utm_campaign: null, post_id: null,
@@ -37,6 +38,7 @@ describe("web view", () => {
     expect(drivers.getByText(/2\.4×/)).toBeInTheDocument();
     expect(drivers.getByText(/11 sessions/)).toBeInTheDocument();
     expect(drivers.getByText(/thin/)).toBeInTheDocument();              // 4 sessions: no bare claim
+    expect(screen.getByText(/fewer than 10 sessions/)).toBeInTheDocument();
     const table = within(screen.getByTestId("web-sessions"));
     expect(table.getByText("/pricing/")).toBeInTheDocument();
     expect(table.getByText("google.com")).toBeInTheDocument();

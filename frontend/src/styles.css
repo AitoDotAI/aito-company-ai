@@ -957,3 +957,4 @@ select:focus { outline:none; border-color:var(--purple); }
   .web-grid { grid-template-columns: 1fr; }
   .web-left { position: static; }
 }
+.web-foot { font-size: 11px; margin: -4px 0 10px; }

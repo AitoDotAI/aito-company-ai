@@ -124,6 +124,11 @@ export function WebView() {
               </div>
             )) : <div className="muted">Not enough sessions with an onward click to relate.</div>}
           </div>
+          {data.thin_below != null && (
+            <div className="muted web-foot">
+              Thin = fewer than {data.thin_below} sessions carry the value: listed, but no lift is claimed.
+            </div>
+          )}
           {data.next_paths && (
             <>
               <h3>Next page from {data.filters.landing_path}{" "}

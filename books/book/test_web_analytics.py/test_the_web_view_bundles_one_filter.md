@@ -5,6 +5,7 @@
   facets: {'source': ['direct', 'organic', 'social'], 'device_class': ['desktop', 'mobile', 'unknown'], 'utm_campaign': ['ecom-screen'], 'landing_path': ['/', '/blog/every-screen-a-decision/', '/docs/']}
   drivers request: {"from": "web_sessions", "limit": 300, "relate": {"$on": [{"onward_click": true}, {"$and": [{"likely_bot": false}, {"$and": [{"day": {"$gte": "2026-10-05"}}, {"day": {"$lte": "2026-10-05"}}]}]}]}}
   sessions: 5 rows, page of 5
+  thin below: 10 sessions
   first row fields: ['country', 'day', 'device_class', 'engaged_seconds', 'hour', 'landing_path', 'likely_bot', 'next_path', 'onward_click', 'referrer_domain', 'signup_cta', 'source', 'views']
 
 # One source, one landing page

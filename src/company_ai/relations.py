@@ -88,7 +88,7 @@ def excluded_fields(table: str, outcome_field: str, extra: list[str] | None = No
 
 
 def relate(client: AitoClient, table: str, outcome: dict, where: dict | None = None,
-           top_n: int = 10, exclude: list[str] | None = None) -> dict:
+           top_n: int = 10, exclude: list[str] | None = None, thin: int = THIN) -> dict:
     """The field values most related to `outcome` (one proposition, e.g.
     {"reached": True}) in `table`, optionally within the rows matching
     `where`. Ranked by Aito's mutual information; each with its lift, the
@@ -117,7 +117,7 @@ def relate(client: AitoClient, table: str, outcome: dict, where: dict | None = N
             "rate_with": None if r["rate_with"] is None else round(r["rate_with"], 3),
             "rate_without": None if r["rate_without"] is None else round(r["rate_without"], 3),
             "rows_with": r["rows_with"],
-            "thin": r["rows_with"] < THIN,
+            "thin": r["rows_with"] < thin,
         })
         population, outcome_rows = r["n"], r["with_outcome"]
     rows.sort(key=lambda r: (-r["mi"], r["field"], str(r["value"])))
@@ -126,7 +126,7 @@ def relate(client: AitoClient, table: str, outcome: dict, where: dict | None = N
         "population": population, "with_outcome": outcome_rows,
         "relations": rows[:top_n],
         "excluded": sorted(out),
-        "note": (f"thin = fewer than {THIN} rows carry the value: a hint, not a finding. "
+        "note": (f"thin = fewer than {thin} rows carry the value: a hint, not a finding. "
                  "lift > 1 means the outcome is more common with the value."),
         "request": request,
     }

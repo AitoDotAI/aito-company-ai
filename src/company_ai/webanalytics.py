@@ -586,6 +586,11 @@ def onward_drivers(client: AitoClient, since: str, until: str, path: str | None 
 
 # ---- the dashboard's Web view: one bundle per filter ----
 
+# Below this many sessions a relation is shown as "thin, no claim" instead of
+# a lift. Pending Antti (docs/36 proposes 5); until he decides it is the
+# relate tool's THIN. Changing it is this one line.
+WEB_THIN = relations.THIN
+
 WEB_VIEW_FIELDS = ["day", "hour", "landing_path", "next_path", "source", "referrer_domain",
                    "utm_campaign", "post_id", "device_class", "country", "views",
                    "engaged_seconds", "onward_click", "signup_cta", "likely_bot"]
@@ -631,7 +636,7 @@ def web_view(client: AitoClient, since: str, until: str, source: str | None = No
     where = {"likely_bot": False, "$and": [*_window(since, until), *(
         {k: v} for k, v in filt.items() if v is not None)]}
     drivers = relations.relate(client, "web_sessions", {"onward_click": True},
-                               where=where, top_n=10) if n else None
+                               where=where, top_n=10, thin=WEB_THIN) if n else None
     next_paths = None
     if path:
         request, response = predict_next_path(client, path, source=source, device_class=device)
@@ -641,5 +646,6 @@ def web_view(client: AitoClient, since: str, until: str, source: str | None = No
     return {"since": since, "until": until,
             "filters": {k: v for k, v in filt.items() if v is not None},
             "totals": totals, "days": [days[d] for d in sorted(days)], "facets": facets,
+            "thin_below": WEB_THIN,
             "drivers": drivers, "next_paths": next_paths,
             "session_total": len(rows), "sessions": ordered[offset:offset + limit]}
