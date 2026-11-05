@@ -163,8 +163,18 @@ def _page(event: dict) -> str | None:
     return path if host == SITE_HOST else f"{host}{path}"
 
 
-def _device_class(os_name: str | None) -> str:
-    return OS_DEVICES.get((os_name or "").lower(), "unknown")
+def _device_class(family: str | None) -> str:
+    """From the export's device_family, which is the OS (Windows, Mac OS X,
+    iOS); its os_name is the browser."""
+    return OS_DEVICES.get((family or "").lower(), "unknown")
+
+
+def _referrer(props: dict) -> str | None:
+    """The host a session arrived from: the first page view's previous page,
+    when the SDK marks it external. Direct and internal arrivals have none."""
+    if props.get("[Amplitude] Previous Page Type") != "external":
+        return None
+    return _host(props.get("[Amplitude] Previous Page Location"))
 
 
 def _source(medium: str | None, referrer: str | None) -> str:
@@ -225,18 +235,19 @@ def _build(events: list[dict], day: str) -> tuple[list[dict], dict]:
             continue
         first = views[0]
         props = first.get("event_properties") or {}
-        url = props.get("[Amplitude] Page URL") or props.get("[Amplitude] Page Location") or ""
+        # the export's Page URL has its query string stripped; Page Location keeps it
+        url = props.get("[Amplitude] Page Location") or props.get("[Amplitude] Page URL") or ""
         query = parse_qs(urlsplit(url).query)
         utm = {k: _clean_utm((query.get(k) or [None])[0])
                for k in ("utm_source", "utm_medium", "utm_campaign")}
         stats["utm_present"] += any(utm.values())
         stats["invalid_utm"] += sum(v == "<invalid>" for v in utm.values())
-        referrer = _host(props.get("referrer"))
+        referrer = _referrer(props)
         stats["referrer_present"] += referrer is not None
         ctas = [e for e in group if e["event_type"].endswith(CTA_SUFFIX)]
-        device = _device_class(first.get("os_name"))
+        device = _device_class(first.get("device_family"))
         if device == "unknown":
-            stats["unknown_os"][str(first.get("os_name"))] += 1
+            stats["unknown_os"][str(first.get("device_family"))] += 1
         medium = utm["utm_medium"] if utm["utm_medium"] != "<invalid>" else None
         rows.append({
             "session_key": _session_key(*key[:2]) if key[0] not in NO_SESSION
