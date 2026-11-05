@@ -942,27 +942,19 @@ def log_experiment_result(
     """Resolve a running experiment to a verdict (the Learn step): record the
     measured result, the validated learning, and a terminal status
     (validated/invalidated/inconclusive), which re-derives `validated` and so
-    re-ranks the learning board. As with deals, Aito exposes no per-row id, so
-    this rewrites the (small) experiments table; idempotent."""
+    re-ranks the learning board. Written in place (`_write_row`); idempotent."""
     as_of = as_of or date.today()
     assert status in schema.EXPERIMENT_TERMINAL, \
         f"a result needs a terminal verdict (validated/invalidated/inconclusive), got {status!r}"
-    all_ex = client.query({"from": "experiments", "limit": 10000})["hits"]
-    match = [e for e in all_ex if e["experiment_id"] == experiment_id]
-    assert match, f"unknown experiment_id {experiment_id!r}"
-    row = dict(match[0])
-    row["status"] = status
-    row["result"] = float(result)
-    if learning is not None:
-        row["learning"] = learning
-    row["decided"] = as_of.isoformat()
-    row["validated"] = schema.experiment_validated(status)
 
-    rewritten = [e for e in all_ex if e["experiment_id"] != experiment_id] + [row]
-    client.delete_table("experiments")
-    client.create_table("experiments", schema.EXPERIMENTS)
-    client.upload_batch("experiments", rewritten)
-    assert client.count("experiments") == len(rewritten), "experiment rewrite row-count mismatch"
+    def mutate(row):
+        row["status"] = status
+        row["result"] = float(result)
+        if learning is not None:
+            row["learning"] = learning
+        row["decided"] = as_of.isoformat()
+        row["validated"] = schema.experiment_validated(status)
+    row = _write_row(client, "experiments", "experiment_id", experiment_id, mutate)
     changelog.record(client, "experiment", experiment_id, status,
                      f"experiment {status}: {row['hypothesis'][:60]}")
     return row
@@ -988,29 +980,24 @@ def decide_event(client: AitoClient, event_id: str, status: str,
                  outcome: str | None = None, notes: str | None = None,
                  as_of: date | None = None) -> dict:
     """Make (or revise) the go/no-go on an event: status go / no_go / attended.
-    `attended` may carry an outcome (worthwhile/neutral/waste). Full-table
-    rewrite (Aito exposes no row id). The decision date is stamped."""
+    `attended` may carry an outcome (worthwhile/neutral/waste). Written in
+    place (`_write_row`). The decision date is stamped."""
     as_of = as_of or date.today()
     assert status in schema.EVENT_STATUS, f"unknown status {status!r}"
-    all_events = client.query({"from": "events", "limit": 100000})["hits"]
-    match = [e for e in all_events if e["event_id"] == event_id]
-    assert match, f"unknown event_id {event_id!r}"
-    row = dict(match[0])
-    row["status"] = status
-    row["decided"] = as_of.isoformat() if status != "candidate" else None
     if outcome is not None:
         assert outcome in schema.EVENT_OUTCOMES, f"unknown outcome {outcome!r}"
         assert status == "attended", "an outcome is only graded on an attended event"
-        row["outcome"] = outcome
-    if status != "attended":
-        row["outcome"] = None  # clear any stale grade if un-attending
-    if notes is not None:
-        row["notes"] = notes
-    rewritten = [e for e in all_events if e["event_id"] != event_id] + [row]
-    client.delete_table("events")
-    client.create_table("events", schema.EVENTS)
-    client.upload_batch("events", rewritten)
-    assert client.count("events") == len(rewritten), "event rewrite row-count mismatch"
+
+    def mutate(row):
+        row["status"] = status
+        row["decided"] = as_of.isoformat() if status != "candidate" else None
+        if outcome is not None:
+            row["outcome"] = outcome
+        if status != "attended":
+            row["outcome"] = None  # clear any stale grade if un-attending
+        if notes is not None:
+            row["notes"] = notes
+    row = _write_row(client, "events", "event_id", event_id, mutate)
     changelog.record(client, "event", event_id, status, f"event {status}: {row['name']}")
     return row
 
@@ -1387,26 +1374,17 @@ def add_user(client: AitoClient, name: str, email: str, role: str = "sdr",
 
 
 def update_user(client: AitoClient, user_id: str, changes: dict) -> dict:
-    """Edit a user (name / email / role / active). Full-rewrite (small table)."""
+    """Edit a user (name / email / role / active), in place (`_write_row`)."""
     fields = {"name", "email", "role", "active"}
     unknown = set(changes) - fields
     assert not unknown, f"not editable: {sorted(unknown)}; allowed {sorted(fields)}"
     if "role" in changes:
         assert changes["role"] in schema.USER_ROLES, f"unknown role {changes['role']!r}"
-    rows = client.query({"from": "users", "limit": 10000})["hits"]
-    assert any(u["user_id"] == user_id for u in rows), f"unknown user_id {user_id!r}"
-    edited = {}
-    kept = []
-    for u in rows:
-        u = dict(u)
-        if u["user_id"] == user_id:
-            for k, v in changes.items():
-                u[k] = v.strip().lower() if k == "email" else v
-            edited = u
-        kept.append(u)
-    client.delete_table("users")
-    client.create_table("users", schema.USERS)
-    client.upload_batch("users", kept)
+
+    def mutate(u):
+        for k, v in changes.items():
+            u[k] = v.strip().lower() if k == "email" else v
+    edited = _write_row(client, "users", "user_id", user_id, mutate)
     changelog.record(client, "users", user_id, "updated", f"user {user_id}")
     return edited
 
@@ -1414,9 +1392,10 @@ def update_user(client: AitoClient, user_id: str, changes: dict) -> dict:
 def set_assignment(client: AitoClient, entity: str, entity_id: str,
                    user_id: str | None) -> dict:
     """Assign (or, with user_id falsy, unassign) a work item to a user. Writes
-    the `assignments` join table by full-rewrite — one owner per item, and the
-    big/linked CRM tables are never touched (docs/27). Validates the entity, the
-    item, and the user (rule 3)."""
+    the `assignments` join table row by row: the item's row is deleted and the
+    new one inserted, then read back — one owner per item, and the big/linked
+    CRM tables are never touched (docs/27). Validates the entity, the item, and
+    the user (rule 3)."""
     assert entity in schema.ASSIGNABLE_ENTITIES, \
         f"not assignable: {entity!r}; have {sorted(schema.ASSIGNABLE_ENTITIES)}"
     user_id = user_id or None
@@ -1426,16 +1405,15 @@ def set_assignment(client: AitoClient, entity: str, entity_id: str,
     id_col = _ASSIGN_ID_COL[entity]
     if not client.query({"from": entity, "where": {id_col: entity_id}, "limit": 1})["hits"]:
         raise AssertionError(f"unknown {entity} {entity_id!r}")
-    rows = client.query({"from": "assignments", "limit": 100000})["hits"]
-    kept = [dict(r) for r in rows
-            if not (r["entity"] == entity and r["entity_id"] == entity_id)]
+    item = {"entity": entity, "entity_id": entity_id}
+    client.delete_entries("assignments", item)
     if user_id:
-        kept.append({"assignment_id": _stamp("as"), "entity": entity, "entity_id": entity_id,
-                     "user_id": user_id, "created": date.today().isoformat()})
-    client.delete_table("assignments")
-    client.create_table("assignments", schema.ASSIGNMENTS)
-    if kept:
-        client.upload_batch("assignments", kept)
+        client.upload_batch("assignments", [{
+            "assignment_id": _stamp("as"), **item, "user_id": user_id,
+            "created": date.today().isoformat()}])
+    got = client.query({"from": "assignments", "where": item, "limit": 2})["hits"]
+    assert [r["user_id"] for r in got] == ([user_id] if user_id else []), \
+        f"assignment {entity} {entity_id}: wrote {user_id!r}, read back {got}"
     changelog.record(client, "assignments", entity_id, "updated",
                      f"{entity} {entity_id} -> {user_id or 'unassigned'}")
     return {"entity": entity, "entity_id": entity_id, "user_id": user_id}
@@ -1461,19 +1439,8 @@ def add_token(client: AitoClient, label: str) -> dict:
 
 
 def revoke_token(client: AitoClient, token_id: str) -> dict:
-    """Revoke a token (active=false) — effective on the next request. Full-rewrite
-    of the small tokens table (never `_modify`)."""
-    rows = client.query({"from": "tokens", "limit": 100000})["hits"]
-    assert any(r["token_id"] == token_id for r in rows), f"unknown token_id {token_id!r}"
-    kept = []
-    for r in rows:
-        r = dict(r)
-        if r["token_id"] == token_id:
-            r["active"] = False
-        kept.append(r)
-    client.delete_table("tokens")
-    client.create_table("tokens", schema.TOKENS)
-    if kept:
-        client.upload_batch("tokens", kept)
+    """Revoke a token (active=false) — effective on the next request. Written in
+    place (`_write_row`), with a read-back that the row is inactive."""
+    _write_row(client, "tokens", "token_id", token_id, lambda r: r.update({"active": False}))
     changelog.record(client, "tokens", token_id, "updated", "token revoked")
     return {"revoked": token_id}

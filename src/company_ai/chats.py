@@ -63,23 +63,24 @@ def get_chat(client: AitoClient, cid: str) -> dict | None:
     return _conversation(rows) if rows else None
 
 
-_CHAT_COLUMNS = tuple(schema.CHAT_MESSAGES["columns"])
-
-
 def _replace_conversation(client: AitoClient, cid: str, add_rows: list[dict]) -> int:
-    """Replace one conversation's messages by rewriting the whole table. A
-    predicate `delete_entries({conversation_id})` can't be used: the v2 `_modify`
-    delete removes the WRONG row on a migrated table, so it would drop another
-    conversation's messages (same bug as board._save_reflection). Read all, drop
-    this conversation's rows, re-upload. Returns the number of rows dropped."""
-    existing = client.query({"from": "chat_messages", "limit": 100000})["hits"]
-    kept = [{k: r.get(k) for k in _CHAT_COLUMNS}
-            for r in existing if r.get("conversation_id") != cid]
-    dropped = len(existing) - len(kept)
-    client.delete_table("chat_messages")
-    client.create_table("chat_messages", schema.CHAT_MESSAGES)
-    if kept + add_rows:
-        client.upload_batch("chat_messages", kept + add_rows)
+    """Replace one conversation's messages: delete its rows by predicate,
+    insert the new ones, and read back that exactly those landed (rule 3).
+    Other conversations are never touched, so two saves at once cannot erase
+    each other (td-20261012114045038839). The predicate delete is safe since
+    docs/24 bug 4 stopped reproducing (book/test_modify_visibility.py re-probes
+    it). Returns the number of rows dropped."""
+    where = {"conversation_id": cid}
+    dropped = client.query({"from": "chat_messages", "where": where, "limit": 0})["total"]
+    if dropped:
+        client.delete_entries("chat_messages", where)
+    if add_rows:
+        client.upload_batch("chat_messages", add_rows)
+    got = sorted(r["message_id"] for r in client.query(
+        {"from": "chat_messages", "where": where, "select": ["message_id"],
+         "limit": 100000})["hits"])
+    assert got == sorted(r["message_id"] for r in add_rows), \
+        f"chat {cid}: wrote {len(add_rows)} messages, read back {got}"
     return dropped
 
 
