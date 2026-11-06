@@ -143,13 +143,17 @@ the internal Journeys tab.
 ## The weekly digest (built 6.11.2026)
 
 `web_digest(as_of)` (MCP `web_digest`) lists, for every KPI, the signals of
-the seven days before `as_of` that are **not thin**: `raises_later` and
+a rolling window before `as_of` that are **not thin**: `raises_later` and
 `drop_off` rows of `web_paths_to` with lift > 1 and at least `WEB_THIN` (5)
-distinct visits. A signal is `new` when the week before had it only thin or
-not at all. No threshold beyond thin; Aito ranks and scores.
+distinct visits. The window is `DIGEST_WINDOW_DAYS`, 28 by default (env
+`COMPANY_AI_WEB_DIGEST_DAYS`): at our volume a single week almost never gets
+past thin. It's computed weekly, and a signal is `new` when last week's
+digest (the same window, seven days earlier) did not show it. No threshold
+beyond thin; Aito ranks and scores.
 
 So these surface without anyone asking, `pull-web` on a Monday (UTC) saves
-the previous week's digest as an internal document (area `marketing`, topics
-`web;digest`, title `Web digest, week <since>..<until>`). A re-run the same
-Monday finds the same title and body and records nothing new. It runs with
-the daily web-pull timer, so nothing extra is scheduled.
+the digest as an internal document (area `marketing`, topics `web;digest`,
+title `Web digest, <since>..<until>`). A re-run the same Monday finds the
+same title and body and records nothing new. It runs with the daily
+web-pull timer, so nothing extra is scheduled; installing that timer is the
+operator's.

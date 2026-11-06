@@ -53,11 +53,10 @@ How aito.ai visits reach one KPI (docs/37), from the step graph, all
 params: ['as_of']
 required: []
 The weekly web digest (docs/37): for every KPI, the step-graph signals
-    of the seven days before as_of (default today) that are not thin (at
+    of the rolling 28 days before as_of (default today) that are not thin (at
     least 5 distinct visits) with lift > 1: pages that raise the KPI later in
-    the visit, and drop-off pages. `new` marks a signal that was thin or
-    absent the week before. All from Aito; the Monday pull saves it as a
-    document.
+    the visit, and drop-off pages. `new` marks a signal last week's digest did
+    not show. All from Aito; the Monday pull saves it as a document.
 
 ## web_kpis
 

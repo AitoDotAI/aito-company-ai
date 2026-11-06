@@ -1192,18 +1192,24 @@ def _kpi_token(kpi: str) -> str:
 
 
 DIGEST_KINDS = ("raises_later", "drop_off")
+# The digest's rolling window, computed weekly. At our volume a single week
+# almost never gets past thin (the blog -> signup signal had 7 visits in 31
+# days), so a signal is judged over the last four weeks (CPO, 6.11.2026).
+DIGEST_WINDOW_DAYS = int(os.environ.get("COMPANY_AI_WEB_DIGEST_DAYS", "28"))
 
 
 def web_digest(client: AitoClient, as_of: date | None = None) -> dict:
     """The weekly web digest (CPO, 6.11.2026): for every KPI, the step-graph
-    signals of the last full week (the seven days before as_of) that are not
-    thin, read from web_paths_to's raises_later and drop_off: lift > 1 and at
-    least WEB_THIN distinct visits. A signal is `new` when the week before had
-    it only thin or not at all. Aito ranks and scores; nothing here is a
-    threshold beyond thin (rule 2)."""
+    signals of the DIGEST_WINDOW_DAYS before as_of that are not thin, read
+    from web_paths_to's raises_later and drop_off: lift > 1 and at least
+    WEB_THIN distinct visits. Computed weekly over a rolling window; a signal
+    is `new` when last week's digest (the same window, seven days earlier) did
+    not show it. Aito ranks and scores; nothing here is a threshold beyond
+    thin (rule 2)."""
     as_of = as_of or date.today()
-    week = ((as_of - timedelta(days=7)).isoformat(), (as_of - timedelta(days=1)).isoformat())
-    previous = ((as_of - timedelta(days=14)).isoformat(), (as_of - timedelta(days=8)).isoformat())
+    span = lambda end: ((end - timedelta(days=DIGEST_WINDOW_DAYS)).isoformat(),
+                        (end - timedelta(days=1)).isoformat())
+    week, previous = span(as_of), span(as_of - timedelta(days=7))
 
     def solid(since: str, until: str) -> list[dict]:
         rows = []
@@ -1220,7 +1226,7 @@ def web_digest(client: AitoClient, as_of: date | None = None) -> dict:
     signals = [{**s, "new": (s["kpi"], s["kind"], s["value"]) not in before}
                for s in solid(*week)]
     return {"week": f"{week[0]}..{week[1]}", "previous": f"{previous[0]}..{previous[1]}",
-            "thin_below": WEB_THIN, "signals": signals}
+            "window_days": DIGEST_WINDOW_DAYS, "thin_below": WEB_THIN, "signals": signals}
 
 
 _DIGEST_LABELS = {"raises_later": "raises it later in the visit",
@@ -1230,10 +1236,10 @@ _DIGEST_LABELS = {"raises_later": "raises it later in the visit",
 def digest_document(digest: dict) -> tuple[str, str]:
     """The digest as a (title, body) document, for the Monday pull to save
     (area marketing, topics web;digest). Formatting only."""
-    title = f"Web digest, week {digest['week']}"
-    lines = [f"Signals with at least {digest['thin_below']} distinct visits in {digest['week']}, "
-             f"from Aito's _relate over the step graph (web_paths_to). NEW: thin or absent "
-             f"in {digest['previous']}."]
+    title = f"Web digest, {digest['week']}"
+    lines = [f"Signals with at least {digest['thin_below']} distinct visits over the "
+             f"{digest['window_days']} days {digest['week']}, from Aito's _relate over the step "
+             f"graph (web_paths_to). NEW: not shown last week ({digest['previous']})."]
     if not digest["signals"]:
         lines.append("")
         lines.append("No signal cleared the thin threshold this week.")
