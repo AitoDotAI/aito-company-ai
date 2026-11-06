@@ -68,9 +68,9 @@ refused. (To confirm with the CRO.)
 - **One account at a time.** `add_fact` takes one company and
   `supersede_fact` one pair of facts. No tool takes a list, a group or a
   segment, so there is no way to release a group.
-- **Fail closed.** The briefing shows `HOLD` whenever the hold status is
-  unclear, not only when there is an active `on_hold`:
-  - an active `on_hold` fact;
+- **Fail closed.** One active `on_hold` fact (source `antti`, no release)
+  shows plain `HOLD`. The briefing also shows `HOLD` whenever the hold status
+  is unclear, as `HOLD (unclear: <reason>)`:
   - two or more active hold facts (a conflict);
   - an active `released` fact that supersedes no `on_hold` fact of the same
     account;
@@ -78,8 +78,8 @@ refused. (To confirm with the CRO.)
     table some other way, such as a direct load). The loader refuses it too
     (rule 3).
 
-  Each unclear case shows as `HOLD (unclear: <reason>)`, with the facts
-  behind it, and the briefing never shows the account as released.
+  Each unclear case lists the facts behind it, and the briefing never shows
+  the account as released. "Unclear" is reserved for these anomalies (CRO).
 
 ## Writes, tools and the change log
 
