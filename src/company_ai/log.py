@@ -115,7 +115,8 @@ def add_company(client: AitoClient, name: str) -> dict:
     scanning every source; this is the live-write equivalent for a company that
     first appears after the initial load."""
     from .loaders import company_slug
-    assert name and name.strip(), "a company needs a name"
+    if not (name and name.strip()):
+        raise AssertionError("a company needs a name")
     name = name.strip()
     cid = company_slug(name)
     existing = client.query(
@@ -200,7 +201,8 @@ def log_touch(
     from . import engagements
     from .loaders import ENGAGEMENT_COLUMNS
     unknown = set(engagement) - set(ENGAGEMENT_COLUMNS)
-    assert not unknown, f"unknown engagement field(s) {sorted(unknown)}"
+    if unknown:
+        raise AssertionError(f"unknown engagement field(s) {sorted(unknown)}")
     explicit_ts = ts
     ts = ts or datetime.now().replace(microsecond=0)
     raw = {
@@ -247,7 +249,8 @@ def log_touch(
     _after_insert("touch", row["touch_id"], follow_up)
     got = client.query({"from": "touches", "where": {"touch_id": row["touch_id"]},
                         "limit": 2})["hits"]
-    assert len(got) == 1, f"logged touch not readable back: {row['touch_id']}"
+    if not (len(got) == 1):
+        raise AssertionError(f"logged touch not readable back: {row['touch_id']}")
     return got[0]
 
 
@@ -263,12 +266,16 @@ def log_decision(
     ts: datetime | None = None,
 ) -> dict:
     ts = ts or datetime.now().replace(microsecond=0)
-    assert decision_type in schema.DECISION_TYPES, f"unknown decision_type {decision_type!r}"
-    assert human_action in schema.HUMAN_ACTIONS, f"unknown human_action {human_action!r}"
+    if decision_type not in schema.DECISION_TYPES:
+        raise AssertionError(f"unknown decision_type {decision_type!r}")
+    if human_action not in schema.HUMAN_ACTIONS:
+        raise AssertionError(f"unknown human_action {human_action!r}")
     context_keys = {"window", "weekday", "segment", "tier", "ai_lifecycle"}
     unknown = set(context) - context_keys
-    assert not unknown, f"unknown context keys {sorted(unknown)}; allowed: {sorted(context_keys)}"
-    assert 0.0 <= agent_confidence <= 1.0, f"agent_confidence out of [0,1]: {agent_confidence}"
+    if unknown:
+        raise AssertionError(f"unknown context keys {sorted(unknown)}; allowed: {sorted(context_keys)}")
+    if not (0.0 <= agent_confidence <= 1.0):
+        raise AssertionError(f"agent_confidence out of [0,1]: {agent_confidence}")
     row = {
         "decision_id": f"dec-{ts.strftime('%Y%m%d%H%M%S')}-{decision_type}",
         "ts": ts.isoformat(),
@@ -319,32 +326,38 @@ def log_deal_update(
     blocker also appends a deal_events row."""
     as_of = as_of or date.today()
     match = client.query({"from": "deals", "where": {"deal_id": deal_id}, "limit": 2})["hits"]
-    assert len(match) == 1, f"deal_id {deal_id!r}: expected one deal, found {len(match)}"
+    if not (len(match) == 1):
+        raise AssertionError(f"deal_id {deal_id!r}: expected one deal, found {len(match)}")
     before = match[0]
     row = dict(before)
     if stage is not None:
-        assert stage in schema.DEAL_STAGES, f"unknown stage {stage!r}"
+        if stage not in schema.DEAL_STAGES:
+            raise AssertionError(f"unknown stage {stage!r}")
         row["stage"] = stage
     if probability is not None:
-        assert 0 <= probability <= 100, f"probability out of 0-100: {probability}"
+        if not (0 <= probability <= 100):
+            raise AssertionError(f"probability out of 0-100: {probability}")
         row["probability"] = probability
     if blocker is not None:
-        assert blocker in schema.DEAL_BLOCKERS, f"unknown blocker {blocker!r}"
+        if blocker not in schema.DEAL_BLOCKERS:
+            raise AssertionError(f"unknown blocker {blocker!r}")
         row["blocker"] = blocker
     if champion_present is not None:
         row["champion_present"] = champion_present
     if source is not None:
-        assert source in schema.SOURCES, f"unknown source {source!r}"
+        if source not in schema.SOURCES:
+            raise AssertionError(f"unknown source {source!r}")
         row["source"] = source
     if first_meeting_date is not None:
         date.fromisoformat(first_meeting_date)
         row["first_meeting_date"] = first_meeting_date
     if lost_reason is not None:
-        assert lost_reason in schema.DEAL_BLOCKERS, f"unknown lost_reason {lost_reason!r}"
+        if lost_reason not in schema.DEAL_BLOCKERS:
+            raise AssertionError(f"unknown lost_reason {lost_reason!r}")
         row["lost_reason"] = lost_reason
     if row.get("lost_reason"):
-        assert row["stage"] == "closed_lost", (
-            f"lost_reason is set on a {row['stage']!r} deal (only on closed_lost)")
+        if not (row["stage"] == "closed_lost"):
+            raise AssertionError(f"lost_reason is set on a {row['stage']!r} deal (only on closed_lost)")
     row["last_touch_date"] = as_of.isoformat()
     row["won"] = schema.deal_won(row["stage"])  # re-derive terminal state
     row.update(deal_search_columns(row["company"], row["segment"], row["stage"], row["blocker"]))
@@ -353,9 +366,11 @@ def log_deal_update(
     if change:
         client.update_entries("deals", {"deal_id": deal_id}, change)
         after = client.query({"from": "deals", "where": {"deal_id": deal_id}, "limit": 2})["hits"]
-        assert len(after) == 1, f"deal {deal_id}: {len(after)} rows after the update"
+        if not (len(after) == 1):
+            raise AssertionError(f"deal {deal_id}: {len(after)} rows after the update")
         wrong = {k: (v, after[0].get(k)) for k, v in change.items() if after[0].get(k) != v}
-        assert not wrong, f"deal {deal_id}: wrote/read back {wrong}"
+        if wrong:
+            raise AssertionError(f"deal {deal_id}: wrote/read back {wrong}")
     if row["stage"] != before["stage"] or row["blocker"] != before["blocker"]:
         _deal_event(client, row, before["stage"], as_of)
     action = ("won" if row["stage"] == "closed_won"
@@ -496,7 +511,8 @@ def _write_todo(client: AitoClient, todo_id: str, build, attempts: int = _WRITE_
     _ensure_rev_column(client)
     for _ in range(attempts):
         hits = _todo_rows(client, todo_id)
-        assert hits, f"unknown todo_id {todo_id!r}"
+        if not hits:
+            raise AssertionError(f"unknown todo_id {todo_id!r}")
         before = hits[0]
         if not before.get("rev"):
             raise TodoNotVersioned(
@@ -574,7 +590,8 @@ def reorder_todos(client: AitoClient, ordered_ids: list[str]) -> int:
     whole-table rewrite. Unknown ids raise (rule 3)."""
     by_id = {t["todo_id"]: t for t in client.query({"from": "todos", "limit": 10000})["hits"]}
     unknown = [i for i in ordered_ids if i not in by_id]
-    assert not unknown, f"unknown todo_id(s) {unknown}"
+    if unknown:
+        raise AssertionError(f"unknown todo_id(s) {unknown}")
     for position, tid in enumerate(ordered_ids):
         if by_id[tid].get("sort_order") != position:
             _write_todo(client, tid, lambda row, position=position: {"sort_order": position})
@@ -639,7 +656,8 @@ def add_todo(
         "role": role or "", "owner": owner or "",
     }
     problem = schema.handoff_problem(area, status, detail)
-    assert not problem, f"todo {title!r}: {problem}"
+    if problem:
+        raise AssertionError(f"todo {title!r}: {problem}")
 
     contact_ids, deal_ids = _todo_link_ids(client)
     row = parse_todo_row(raw, contact_ids, deal_ids)
@@ -682,10 +700,12 @@ def update_todo(client: AitoClient, todo_id: str, changes: dict,
     change persisted, not an echo of what was asked for."""
     changes = dict(changes)
     unknown = set(changes) - EDITABLE_TODO_FIELDS
-    assert not unknown, f"not editable: {sorted(unknown)}; allowed {sorted(EDITABLE_TODO_FIELDS)}"
-    assert not (append_detail and "detail" in changes), \
-        "pass either changes['detail'] (replace) or append_detail, not both"
-    assert changes or append_detail, "nothing to change"
+    if unknown:
+        raise AssertionError(f"not editable: {sorted(unknown)}; allowed {sorted(EDITABLE_TODO_FIELDS)}")
+    if append_detail and "detail" in changes:
+        raise AssertionError("pass either changes['detail'] (replace) or append_detail, not both")
+    if not (changes or append_detail):
+        raise AssertionError("nothing to change")
     contact_ids, deal_ids = _todo_link_ids(client)
 
     def build(row: dict) -> dict:
@@ -693,26 +713,33 @@ def update_todo(client: AitoClient, todo_id: str, changes: dict,
         fields = {}
         for field, value in changes.items():
             if field == "area":
-                assert value in schema.TODO_AREAS, f"unknown area {value!r}"
+                if value not in schema.TODO_AREAS:
+                    raise AssertionError(f"unknown area {value!r}")
             elif field == "status":
-                assert value in schema.TODO_STATUS, f"unknown status {value!r}"
+                if value not in schema.TODO_STATUS:
+                    raise AssertionError(f"unknown status {value!r}")
             elif field == "prep_status":
-                assert value in schema.PREP_STATUS, f"unknown prep_status {value!r}"
+                if value not in schema.PREP_STATUS:
+                    raise AssertionError(f"unknown prep_status {value!r}")
             elif field == "action_type" and value:
-                assert value in schema.ACTION_TYPES, f"unknown action_type {value!r}"
+                if value not in schema.ACTION_TYPES:
+                    raise AssertionError(f"unknown action_type {value!r}")
             elif field == "linked_type" and value:
-                assert value in schema.LINKED_TYPES, f"unknown linked_type {value!r}"
+                if value not in schema.LINKED_TYPES:
+                    raise AssertionError(f"unknown linked_type {value!r}")
             elif field == "priority":
                 value = int(value)
-                assert value >= 1, f"priority must be >= 1, got {value}"
+                if not (value >= 1):
+                    raise AssertionError(f"priority must be >= 1, got {value}")
             elif field == "stakeholder_id" and value:
-                assert value in contact_ids, f"unknown stakeholder_id {value!r}"
+                if value not in contact_ids:
+                    raise AssertionError(f"unknown stakeholder_id {value!r}")
             elif field == "role" and value:
-                assert re.fullmatch(schema.SLUG_PATTERN, value), \
-                    f"role must be a lowercase slug, got {value!r}"
+                if not (re.fullmatch(schema.SLUG_PATTERN, value)):
+                    raise AssertionError(f"role must be a lowercase slug, got {value!r}")
             elif field == "owner" and value:
-                assert re.fullmatch(schema.SLUG_PATTERN, value), \
-                    f"owner must be a lowercase slug, got {value!r}"
+                if not (re.fullmatch(schema.SLUG_PATTERN, value)):
+                    raise AssertionError(f"owner must be a lowercase slug, got {value!r}")
                 # owner is editable, but claiming is claim_todo's job: overwriting a
                 # *different* live holder here would silently steal the claim the
                 # ClaimTaken guard exists to protect (td-20260905163943977824).
@@ -729,16 +756,20 @@ def update_todo(client: AitoClient, todo_id: str, changes: dict,
         row.update(fields)
 
         problem = schema.handoff_problem(row["area"], row["status"], row.get("detail"))
-        assert not problem, f"todo {todo_id}: {problem}"
+        if problem:
+            raise AssertionError(f"todo {todo_id}: {problem}")
         if row.get("linked_type") == "deal" and row.get("linked_id"):
-            assert row["linked_id"] in deal_ids, f"unknown deal linked_id {row['linked_id']!r}"
+            if row["linked_id"] not in deal_ids:
+                raise AssertionError(f"unknown deal linked_id {row['linked_id']!r}")
         # the lens invariant on the open worklist (mirrors parse_todo_row); terminal
         # todos (done/archived) are exempt — they're off the worklist
         if row["status"] not in schema.TERMINAL_STATUSES:
             if row["area"] in schema.CALENDAR_AREAS:
-                assert row.get("due_date"), f"open {row['area']} todo needs a due_date"
+                if not (row.get("due_date")):
+                    raise AssertionError(f"open {row['area']} todo needs a due_date")
             elif row["area"] not in schema.DEADLINE_AREAS:
-                assert not row.get("due_date"), f"open {row['area']} todo must not have a due_date"
+                if row.get("due_date"):
+                    raise AssertionError(f"open {row['area']} todo must not have a due_date")
         return fields
 
     _, row = _write_todo(client, todo_id, build)
@@ -755,7 +786,8 @@ class ClaimTaken(RuntimeError):
 
 def _todo(client: AitoClient, todo_id: str) -> dict:
     hits = client.query({"from": "todos", "where": {"todo_id": todo_id}, "limit": 1})["hits"]
-    assert hits, f"unknown todo_id {todo_id!r}"
+    if not hits:
+        raise AssertionError(f"unknown todo_id {todo_id!r}")
     return hits[0]
 
 
@@ -769,8 +801,8 @@ def claim_todo(client: AitoClient, todo_id: str, agent: str) -> dict:
     same free todo cannot both win: the second write matches nothing, its
     read-back shows the first claimant's version, and the retry sees the new
     owner and raises `ClaimTaken`."""
-    assert agent and re.fullmatch(schema.SLUG_PATTERN, agent), \
-        f"agent must be a lowercase slug (an owner id), got {agent!r}"
+    if not (agent and re.fullmatch(schema.SLUG_PATTERN, agent)):
+        raise AssertionError(f"agent must be a lowercase slug (an owner id), got {agent!r}")
     already = {"mine": False}
 
     def build(row: dict) -> dict:
@@ -822,14 +854,16 @@ def normalize_link_path(value: str) -> str:
     (ecommerce.aito.ai/cart), and the query and fragment are dropped."""
     from urllib.parse import urlsplit
     value = (value or "").strip()
-    assert value, "link_path is empty"
+    if not value:
+        raise AssertionError("link_path is empty")
     if "://" in value:
         parts = urlsplit(value)
         host = (parts.hostname or "").lower()
         host = host[4:] if host.startswith("www.") else host
         path = parts.path or "/"
         return path if host == "aito.ai" else f"{host}{path}"
-    assert value.startswith("/"), f"link_path {value!r}: a URL or a path starting with /"
+    if not (value.startswith("/")):
+        raise AssertionError(f"link_path {value!r}: a URL or a path starting with /")
     return value.split("?")[0].split("#")[0]
 
 
@@ -852,14 +886,16 @@ def add_post(client: AitoClient, material_id: str, channel_id: str, tone: str,
     each platform (a Reddit post and a LinkedIn ad, say)."""
     materials, channels = _material_channel_maps(client)
     if utm_campaign is not None:
-        assert re.fullmatch(r"[a-z0-9][a-z0-9-]{0,63}", utm_campaign), \
-            f"utm_campaign {utm_campaign!r}: expected a lowercase slug (a-z, 0-9, -)"
-        assert channel_id in channels, f"unknown channel_id {channel_id!r}"
+        if not (re.fullmatch(r"[a-z0-9][a-z0-9-]{0,63}", utm_campaign)):
+            raise AssertionError(f"utm_campaign {utm_campaign!r}: expected a lowercase slug (a-z, 0-9, -)")
+        if channel_id not in channels:
+            raise AssertionError(f"unknown channel_id {channel_id!r}")
         platform = channels[channel_id]["platform"]
         taken = client.query({"from": "posts", "where": {"utm_campaign": utm_campaign,
                                                         "platform": platform},
                               "limit": 1})["hits"]
-        assert not taken, (f"utm_campaign {utm_campaign!r} on {platform} "
+        if taken:
+            raise AssertionError(f"utm_campaign {utm_campaign!r} on {platform} "
                            f"is already post {taken[0]['post_id']}")
     raw = {
         "post_id": _stamp("po"), "material_id": material_id, "channel_id": channel_id,
@@ -888,20 +924,25 @@ def log_post_result(client: AitoClient, post_id: str, outcome: str,
     engagement counts (reactions/comments/reposts/link_clicks) are left as
     they are when not given: null on a first result, the logged value on a
     re-log, never set to 0 (td-20261104091642940622)."""
-    assert outcome in schema.POST_OUTCOMES, f"unknown outcome {outcome!r}"
+    if outcome not in schema.POST_OUTCOMES:
+        raise AssertionError(f"unknown outcome {outcome!r}")
     when = posted_at or date.today().isoformat()
     try:
         day = date.fromisoformat(when)
     except ValueError:
         day = None
-    assert day is not None and len(when) == 10, f"posted_at {when!r}: expected YYYY-MM-DD"
-    assert day <= date.today(), f"posted_at {when!r} is in the future"
+    if not (day is not None and len(when) == 10):
+        raise AssertionError(f"posted_at {when!r}: expected YYYY-MM-DD")
+    if not (day <= date.today()):
+        raise AssertionError(f"posted_at {when!r} is in the future")
     engagement = {"upvotes": upvotes, "trials": trials, "reactions": reactions,
                   "comments": comments, "reposts": reposts, "link_clicks": link_clicks}
     for name, value in engagement.items():
-        assert value is None or int(value) >= 0, f"{name} {value!r}: expected a count >= 0"
+        if not (value is None or int(value) >= 0):
+            raise AssertionError(f"{name} {value!r}: expected a count >= 0")
     match = client.query({"from": "posts", "where": {"post_id": post_id}, "limit": 2})["hits"]
-    assert len(match) == 1, f"post_id {post_id!r}: expected one post, found {len(match)}"
+    if not (len(match) == 1):
+        raise AssertionError(f"post_id {post_id!r}: expected one post, found {len(match)}")
     change = {
         "status": "posted", "posted_at": when,
         "weekday": schema.WEEKDAYS[day.weekday()],
@@ -911,10 +952,12 @@ def log_post_result(client: AitoClient, post_id: str, outcome: str,
     }
     client.update_entries("posts", {"post_id": post_id}, change)
     after = client.query({"from": "posts", "where": {"post_id": post_id}, "limit": 2})["hits"]
-    assert len(after) == 1, f"post {post_id}: {len(after)} rows after the update"
+    if not (len(after) == 1):
+        raise AssertionError(f"post {post_id}: {len(after)} rows after the update")
     row = after[0]
     wrong = {k: (v, row.get(k)) for k, v in change.items() if row.get(k) != v}
-    assert not wrong, f"post {post_id}: wrote/read back {wrong}"
+    if wrong:
+        raise AssertionError(f"post {post_id}: wrote/read back {wrong}")
     changelog.record(client, "post", post_id, "posted", f"post {outcome}: {reach_or_views} reach")
     return row
 
@@ -986,8 +1029,8 @@ def log_experiment_result(
     (validated/invalidated/inconclusive), which re-derives `validated` and so
     re-ranks the learning board. Written in place (`_write_row`); idempotent."""
     as_of = as_of or date.today()
-    assert status in schema.EXPERIMENT_TERMINAL, \
-        f"a result needs a terminal verdict (validated/invalidated/inconclusive), got {status!r}"
+    if status not in schema.EXPERIMENT_TERMINAL:
+        raise AssertionError(f"a result needs a terminal verdict (validated/invalidated/inconclusive), got {status!r}")
 
     def mutate(row):
         row["status"] = status
@@ -1025,10 +1068,13 @@ def decide_event(client: AitoClient, event_id: str, status: str,
     `attended` may carry an outcome (worthwhile/neutral/waste). Written in
     place (`_write_row`). The decision date is stamped."""
     as_of = as_of or date.today()
-    assert status in schema.EVENT_STATUS, f"unknown status {status!r}"
+    if status not in schema.EVENT_STATUS:
+        raise AssertionError(f"unknown status {status!r}")
     if outcome is not None:
-        assert outcome in schema.EVENT_OUTCOMES, f"unknown outcome {outcome!r}"
-        assert status == "attended", "an outcome is only graded on an attended event"
+        if outcome not in schema.EVENT_OUTCOMES:
+            raise AssertionError(f"unknown outcome {outcome!r}")
+        if not (status == "attended"):
+            raise AssertionError("an outcome is only graded on an attended event")
 
     def mutate(row):
         row["status"] = status
@@ -1075,17 +1121,21 @@ def _write_row(client: AitoClient, table: str, key: str, row_id: str, mutate) ->
     Replaces the read-all -> drop -> recreate rewrite that lost routine ticks
     and document edits under concurrent writers (td-20261012114045038839)."""
     hit = client.query({"from": table, "where": {key: row_id}, "limit": 2})["hits"]
-    assert hit, f"unknown {key} {row_id!r}"
-    assert len(hit) == 1, f"{table}: {len(hit)} rows with {key}={row_id!r}"
+    if not hit:
+        raise AssertionError(f"unknown {key} {row_id!r}")
+    if not (len(hit) == 1):
+        raise AssertionError(f"{table}: {len(hit)} rows with {key}={row_id!r}")
     row = dict(hit[0])
     mutate(row)
     change = {k: v for k, v in row.items() if hit[0].get(k) != v}
     if change:
         client.update_entries(table, {key: row_id}, change)
         got = client.query({"from": table, "where": {key: row_id}, "limit": 2})["hits"]
-        assert len(got) == 1, f"{table} {row_id}: {len(got)} rows after the update"
+        if not (len(got) == 1):
+            raise AssertionError(f"{table} {row_id}: {len(got)} rows after the update")
         wrong = {k: (v, got[0].get(k)) for k, v in change.items() if got[0].get(k) != v}
-        assert not wrong, f"{table} {row_id}: wrote/read back {wrong}"
+        if wrong:
+            raise AssertionError(f"{table} {row_id}: wrote/read back {wrong}")
         row = got[0]
     return row
 
@@ -1098,15 +1148,20 @@ def update_routine(client: AitoClient, routine_id: str, changes: dict) -> dict:
     """Edit a routine (the customizable list). Validates enums; rewrites the
     table. Unknown fields/values raise (rule 3)."""
     unknown = set(changes) - EDITABLE_ROUTINE_FIELDS
-    assert not unknown, f"not editable: {sorted(unknown)}; allowed {sorted(EDITABLE_ROUTINE_FIELDS)}"
+    if unknown:
+        raise AssertionError(f"not editable: {sorted(unknown)}; allowed {sorted(EDITABLE_ROUTINE_FIELDS)}")
     if "area" in changes:
-        assert changes["area"] in schema.TODO_AREAS, f"unknown area {changes['area']!r}"
+        if changes["area"] not in schema.TODO_AREAS:
+            raise AssertionError(f"unknown area {changes['area']!r}")
     if "cadence" in changes:
-        assert changes["cadence"] in schema.ROUTINE_CADENCE, f"unknown cadence {changes['cadence']!r}"
+        if changes["cadence"] not in schema.ROUTINE_CADENCE:
+            raise AssertionError(f"unknown cadence {changes['cadence']!r}")
     if "prep" in changes:
-        assert changes["prep"] in schema.ROUTINE_PREP, f"unknown prep {changes['prep']!r}"
+        if changes["prep"] not in schema.ROUTINE_PREP:
+            raise AssertionError(f"unknown prep {changes['prep']!r}")
     if changes.get("weekday"):
-        assert changes["weekday"] in schema.WEEKDAYS, f"unknown weekday {changes['weekday']!r}"
+        if changes["weekday"] not in schema.WEEKDAYS:
+            raise AssertionError(f"unknown weekday {changes['weekday']!r}")
     if changes.get("day_of_month") not in (None, ""):
         changes["day_of_month"] = int(changes["day_of_month"])
 
@@ -1131,17 +1186,18 @@ def tick_routine(client: AitoClient, routine_id: str, as_of: date | None = None)
 def _check_contact(client: AitoClient, stakeholder_id: str | None) -> None:
     if not stakeholder_id:
         return
-    assert stakeholder_id in _Exists(client, "contacts", "contact_id"), \
-        f"unknown stakeholder_id {stakeholder_id!r}"
+    if stakeholder_id not in _Exists(client, "contacts", "contact_id"):
+        raise AssertionError(f"unknown stakeholder_id {stakeholder_id!r}")
 
 
 # ---- documents (the knowledge store, docs/25) ----
 
 def _check_document(client: AitoClient, kind: str, area: str | None,
                     stakeholder_id: str | None) -> None:
-    assert kind in schema.DOC_KINDS, f"unknown kind {kind!r}; have {sorted(schema.DOC_KINDS)}"
-    assert area in (None, "") or area in schema.DOCUMENT_AREAS, \
-        f"unknown area {area!r}; have {sorted(schema.DOCUMENT_AREAS)}"
+    if kind not in schema.DOC_KINDS:
+        raise AssertionError(f"unknown kind {kind!r}; have {sorted(schema.DOC_KINDS)}")
+    if not (area in (None, "") or area in schema.DOCUMENT_AREAS):
+        raise AssertionError(f"unknown area {area!r}; have {sorted(schema.DOCUMENT_AREAS)}")
     _check_contact(client, stakeholder_id)
 
 
@@ -1156,7 +1212,8 @@ def add_document(client: AitoClient, title: str, body: str, kind: str = "interna
     turns the note into a dated diary entry (docs/25 Phase 2)."""
     from .loaders import company_slug
     _check_document(client, kind, area, stakeholder_id)
-    assert title and body, "a document needs a title and a body"
+    if not (title and body):
+        raise AssertionError("a document needs a title and a body")
     if noted_on:
         date.fromisoformat(noted_on)   # loud on a malformed diary date (rule 3)
     now = date.today().isoformat()
@@ -1193,11 +1250,14 @@ def update_document(client: AitoClient, doc_id: str, changes: dict) -> dict:
     """Edit a document. Validates kind/area/contact; writes only this row's
     changed fields in place (`_write_row`). Stamps `updated`."""
     unknown = set(changes) - EDITABLE_DOCUMENT_FIELDS
-    assert not unknown, f"not editable: {sorted(unknown)}; allowed {sorted(EDITABLE_DOCUMENT_FIELDS)}"
+    if unknown:
+        raise AssertionError(f"not editable: {sorted(unknown)}; allowed {sorted(EDITABLE_DOCUMENT_FIELDS)}")
     if "kind" in changes:
-        assert changes["kind"] in schema.DOC_KINDS, f"unknown kind {changes['kind']!r}"
+        if changes["kind"] not in schema.DOC_KINDS:
+            raise AssertionError(f"unknown kind {changes['kind']!r}")
     if changes.get("area"):
-        assert changes["area"] in schema.DOCUMENT_AREAS, f"unknown area {changes['area']!r}"
+        if changes["area"] not in schema.DOCUMENT_AREAS:
+            raise AssertionError(f"unknown area {changes['area']!r}")
     if changes.get("stakeholder_id"):
         _check_contact(client, changes["stakeholder_id"])
     if changes.get("noted_on"):
@@ -1218,10 +1278,12 @@ def update_document(client: AitoClient, doc_id: str, changes: dict) -> dict:
 def delete_document(client: AitoClient, doc_id: str) -> dict:
     """Remove a document: a row-addressed delete, then proof it is gone."""
     hit = client.query({"from": "documents", "where": {"doc_id": doc_id}, "limit": 1})["hits"]
-    assert hit, f"unknown doc_id {doc_id!r}"
+    if not hit:
+        raise AssertionError(f"unknown doc_id {doc_id!r}")
     client.delete_entries("documents", {"doc_id": doc_id})
     left = client.query({"from": "documents", "where": {"doc_id": doc_id}, "limit": 1})["hits"]
-    assert not left, f"document {doc_id} still present after the delete"
+    if left:
+        raise AssertionError(f"document {doc_id} still present after the delete")
     search.refresh(client)
     return {"deleted": doc_id}
 
@@ -1390,7 +1452,8 @@ def backfill_document_companies(client: AitoClient, *, apply: bool = False) -> d
         client.delete_table("documents")
         client.create_table("documents", schema.DOCUMENTS)
         client.upload_batch("documents", kept)
-        assert client.count("documents") == len(kept), "documents rewrite row-count mismatch"
+        if not (client.count("documents") == len(kept)):
+            raise AssertionError("documents rewrite row-count mismatch")
         search.refresh(client)
     return {"applied": apply, "resolved": len(planned), "ambiguous": ambiguous,
             "left_null": null_before - len(planned), "planned": planned}
@@ -1405,8 +1468,10 @@ def add_user(client: AitoClient, name: str, email: str, role: str = "sdr",
              active: bool = True) -> dict:
     """Add a user (operator adds the SDR). Role in USER_ROLES; email unique and
     case-folded (it is matched against the Entra Easy Auth identity)."""
-    assert role in schema.USER_ROLES, f"unknown role {role!r}; have {sorted(schema.USER_ROLES)}"
-    assert name and email, "a user needs a name and an email"
+    if role not in schema.USER_ROLES:
+        raise AssertionError(f"unknown role {role!r}; have {sorted(schema.USER_ROLES)}")
+    if not (name and email):
+        raise AssertionError("a user needs a name and an email")
     email = email.strip().lower()
     if client.query({"from": "users", "where": {"email": email}, "limit": 1})["hits"]:
         raise AssertionError(f"a user with email {email!r} already exists")
@@ -1421,9 +1486,11 @@ def update_user(client: AitoClient, user_id: str, changes: dict) -> dict:
     """Edit a user (name / email / role / active), in place (`_write_row`)."""
     fields = {"name", "email", "role", "active"}
     unknown = set(changes) - fields
-    assert not unknown, f"not editable: {sorted(unknown)}; allowed {sorted(fields)}"
+    if unknown:
+        raise AssertionError(f"not editable: {sorted(unknown)}; allowed {sorted(fields)}")
     if "role" in changes:
-        assert changes["role"] in schema.USER_ROLES, f"unknown role {changes['role']!r}"
+        if changes["role"] not in schema.USER_ROLES:
+            raise AssertionError(f"unknown role {changes['role']!r}")
 
     def mutate(u):
         for k, v in changes.items():
@@ -1440,12 +1507,13 @@ def set_assignment(client: AitoClient, entity: str, entity_id: str,
     new one inserted, then read back — one owner per item, and the big/linked
     CRM tables are never touched (docs/27). Validates the entity, the item, and
     the user (rule 3)."""
-    assert entity in schema.ASSIGNABLE_ENTITIES, \
-        f"not assignable: {entity!r}; have {sorted(schema.ASSIGNABLE_ENTITIES)}"
+    if entity not in schema.ASSIGNABLE_ENTITIES:
+        raise AssertionError(f"not assignable: {entity!r}; have {sorted(schema.ASSIGNABLE_ENTITIES)}")
     user_id = user_id or None
     if user_id:
         us = client.query({"from": "users", "where": {"user_id": user_id}, "limit": 1})["hits"]
-        assert us and us[0].get("active"), f"unknown or inactive user {user_id!r}"
+        if not (us and us[0].get("active")):
+            raise AssertionError(f"unknown or inactive user {user_id!r}")
     id_col = _ASSIGN_ID_COL[entity]
     if not client.query({"from": entity, "where": {id_col: entity_id}, "limit": 1})["hits"]:
         raise AssertionError(f"unknown {entity} {entity_id!r}")
@@ -1456,8 +1524,8 @@ def set_assignment(client: AitoClient, entity: str, entity_id: str,
             "assignment_id": _stamp("as"), **item, "user_id": user_id,
             "created": date.today().isoformat()}])
     got = client.query({"from": "assignments", "where": item, "limit": 2})["hits"]
-    assert [r["user_id"] for r in got] == ([user_id] if user_id else []), \
-        f"assignment {entity} {entity_id}: wrote {user_id!r}, read back {got}"
+    if not ([r["user_id"] for r in got] == ([user_id] if user_id else [])):
+        raise AssertionError(f"assignment {entity} {entity_id}: wrote {user_id!r}, read back {got}")
     changelog.record(client, "assignments", entity_id, "updated",
                      f"{entity} {entity_id} -> {user_id or 'unassigned'}")
     return {"entity": entity, "entity_id": entity_id, "user_id": user_id}
@@ -1471,7 +1539,8 @@ def add_token(client: AitoClient, label: str) -> dict:
     plaintext ONCE — it is never stored and cannot be recovered."""
     import secrets as _secrets
     from . import tokens as tokens_mod
-    assert label and label.strip(), "a token needs a label"
+    if not (label and label.strip()):
+        raise AssertionError("a token needs a label")
     secret = _secrets.token_urlsafe(40)
     row = {"token_id": _stamp("tok"), "label": label.strip(),
            "token_hash": tokens_mod.hash_token(secret), "prefix": secret[:8],
@@ -1502,7 +1571,8 @@ def add_fact(client: AitoClient, company: str, kind: str, statement: str, source
     if stakeholder_id:
         known = client.query({"from": "contacts", "where": {"contact_id": stakeholder_id},
                               "limit": 0})["total"]
-        assert known, f"unknown stakeholder_id {stakeholder_id!r}"
+        if not known:
+            raise AssertionError(f"unknown stakeholder_id {stakeholder_id!r}")
     raw = {"fact_id": _stamp("fa"), "company": company, "stakeholder_id": stakeholder_id or "",
            "kind": kind, "slot": slot or "", "state": state or "", "statement": statement,
            "due": due or "", "source_kind": source_kind, "source_id": source_id,
@@ -1563,21 +1633,26 @@ def supersede_fact(client: AitoClient, old_id: str, new_id: str) -> dict:
     row in place and a change-log row. Never applied automatically."""
     def one(fact_id):
         hits = client.query({"from": "facts", "where": {"fact_id": fact_id}, "limit": 2})["hits"]
-        assert len(hits) == 1, f"unknown fact_id {fact_id!r}"
+        if not (len(hits) == 1):
+            raise AssertionError(f"unknown fact_id {fact_id!r}")
         return hits[0]
     old, new = one(old_id), one(new_id)
-    assert old_id != new_id, f"a fact can't supersede itself: {old_id}"
-    assert old["company_id"] == new["company_id"], \
-        f"{old_id} is on {old['company_id']}, {new_id} on {new['company_id']}; one account only"
-    assert old["kind"] == new["kind"], f"{old_id} is a {old['kind']}, {new_id} a {new['kind']}; same kind only"
-    assert not old.get("superseded_by"), f"{old_id} is already superseded by {old['superseded_by']}"
-    assert not new.get("superseded_by"), f"{new_id} is itself superseded by {new['superseded_by']}"
+    if not (old_id != new_id):
+        raise AssertionError(f"a fact can't supersede itself: {old_id}")
+    if not (old["company_id"] == new["company_id"]):
+        raise AssertionError(f"{old_id} is on {old['company_id']}, {new_id} on {new['company_id']}; one account only")
+    if not (old["kind"] == new["kind"]):
+        raise AssertionError(f"{old_id} is a {old['kind']}, {new_id} a {new['kind']}; same kind only")
+    if old.get("superseded_by"):
+        raise AssertionError(f"{old_id} is already superseded by {old['superseded_by']}")
+    if new.get("superseded_by"):
+        raise AssertionError(f"{new_id} is itself superseded by {new['superseded_by']}")
     # a hold is resolved only on Antti's word: his hold or release may replace
     # any hold row, even one that arrived from another source by a direct
     # load; such a row may never replace his (docs/39, CPO review of #77)
     if old["kind"] == "hold":
-        assert new["source_kind"] == schema.HOLD_SOURCE, \
-            f"{new_id} has source_kind {new['source_kind']!r}; a hold is superseded only by one from {schema.HOLD_SOURCE!r}"
+        if not (new["source_kind"] == schema.HOLD_SOURCE):
+            raise AssertionError(f"{new_id} has source_kind {new['source_kind']!r}; a hold is superseded only by one from {schema.HOLD_SOURCE!r}")
     row = _write_row(client, "facts", "fact_id", old_id,
                      lambda r: r.__setitem__("superseded_by", new_id))
     changelog.record(client, "fact", old_id, "superseded", f"{old['kind']} fact {old_id} -> {new_id}")
