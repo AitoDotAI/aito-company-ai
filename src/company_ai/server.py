@@ -90,6 +90,18 @@ def web_paths_to(kpi: str, since: str | None = None, until: str | None = None,
 
 
 @mcp.tool()
+def web_digest(as_of: str | None = None) -> dict:
+    """The weekly web digest (docs/37): for every KPI, the step-graph signals
+    of the rolling 28 days before as_of (default today) that are not thin (at
+    least 5 distinct visits) with lift > 1: pages that raise the KPI later in
+    the visit, and drop-off pages. `new` marks a signal last week's digest did
+    not show. All from Aito; the Monday pull saves it as a document."""
+    from datetime import date
+    from . import webanalytics
+    return webanalytics.web_digest(_client(), as_of=date.fromisoformat(as_of) if as_of else None)
+
+
+@mcp.tool()
 def web_kpis(kpi: str | None = None, event: str | None = None, since: str | None = None,
              until: str | None = None, source: str | None = None, campaign: str | None = None,
              path: str | None = None, device: str | None = None) -> dict:

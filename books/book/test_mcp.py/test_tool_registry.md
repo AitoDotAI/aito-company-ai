@@ -48,6 +48,16 @@ How aito.ai visits reach one KPI (docs/37), from the step graph, all
     on too few to claim a lift. platform keeps visits from a post on it
     (linkedin, reddit, hackernews). Window since..until, default 30 days.
 
+## web_digest
+
+params: ['as_of']
+required: []
+The weekly web digest (docs/37): for every KPI, the step-graph signals
+    of the rolling 28 days before as_of (default today) that are not thin (at
+    least 5 distinct visits) with lift > 1: pages that raise the KPI later in
+    the visit, and drop-off pages. `new` marks a signal last week's digest did
+    not show. All from Aito; the Monday pull saves it as a document.
+
 ## web_kpis
 
 params: ['campaign', 'device', 'event', 'kpi', 'path', 'since', 'source', 'until']

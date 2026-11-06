@@ -1176,10 +1176,11 @@ def test_web_traffic_counts_the_attribution_labels(t: bt.TestCaseRun) -> None:
     _clean(client)
 
 
-def _visits(paths: list[list[str]], day: str = DAY) -> list[dict]:
-    """Page-view visits along the given paths, one browser each."""
+def _visits(paths: list[list[str]], day: str = DAY, first: int = 0) -> list[dict]:
+    """Page-view visits along the given paths, one browser each; `first`
+    numbers them on, so two days' visits are different visits."""
     out = []
-    for v, pages in enumerate(paths):
+    for v, pages in enumerate(paths, start=first):
         for n, page in enumerate(pages):
             out.append(_event(f"{day} 1{n}:{v:02d}:00", page, 1759700000000 + v, device_id=f"dev-path-{v}"))
     return out
@@ -1279,3 +1280,33 @@ def test_top_paths_lead_with_paths_into_the_kpi(t: bt.TestCaseRun) -> None:
     assert r["protective_paths"] and all(p["lift"] <= 1 for p in r["protective_paths"])
     assert all("support_overall" in p and "steps" not in p for p in r["top_paths"] + r["protective_paths"])
     _clean(client)
+
+
+def test_the_weekly_digest_lists_signals_that_crossed_thin(t: bt.TestCaseRun) -> None:
+    """The weekly web digest (CPO, 6.11.2026): for each KPI, the relations
+    over a rolling DIGEST_WINDOW_DAYS window that are not thin (>= WEB_THIN
+    distinct visits) and lift > 1: pages that raise it later, drop-off pages.
+    A signal is `new` when last week's digest did not show it. Only Aito's
+    output; no threshold beyond thin."""
+    client, _, _ = _seeded()
+    last, this = "2026-09-28", "2026-10-05"
+    webanalytics.store_day(client, last, _visits([["/", "/blog/", "/pricing/"]] * 2
+                                                 + [["/", "/docs/"]] * 6, day=last))
+    webanalytics.store_day(client, this, _visits([["/", "/blog/", "/pricing/"]] * 6
+                                                 + [["/", "/docs/"]] * 6, day=this, first=20))
+    d = webanalytics.web_digest(client, as_of=date(2026, 10, 6))
+    assert d["window_days"] == 28
+    t.h1(f"Window {d['week']} against last week's {d['previous']}")
+    for s in d["signals"]:
+        t.tln(f"  {s['kpi']:13} {s['kind']:12} {s['field']}={s['value']}: {s['lift']:.2f}× over "
+              f"{s['visits']} visits{'  NEW' if s['new'] else ''}")
+    blog = [s for s in d["signals"] if s["kpi"] == "pricing_page" and s["value"] == "page:/blog/"]
+    assert blog and blog[0]["new"] and blog[0]["visits"] >= webanalytics.WEB_THIN
+    assert all(s["visits"] >= webanalytics.WEB_THIN and s["lift"] > 1 for s in d["signals"])
+    title, body = webanalytics.digest_document(d)
+    t.h1("The weekly document the Monday pull saves")
+    t.tln(f"  {title}")
+    for line in body.splitlines():
+        t.tln(f"  {line}")
+    client.delete_entries("web_sessions", {"day": last})
+    client.delete_entries("web_sessions", {"day": this})
