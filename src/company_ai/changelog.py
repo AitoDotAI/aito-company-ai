@@ -34,18 +34,31 @@ def record(client: AitoClient, entity: str, entity_id: str, action: str,
     return row
 
 
+# The most rows one `recent()` call returns. Aito aborts any response over
+# 10 MB (nginx then answers 502); a changelog row is ~2.2 kB, so the cap sits
+# far below the ~4,466-row failure point and no caller can reintroduce it.
+MAX_RECENT = 1000
+
+
 def recent(client: AitoClient, limit: int = 50, entity: str | None = None,
            since: str | None = None) -> dict:
     """The most recent changes, newest first (optionally filtered to one entity
     kind). `since` (an ISO datetime lower bound, inclusive) windows to activity
     on or after that instant — e.g. the board's last-week focus. Returns
-    {changes, count} where count is the number of changes in the window."""
+    {changes, count} where count is the number of changes in the window.
+
+    Ordering, filtering and the limit are all server-side: the changelog is
+    append-only and grows without bound, so fetching it whole and sorting in
+    Python eventually exceeds the response cap (the 502 of 2026-11-03).
+    `limit` is clamped to MAX_RECENT."""
+    assert isinstance(limit, int) and limit >= 0, f"limit must be a non-negative int: {limit!r}"
     client.ensure_table("changelog", schema.CHANGELOG)
-    where = {"entity": entity} if entity else {}
-    rows = client.query({"from": "changelog", "where": where, "limit": 100000})["hits"]
+    where: dict = {"entity": entity} if entity else {}
     if since:
-        rows = [r for r in rows if r.get("at", "") >= since]
-    rows.sort(key=lambda r: r.get("at", ""), reverse=True)
+        where["at"] = {"$gte": since}
+    response = client.query({"from": "changelog", "where": where,
+                             "orderBy": {"$desc": "at"},
+                             "limit": min(limit, MAX_RECENT)})
     changes = [{"at": r["at"], "entity": r["entity"], "entity_id": r["entity_id"],
-                "action": r["action"], "summary": r["summary"]} for r in rows[:limit]]
-    return {"changes": changes, "count": len(rows)}
+                "action": r["action"], "summary": r["summary"]} for r in response["hits"]]
+    return {"changes": changes, "count": response["total"]}
