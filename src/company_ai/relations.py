@@ -24,6 +24,8 @@ LEAKS = {
     "posts": {"outcome", "won", *schema.POST_ENGAGEMENT},
     "sessions": {"signed_up", "started_trial", "converted_paid"},
     # what happened during the visit defines an onward click (docs/35)
+    # a visitor's KPIs, when they came, and how many sessions it took (docs/36)
+    "web_visitors": {"sessions", "last_day", "kpi_pricing_page", "kpi_contact_page", "kpi_login_page", "kpi_signup", "kpi_sandbox", "kpi_data_loaded", "kpi_first_query", "kpi_api_keys", "first_kpi_day_pricing_page", "first_kpi_day_contact_page", "first_kpi_day_login_page", "first_kpi_day_signup", "first_kpi_day_sandbox", "first_kpi_day_data_loaded", "first_kpi_day_first_query", "first_kpi_day_api_keys"},
     "web_sessions": {"onward_click", "next_path", "views", "signup_cta", "engaged_seconds",
                      "events", "co_events", "kpi_pricing_page", "kpi_contact_page",
                      "kpi_login_page", "kpi_signup", "kpi_sandbox", "kpi_data_loaded",
@@ -35,6 +37,7 @@ NOT_DRIVERS = {
     "posts": {"utm_campaign"},
     "web_sessions": {"session_key", "visitor_key", "day", "week", "pull_run", "link_basis",
                      "likely_bot"},
+    "web_visitors": {"visitor_key", "first_day", "pull_run"},
 }
 # identity and free-text fields: unique per row, or words rather than values
 _ID_SUFFIXES = ("_id", "_thread_id", "_event_id")

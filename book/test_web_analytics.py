@@ -508,8 +508,8 @@ def test_a_second_pull_at_once_is_refused(t: bt.TestCaseRun) -> None:
             t.tln(f"refused: {str(e).split(' (lock')[0]}")
     t.h1("Once released, a pull runs")
     reports = webanalytics.pull(client, days=1, today=date(2026, 10, 6), fetch=lambda d: [])
-    t.tln(f"{len(reports)} day(s) pulled")
-    assert len(reports) == 1
+    t.tln(f"{len([r for r in reports if r['day'] != 'web_visitors'])} day(s) pulled")
+    assert len([r for r in reports if r["day"] != "web_visitors"]) == 1
 
 
 def test_broken_tracking_and_a_stale_table_fail_the_run(t: bt.TestCaseRun) -> None:
@@ -872,3 +872,43 @@ def test_web_kpis_relates_a_kpi_without_its_definitional_links(t: bt.TestCaseRun
         except AssertionError as err:
             t.tln(f"  {bad}: {str(err)[:90]}")
     _clean(client)
+
+
+def test_visitors_carry_first_touch_and_what_came_before_a_kpi(t: bt.TestCaseRun) -> None:
+    """docs/36 phase 2: web_visitors, one row per browser (visitor_key) over
+    its human sessions: first and last day, the first session's context
+    (first touch), the tokens seen in sessions before the first one with any
+    KPI, and per KPI whether and when it was first reached. Rebuilt from
+    web_sessions with replace-by-run, so a rebuild never doubles a visitor."""
+    client, _, _ = _seeded()
+    before = "2026-10-04"
+    webanalytics.store_day(client, before, [
+        _event(f"{before} 08:00:00", "/blog/", 1759564800000, device_id="dev-2a3b4c5d")])
+    webanalytics.store_day(client, DAY, _events())
+    webanalytics.build_visitors(client)
+    report = webanalytics.build_visitors(client)
+    t.h1("Rebuilt twice")
+    t.tln(f"  {({k: v for k, v in report.items() if k != 'pull_run'})}")
+    rows = client.query({"from": "web_visitors", "limit": 100})["hits"]
+    assert len({r["visitor_key"] for r in rows}) == len(rows) == report["visitors"]
+    assert len({r["pull_run"] for r in rows}) == 1
+
+    t.h1("The browser that came twice")
+    v = next(r for r in rows if r["visitor_key"] == webanalytics._visitor_key("dev-2a3b4c5d"))
+    shown = {k: v.get(k) for k in ("first_day", "last_day", "sessions", "first_landing_path",
+                                   "first_source", "seen_before_first_kpi", "kpi_sandbox",
+                                   "first_kpi_day_sandbox", "kpi_pricing_page")}
+    t.tln(f"  {json.dumps(shown, sort_keys=True)}")
+    assert (v["first_day"], v["last_day"], v["sessions"]) == (before, DAY, 2)
+    assert v["first_landing_path"] == "/blog/" and v["kpi_sandbox"] is True
+    assert v["first_kpi_day_sandbox"] == DAY and v["kpi_pricing_page"] is False
+    assert "page:/blog/" in v["seen_before_first_kpi"].split()
+
+    t.h1("Bots are not visitors")
+    bot = webanalytics._visitor_key("dev-8c9d0e1f")
+    t.tln(f"  the wp-login probe's browser has a row: {any(r['visitor_key'] == bot for r in rows)}")
+    assert not any(r["visitor_key"] == bot for r in rows)
+    client.delete_entries("web_sessions", {"day": before})
+    _clean(client)
+    client.delete_table("web_visitors")
+    client.create_table("web_visitors", schema.WEB_VISITORS)

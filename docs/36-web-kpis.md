@@ -116,8 +116,12 @@ One row per visitor_key: the acquisition view across sessions.
 | kpi_* | Boolean | the visitor reached the KPI in any session |
 | first_kpi_day_* | String, nullable | when |
 
-It's rebuilt from web_sessions after each pull, with the same replace-by-run
-pattern (docs/35). Identity is per browser: one person's visits join only
+It's rebuilt from the human web_sessions (bots left out) at the end of each
+pull, under the same lock, with the same replace-by-run pattern (docs/35). The
+pull report ends with a `web_visitors` line, and a failed rebuild is a health
+problem like a failed day. `first_*` is the first session by (day, hour), and
+`seen_before_first_kpi` holds the distinct tokens of the sessions before the
+first one with any KPI (all of them, for a visitor who never reached one). Identity is per browser: one person's visits join only
 within one browser, and that is deliberate (Antti, 6.11.2026). People do
 different things in different browsers, such as reading docs in one and using
 the console in another, so joining them would mix two journeys into one.

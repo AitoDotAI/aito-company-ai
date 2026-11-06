@@ -708,6 +708,49 @@ WEB_SESSIONS = {
     },
 }
 
+# web_visitors (docs/36 phase 2): one row per browser, rebuilt from the human
+# web_sessions after each pull (replace-by-run). First touch is the first
+# session's context; journeys stay per browser, never joined across an
+# account's browsers (Antti, 6.11.2026).
+WEB_VISITORS = {
+    "type": "table",
+    "columns": {
+        "visitor_key": {"type": "String"},      # HMAC(salt, device_id), as on web_sessions
+        "first_day": {"type": "String"},
+        "last_day": {"type": "String"},
+        "sessions": {"type": "Int"},
+        "first_source": {"type": "String"},
+        "first_referrer_domain": {"type": "String", "nullable": True},
+        "first_utm_source": {"type": "String", "nullable": True},
+        "first_utm_medium": {"type": "String", "nullable": True},
+        "first_utm_campaign": {"type": "String", "nullable": True},
+        "first_landing_path": {"type": "String"},
+        "first_device_class": {"type": "String"},
+        "first_country": {"type": "String"},
+        "first_post_id": {"type": "String", "nullable": True, "link": "posts.post_id"},
+        # event tokens from the sessions before the first one with any KPI
+        "seen_before_first_kpi": {"type": "Text", "analyzer": "whitespace", "nullable": True},
+        "kpi_pricing_page": {"type": "Boolean"},
+        "kpi_contact_page": {"type": "Boolean"},
+        "kpi_login_page": {"type": "Boolean"},
+        "kpi_signup": {"type": "Boolean"},
+        "kpi_sandbox": {"type": "Boolean"},
+        "kpi_data_loaded": {"type": "Boolean"},
+        "kpi_first_query": {"type": "Boolean"},
+        "kpi_api_keys": {"type": "Boolean"},
+        "first_kpi_day_pricing_page": {"type": "String", "nullable": True},
+        "first_kpi_day_contact_page": {"type": "String", "nullable": True},
+        "first_kpi_day_login_page": {"type": "String", "nullable": True},
+        "first_kpi_day_signup": {"type": "String", "nullable": True},
+        "first_kpi_day_sandbox": {"type": "String", "nullable": True},
+        "first_kpi_day_data_loaded": {"type": "String", "nullable": True},
+        "first_kpi_day_first_query": {"type": "String", "nullable": True},
+        "first_kpi_day_api_keys": {"type": "String", "nullable": True},
+        "pull_run": {"type": "String"},
+    },
+}
+
+
 TABLES = {
     "users": USERS, "assignments": ASSIGNMENTS, "tokens": TOKENS,
     # companies before contacts/deals — it is their `company_id` link target.
@@ -721,6 +764,7 @@ TABLES = {
     "changelog": CHANGELOG,
     "search_contexts": SEARCH_CONTEXTS, "search_impressions": SEARCH_IMPRESSIONS,
     "web_sessions": WEB_SESSIONS,
+    "web_visitors": WEB_VISITORS,
 }
 
 SEGMENTS = {"accounting", "erp", "ecommerce", "analytics", "consultancy", "other"}
