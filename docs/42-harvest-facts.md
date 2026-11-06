@@ -36,6 +36,11 @@ runs in the Claude session over MCP, the same way a human-confirmed
 
   It doesn't rank notes or guess at their facts (rule 2). A thin note
   (docs/40) is flagged as such.
+- **A held account is not harvested** (CRO). When the account's `briefing`
+  hold reads HOLD, including HOLD (unclear: …), `harvest_queue` returns the
+  hold and no notes. A row can't show that a note came from a partner meeting,
+  so skipping held accounts is the guard that can be enforced. It fails closed
+  with the briefing's own hold reading (docs/39).
 - **The session proposes, a person confirms, and then `add_fact` writes**, with
   `source_kind: doc` and the note's `doc_id`. `add_fact`'s
   `supersede_candidates` (docs/40) already shows what a new fact may replace;
@@ -56,9 +61,13 @@ The proposal is a kind **`attribute`**, with these slots:
 | `billing_model` | "They bill on milestones, not seats" |
 | `tooling` | "A legacy stack" |
 | `headcount` | (none in the seed notes; the ICP note speaks of employees generally) |
+| `deployment` | "Must run on-prem in a container for government work": it decides the offer and the licence (CRO) |
+| `pain` | "500,000 invoice rows a week that no team can process": the concrete pain and its deadline, the qualifier that predicted every deal that moved (CRO) |
 | `other` | anything else that is a property, not an event |
 
-- **"Who signs"** is a `role` with a new slot, **`signer`**.
+- **"Who signs"** is a `role` with a new slot, **`signer`**. It is not a
+  conflict slot, since an account can need two signatures; `decision_owner`
+  stays the only one (CRO).
 - **Rules,** following docs/39:
   - an attribute has no `state` and no `due`;
   - two active facts in one attribute slot are **not** a conflict; the newer one
@@ -81,7 +90,8 @@ read path that every fact consumer would have to filter on.
 1. **The reading runs in the Claude session over MCP.** There is no in-app
    model and no routine; a routine harvest stays parked.
 2. **A new kind, `attribute`,** with the slots above, plus a role slot
-   `signer`.
+   `signer`. **Confirmed by the CRO on 6.11.2026, with `deployment` and `pain`
+   added.**
 3. **Two attributes in one slot are not a conflict.** Newest first; superseding
    one is explicit.
 4. **No `proposed` state.** Only confirmed facts are written.
@@ -101,6 +111,8 @@ written. So the books test the plumbing and the vocabulary:
    conflict.
 4. The seed gains attribute facts for the replica's note (budget cycle,
    procurement, billing model), generated without randomness.
+5. `harvest_queue` on the held seed account returns its hold and no notes.
+   The same goes for an account whose hold is unclear (two holds).
 
 ## Not in this slice
 
