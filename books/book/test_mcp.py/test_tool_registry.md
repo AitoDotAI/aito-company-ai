@@ -83,6 +83,20 @@ One company node of the knowledge graph: its harvested facts (industry,
     and notes (documents). company_id is the slug company_list and
     graph_search return.
 
+## briefing
+
+params: ['company']
+required: ['company']
+The current state of one account in one read, for call prep: the
+    company row; its open deals with stage, value, blocker, the recorded next
+    step (the latest touch on the deal with a next_action) and their open
+    todos; the stakeholders with each one's last touch; the latest 10 touches
+    and 10 notes (documents by noted_on); and the open todos linked to the
+    account's deals or people. Every fact carries `source` {kind, id, date}
+    so you can open it; nothing is inferred or summarised. Works for an
+    account with no deal row. `company` is a company_id or the exact name; an
+    unknown one raises.
+
 ## graph_search
 
 params: ['country', 'industry', 'kinds', 'query', 'relationship']

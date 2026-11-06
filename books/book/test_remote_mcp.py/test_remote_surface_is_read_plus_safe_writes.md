@@ -1,6 +1,6 @@
 # the remote tool surface (read + safe writes)
 
-64 tools exposed over HTTP:
+65 tools exposed over HTTP:
   add_channel
   add_contact
   add_deal
@@ -12,6 +12,7 @@
   add_todo
   archive_todo
   assign
+  briefing
   claim_todo
   classify_todo
   company_detail
