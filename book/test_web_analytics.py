@@ -1256,3 +1256,26 @@ def test_a_crawler_mid_visit_is_a_bot_and_lists_keep_their_direction(t: bt.TestC
     for p in r["top_paths"]:
         assert p["thin"] == (p["visits"] < webanalytics.WEB_THIN)
     _clean(client)
+
+
+def test_top_paths_lead_with_paths_into_the_kpi(t: bt.TestCaseRun) -> None:
+    """Aito's $patterns mines itemsets over all steps (support >= 2) and scores
+    each against the KPI, so it also returns paths never seen before the KPI,
+    with a prior-smoothed lift below 1 (documented; td-20261106110429784489).
+    top_paths leads with lift > 1 and keeps the others apart as
+    protective_paths, never dropped; each carries `visits` (with the KPI,
+    counted by us) and `support_overall` (Aito's f, over every step)."""
+    client, _, _ = _seeded()
+    paths = [["/", "/blog/", "/pricing/"]] * 5 + [["/docs/", "/api/", "/x/"]] * 6
+    webanalytics.store_day(client, DAY, _visits(paths))
+    r = webanalytics.web_paths_to(client, kpi="pricing_page", since=DAY, until=DAY)
+    t.h1("Paths into pricing")
+    for p in r["top_paths"]:
+        t.tln(f"  {' → '.join(p['path'])}: {p['visits']} visits, overall {p['support_overall']}, lift {p['lift']:.2f}")
+    t.h1("Paths that go elsewhere")
+    for p in r["protective_paths"]:
+        t.tln(f"  {' → '.join(p['path'])}: {p['visits']} visits, overall {p['support_overall']}, lift {p['lift']:.2f}")
+    assert r["top_paths"] and all(p["lift"] > 1 for p in r["top_paths"])
+    assert r["protective_paths"] and all(p["lift"] <= 1 for p in r["protective_paths"])
+    assert all("support_overall" in p and "steps" not in p for p in r["top_paths"] + r["protective_paths"])
+    _clean(client)

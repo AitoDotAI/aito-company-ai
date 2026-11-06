@@ -107,6 +107,17 @@ function Paths({ query }) {
                   : <span className="web-lift">{p.visits} visits · {p.lift.toFixed(1)}×</span>}
         </div>
       )) : <div className="muted">No path repeats often enough yet.</div>}
+      {(paths.protective_paths || []).length > 0 && (
+        <>
+          <h4>Paths seen as often elsewhere <span className="muted">· lift ≤ 1</span></h4>
+          {paths.protective_paths.map((p, i) => (
+            <div key={i} className="web-driver">
+              <span className="web-driver-k">{p.path.join(" → ")}</span>
+              <span className="web-thin">{p.visits} into it · {p.support_overall} overall · {p.lift.toFixed(1)}×</span>
+            </div>
+          ))}
+        </>
+      )}
       <h4>Pages after which it more often follows</h4>
       <Relations rels={(paths.raises_later && paths.raises_later.relations) || []} unit="steps"
                  empty="Nothing to relate yet." />
