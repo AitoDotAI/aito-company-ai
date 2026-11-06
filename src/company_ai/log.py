@@ -9,7 +9,7 @@ import time
 import uuid
 from datetime import date, datetime, timedelta, timezone
 
-from . import changelog, schema, search
+from . import changelog, facts, schema, search
 from .aito import AitoClient
 from .loaders import (deal_search_columns, parse_channel_row, parse_deal_row, parse_event_row,
                       parse_experiment_row, parse_material_row,
@@ -1585,7 +1585,8 @@ def add_fact(client: AitoClient, company: str, kind: str, statement: str, source
                            same, datetime.now())
     if earlier is not None:
         return {**earlier, "already_recorded": True,
-                "supersede_candidates": supersede_candidates(client, earlier)}
+                "supersede_candidates": supersede_candidates(client, earlier),
+                "warnings": facts.source_warnings(client, earlier)}
     add_company(client, company)   # the link target, so company_id never dangles
     client.upload_batch("facts", [row])
 
@@ -1594,7 +1595,8 @@ def add_fact(client: AitoClient, company: str, kind: str, statement: str, source
                          f"{kind} fact on {company}: {statement[:80]}")
         search.refresh(client)
     _after_insert("fact", row["fact_id"], follow_up)
-    return {**row, "supersede_candidates": supersede_candidates(client, row)}
+    return {**row, "supersede_candidates": supersede_candidates(client, row),
+            "warnings": facts.source_warnings(client, row)}
 
 
 SUPERSEDE_CANDIDATES = 5

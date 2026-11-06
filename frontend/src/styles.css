@@ -910,6 +910,11 @@ select:focus { outline:none; border-color:var(--purple); }
 .gx-facts dt { color: var(--ink-faint); }
 .gx-facts dd { margin: 0; }
 .gx-links { display: flex; gap: 12px; margin-top: 8px; }
+.gx-unfold { font: inherit; font-size: 13px; padding: 2px 8px; border: 1px solid var(--line-bright); border-radius: 6px; background: var(--tint); cursor: pointer; }
+.gx-focus { font-size: 13px; color: var(--ink); font-weight: 600; }
+.gx-basis { font-size: 12px; }
+.gx-source { font-size: 13px; margin-top: 4px; }
+.gx-detail .warn { color: var(--warn); }
 .gx-neigh { display: flex; flex-direction: column; gap: 2px; }
 .gx-neigh button { display: flex; align-items: center; gap: 6px; text-align: left; background: none; border: 0; padding: 3px 4px; border-radius: 4px; font: inherit; color: var(--ink); cursor: pointer; }
 .gx-neigh button:hover { background: var(--tint); }

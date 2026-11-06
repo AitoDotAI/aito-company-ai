@@ -1107,12 +1107,17 @@ REPLICA_FACTS = [
 ]
 
 
-def make_facts(accounts, contacts, deals, prefix):
+def make_facts(accounts, contacts, deals, prefix, documents=(), touches=()):
     """The facts replica on the account with the most people (ties by name),
     and a partner hold from antti on the first account with people and no
     deal. Bound at generation time, never hand-named, so a roster change moves
     the facts with it. Draws no randomness, so every other file is unchanged.
-    Empty when no account has the five people the replica needs."""
+    Empty when no account has the five people the replica needs.
+
+    A `doc` or `touch` source names a real record (docs/41): the account's
+    documents in doc_id order, cycling, and the stakeholder's first touch (or
+    the account's first). Calls and mails stay references to records not
+    stored here."""
     by_company = {}
     for c in contacts:
         by_company.setdefault(c["company"], []).append(c)
@@ -1121,8 +1126,19 @@ def make_facts(accounts, contacts, deals, prefix):
     if len(people) < 5:
         return []
     ids = [f"{prefix}{i + 1:03d}" for i in range(len(REPLICA_FACTS) + 1)]
+    their_docs = sorted(d["doc_id"] for d in documents if d["company"] == replica)
+    people_ids = [p["contact_id"] for p in people]
+    their_touches = sorted((t for t in touches if t["contact_id"] in people_ids),
+                           key=lambda t: (t["ts"], t["touch_id"]))
+    n_doc = 0
     rows = []
     for i, (who, kind, slot, state, statement, due, sk, sid, valid, sup) in enumerate(REPLICA_FACTS):
+        if sk == "doc" and their_docs:
+            sid = their_docs[n_doc % len(their_docs)]
+            n_doc += 1
+        elif sk == "touch" and their_touches:
+            own = [t for t in their_touches if who is not None and t["contact_id"] == people[who]["contact_id"]]
+            sid = (own or their_touches)[0]["touch_id"]
         rows.append({"fact_id": ids[i], "company": replica,
                      "stakeholder_id": people[who]["contact_id"] if who is not None else "",
                      "kind": kind, "slot": slot, "state": state, "statement": statement,
@@ -1179,7 +1195,7 @@ def generate(out_dir: Path, n_contacts: int, n_touches: int, n_sessions: int,
     events = make_events(rng, n_events, f"{prefix}v")
     routines = make_routines(n_routines, f"{prefix}o")
     documents = make_documents(rng, accounts, contacts, f"{prefix}dc")
-    facts = make_facts(accounts, contacts, deals, f"{prefix}fa")
+    facts = make_facts(accounts, contacts, deals, f"{prefix}fa", documents, touches)
     # the date this dataset is ABOUT. Without it a fixed seed rots: four months
     # later every deal reads as stalled. `./do seed` hands it to the instance as
     # its reckoning date (clock.py), so a fresh install shows a working week.

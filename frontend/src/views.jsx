@@ -2116,6 +2116,9 @@ const GX_KIND = {
   contact: { color: "var(--turquoise)", word: "people" },
   deal: { color: "var(--warn)", word: "deals" },
   document: { color: "var(--ink-faint)", word: "notes" },
+  // drawn only when one account is unfolded (docs/41)
+  touch: { color: "var(--accent)", word: "touches" },
+  fact: { color: "var(--ok)", word: "facts" },
 };
 const GX_W = 900, GX_H = 560;
 
@@ -2127,6 +2130,7 @@ function GraphExplorer() {
   const [net, setNet] = useState(null);
   const [err, setErr] = useState(null);
   const [selected, setSelected] = useState(null);
+  const [focus, setFocus] = useState(null);           // a company_id: one account unfolded
   const [view, setView] = useState({ x: 0, y: 0, w: GX_W, h: GX_H });
   const drag = useRef(null);
   const latest = useRef(0);
@@ -2139,10 +2143,11 @@ function GraphExplorer() {
   const kindList = ["company", ...["contact", "deal", "document"].filter((k) => kinds[k])].join(",");
   useEffect(() => {
     const call = ++latest.current;                    // a slow older answer never wins
-    Promise.resolve(api.graphNetwork({ q: query, kinds: kindList, ...filters }))
+    Promise.resolve(api.graphNetwork(focus ? { focus } : { q: query, kinds: kindList, ...filters }))
       .then((d) => { if (call === latest.current && d) { setNet(d); setErr(null); } })
       .catch((e) => { if (call === latest.current) setErr(String(e.message || e)); });
-  }, [query, kindList, filters.industry, filters.relationship, filters.country]);
+  }, [focus, query, kindList, filters.industry, filters.relationship, filters.country]);
+  const unfold = (cid) => { setSelected(null); setView({ x: 0, y: 0, w: GX_W, h: GX_H }); setFocus(cid); };
 
   const pos = React.useMemo(() => (net ? graphLayout(net.nodes, net.edges, { width: GX_W, height: GX_H }) : new Map()), [net]);
   const deg = React.useMemo(() => (net ? graphDegrees(net.edges) : new Map()), [net]);
@@ -2172,12 +2177,23 @@ function GraphExplorer() {
 
   const setFilter = (k) => (e) => setFilters((f) => ({ ...f, [k]: e.target.value }));
   const counts = net ? net.counts : {};
-  const summary = ["company", "contact", "deal", "document"]
-    .filter((k) => k === "company" || kinds[k])
-    .map((k) => `${counts[k] || 0} ${GX_KIND[k].word}`).join(" · ");
+  const summary = focus
+    ? Object.keys(GX_KIND).filter((k) => counts[k]).map((k) => `${counts[k]} ${GX_KIND[k].word}`).join(" · ")
+    : ["company", "contact", "deal", "document"]
+      .filter((k) => k === "company" || kinds[k])
+      .map((k) => `${counts[k] || 0} ${GX_KIND[k].word}`).join(" · ");
+  const focusName = focus && net && net.focus === focus
+    ? (net.nodes.find((n) => n.kind === "company") || {}).label : null;
 
   return (
     <section className="gx">
+      {focus ? (
+      <div className="gx-controls">
+        <button className="gx-reset" onClick={() => unfold(null)}>← Whole graph</button>
+        <span className="gx-focus">Unfolded: {focusName || focus}</span>
+        <button className="gx-reset" onClick={() => setView({ x: 0, y: 0, w: GX_W, h: GX_H })}>Fit</button>
+      </div>
+      ) : (
       <div className="gx-controls">
         <input className="gx-search" placeholder="Search the graph: a company, person, deal or note"
                value={q} onChange={(e) => setQ(e.target.value)} />
@@ -2198,6 +2214,7 @@ function GraphExplorer() {
         ))}
         <button className="gx-reset" onClick={() => setView({ x: 0, y: 0, w: GX_W, h: GX_H })}>Fit</button>
       </div>
+      )}
       {err && <ErrorBox msg={err} />}
       {!net && !err && <Loading label="Drawing the graph…" />}
       {net && (
@@ -2238,7 +2255,8 @@ function GraphExplorer() {
               })}
             </svg>
             <aside className="gx-panel">
-              {sel ? <GraphNodePanel node={sel} neighbours={neighbours} onPick={setSelected} />
+              {sel ? <GraphNodePanel node={sel} neighbours={neighbours} onPick={setSelected}
+                                     onUnfold={focus ? null : unfold} />
                    : <div className="muted">Click a node to see its facts and links. Scroll to zoom, drag to pan.</div>}
             </aside>
           </div>
@@ -2248,18 +2266,33 @@ function GraphExplorer() {
   );
 }
 
-function GraphNodePanel({ node, neighbours, onPick }) {
+// a harvested fact with the rows it came from (docs/41); a value the rows no
+// longer give (a live write since the load) is said, not hidden
+function Basis({ b }) {
+  if (!b) return null;
+  return (
+    <div className="gx-basis muted">{b.why}
+      {b.matches === false && <span className="warn"> · its rows now say {String(b.value)}</span>}
+    </div>
+  );
+}
+
+const SOURCE_WORD = { linked: "said in", external: "from", dangling: "" };
+
+function GraphNodePanel({ node, neighbours, onPick, onUnfold }) {
   const f = node.facts || {};
+  const b = node.basis || {};
   return (
     <div className="gx-detail">
       <div className="gx-kindtag" style={{ color: GX_KIND[node.kind].color }}>{node.kind}</div>
       <h3>{node.label}</h3>
       {node.kind === "company" && (
         <dl className="gx-facts">
-          <dt>Relationship</dt><dd>{f.relationship || "—"}</dd>
-          <dt>Industry</dt><dd>{f.industry || "—"}</dd>
-          <dt>Country</dt><dd>{f.country || "—"}</dd>
-          <dt>MRR</dt><dd>{eur(f.mrr_eur)}</dd>
+          {node.hold && <><dt>Hold</dt><dd className="warn">{node.hold}</dd></>}
+          <dt>Relationship</dt><dd>{f.relationship || "—"}<Basis b={b.relationship} /></dd>
+          <dt>Industry</dt><dd>{f.industry || "—"}<Basis b={b.industry} /></dd>
+          <dt>Country</dt><dd>{f.country || "—"}<Basis b={b.country} /></dd>
+          <dt>MRR</dt><dd>{eur(f.mrr_eur)}<Basis b={b.mrr_eur} /></dd>
           <dt>Open deals</dt><dd>{f.open_deals ?? "—"}</dd>
           <dt>People</dt><dd>{f.contact_count ?? "—"}</dd>
           <dt>Technical contact</dt><dd>{f.technical_contact ? "yes" : "no"}</dd>
@@ -2268,7 +2301,20 @@ function GraphNodePanel({ node, neighbours, onPick }) {
       {node.kind === "contact" && <div className="muted">{[node.role, node.tier && `tier ${node.tier}`].filter(Boolean).join(" · ")}</div>}
       {node.kind === "deal" && <div className="muted">{node.stage}{node.value_eur != null ? ` · ${eur(node.value_eur)}` : ""}</div>}
       {node.kind === "document" && node.noted_on && <div className="muted">{node.noted_on}</div>}
+      {node.kind === "touch" && <div className="muted">{[node.outcome, node.ts && node.ts.slice(0, 10)].filter(Boolean).join(" · ")}</div>}
+      {node.kind === "fact" && (
+        <>
+          <div className="muted">{[node.fact_kind, node.slot, node.state, node.valid_from].filter(Boolean).join(" · ")}</div>
+          <div className={"gx-source" + (node.source.status === "dangling" ? " warn" : "")}>
+            {node.source.status === "dangling"
+              ? `${node.source.kind} ${node.source.id}: not found`
+              : `${SOURCE_WORD[node.source.status]} ${node.source.kind} ${node.source.id}`}
+          </div>
+        </>
+      )}
       <div className="gx-links">
+        {node.kind === "company" && onUnfold && (
+          <button className="gx-unfold" onClick={() => onUnfold(node.company_id)}>Unfold this account</button>)}
         {node.company_id && <a href={`#/company/${node.company_id}`}>Open company →</a>}
         {node.kind === "document" && <a href={`#/documents/${node.id.slice("document:".length)}`}>Open note →</a>}
       </div>

@@ -1,0 +1,18 @@
+# network(focus=<replica>)
+
+  nodes: {'company': 1, 'contact': 5, 'deal': 1, 'document': 1, 'touch': 16, 'fact': 10}
+  edges: {'about': 1, 'concerns': 8, 'deal_with': 1, 'fact_of': 10, 'mentions': 1, 'said_in': 3, 'touched': 16, 'works_at': 5}
+
+## The requests
+
+  companies: where {'company_id': 'nakatomi-o'}
+  contacts: where {'company_id': 'nakatomi-o'}
+  deals: where {'company_id': 'nakatomi-o'}
+  documents: where {'company_id': 'nakatomi-o'}
+  touches: where {'contact_id.company_id': 'nakatomi-o'}
+  facts: where {'company_id': 'nakatomi-o'}
+  superseded facts left out: ['sfa011']
+
+# Without focus, the graph is unchanged: no touches or facts
+
+  kinds: ['company', 'contact', 'deal']

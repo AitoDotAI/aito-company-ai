@@ -16,6 +16,58 @@ CONFLICT_SLOTS = ("decision_owner",)
 ROLE_ORDER = ("champion", "decision_owner", "sponsor", "other")
 
 
+# where a fact's source can be stored (docs/41): kind -> (table, key, node kind).
+# A call is a touch when it was logged as one; mail isn't stored (no mail
+# ingest), and an antti source is an operator statement.
+STORED_SOURCES = {"doc": ("documents", "doc_id", "document"),
+                  "touch": ("touches", "touch_id", "touch"),
+                  "call": ("touches", "touch_id", "touch")}
+# a doc or touch source that isn't stored is dangling, and add_fact warns
+MUST_RESOLVE = ("doc", "touch")
+
+
+def find_sources(client: AitoClient, facts: list[dict]) -> dict[tuple[str, str], dict]:
+    """(source_kind, source_id) -> the stored row it names, for every fact
+    whose source kind can be stored and is. One query per table. A lookup, no
+    ranking."""
+    wanted: dict[str, set[str]] = {}
+    for f in facts:
+        if f["source_kind"] in STORED_SOURCES:
+            wanted.setdefault(STORED_SOURCES[f["source_kind"]][0], set()).add(f["source_id"])
+    found: dict[tuple[str, str], dict] = {}
+    for table, ids in sorted(wanted.items()):
+        key = next(k for t, k, _ in STORED_SOURCES.values() if t == table)
+        hits = client.query({"from": table, "where": {key: {"$or": sorted(ids)}},
+                             "limit": len(ids)})["hits"]
+        for h in hits:
+            for kind, (t, k, _) in STORED_SOURCES.items():
+                if t == table:
+                    found[(kind, h[k])] = h
+    return found
+
+
+def source_of(fact: dict, found: dict[tuple[str, str], dict]) -> dict:
+    """A fact's source with its status (docs/41): linked (stored; `node` names
+    it), external (a kind that isn't stored here), or dangling (a doc or touch
+    id that names nothing)."""
+    kind, sid = fact["source_kind"], fact["source_id"]
+    out = {"kind": kind, "id": sid, "node": None}
+    if (kind, sid) in found:
+        out.update(status="linked", node=f"{STORED_SOURCES[kind][2]}:{sid}")
+    elif kind in MUST_RESOLVE:
+        out["status"] = "dangling"
+    else:
+        out["status"] = "external"
+    return out
+
+
+def source_warnings(client: AitoClient, fact: dict) -> list[str]:
+    """add_fact's warnings: a doc or touch source that names nothing stored.
+    The fact is accepted as before; refusing it is Antti's option (docs/41)."""
+    src = source_of(fact, find_sources(client, [fact]))
+    return [f"source {src['kind']}:{src['id']} not found"] if src["status"] == "dangling" else []
+
+
 def _company_id(client: AitoClient, company: str) -> str:
     """A company_id, or the slug of an exact name. Unknown raises."""
     for cid in (company, company_slug(company)):

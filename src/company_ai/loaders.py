@@ -338,6 +338,80 @@ def derive_contact_funnel(contact_rows: list[dict], data_dir: Path) -> None:
 # contact: the generator plants the effect on "we know a CTO there".
 
 
+def _modal(rows: list[dict], field: str) -> str:
+    """Most common non-empty value, ties broken alphabetically so the
+    harvest is deterministic (the privacy gate diffs these CSVs byte-wise)."""
+    counts: dict[str, int] = {}
+    for r in rows:
+        v = (r.get(field) or "").strip()
+        if v:
+            counts[v] = counts.get(v, 0) + 1
+    if not counts:
+        return "unknown"
+    return sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))[0][0]
+
+
+def harvest(contacts: list[dict], deals: list[dict]) -> tuple[dict, dict]:
+    """One company's node facts from its contacts and deals (docs/31), and the
+    basis of each: the rows it was derived from (docs/41). The one rule, used
+    at load and by the unfold, so a trace can't drift from the value. Rows are
+    CSV rows or Aito hits (contact_id/deal_id, segment, country, role, stage,
+    value_eur). A count over rows, no prediction (rule 2)."""
+    ccs, cds = contacts, deals
+    outcomes = [schema.deal_won(d["stage"]) for d in cds if d.get("stage")]
+    if any(o is True for o in outcomes):
+        relationship = "customer"
+        decided = [d for d in cds if schema.deal_won(d.get("stage", "")) is True]
+    elif any(o is None for o in outcomes):
+        relationship = "prospect"
+        decided = [d for d in cds if d.get("stage") and schema.deal_won(d["stage"]) is None]
+    elif outcomes:
+        relationship = "lost"
+        decided = [d for d in cds if d.get("stage")]
+    else:
+        relationship = "none"
+        decided = []
+    won = [d for d in cds if schema.deal_won(d.get("stage", "")) is True]
+    won_value = sum(int(d.get("value_eur") or 0) for d in won)
+    # a company's industry is whatever its people and deals say it is
+    industry_rows, industry_from = (ccs, "contacts") if ccs else (cds, "deals")
+    industry = _modal(industry_rows, "segment")
+    country = _modal(ccs, "country")
+
+    def ids(rows: list[dict], key: str) -> list[str]:
+        return [r[key] for r in rows]
+
+    def modal_basis(value: str, rows: list[dict], field: str, source: str) -> dict:
+        hit = [r for r in rows if (r.get(field) or "").strip() == value]
+        why = (f"{len(hit)} of {len(rows)} {source} say {value}" if hit
+               else f"no {source} carry a {field}")
+        key = "contact_id" if source == "contacts" else "deal_id"
+        return {"value": value, "rows": ids(hit, key), "why": why}
+
+    facts = {
+        "industry": industry,
+        "relationship": relationship,
+        "country": country,
+        "mrr_eur": won_value // 12,
+        "open_deals": sum(1 for d in cds if schema.deal_won(d.get("stage", "")) is None),
+        "contact_count": len(ccs),
+        # companies <- contacts, walked at load time
+        "technical_contact": any(r.get("role") in schema.TECHNICAL_ROLES for r in ccs),
+    }
+    n = len(decided)
+    deal_s = f"{n} deal{'s' if n != 1 else ''}"
+    rel_why = {"customer": f"{deal_s} won", "prospect": f"{deal_s} open, none won",
+               "lost": f"{deal_s}, all lost", "none": "no deals"}[relationship]
+    basis = {
+        "industry": modal_basis(industry, industry_rows, "segment", industry_from),
+        "country": modal_basis(country, ccs, "country", "contacts"),
+        "relationship": {"value": relationship, "rows": ids(decided, "deal_id"), "why": rel_why},
+        "mrr_eur": {"value": won_value // 12, "rows": ids(won, "deal_id"),
+                    "why": f"won value {won_value} / 12"},
+    }
+    return facts, basis
+
+
 def companies_from_csvs(data_dir: Path) -> list[dict]:
     """The distinct companies across the rolodex + deals + documents CSVs — the
     entity rows — each carrying the facts harvested from the rows that link to
@@ -369,48 +443,10 @@ def companies_from_csvs(data_dir: Path) -> list[dict]:
     for r in deals:
         deals_by_company.setdefault(company_slug((r.get("company") or "").strip()), []).append(r)
 
-    def _modal(rows: list[dict], field: str) -> str:
-        """Most common non-empty value, ties broken alphabetically so the
-        harvest is deterministic (the privacy gate diffs these CSVs byte-wise)."""
-        counts: dict[str, int] = {}
-        for r in rows:
-            v = (r.get(field) or "").strip()
-            if v:
-                counts[v] = counts.get(v, 0) + 1
-        if not counts:
-            return "unknown"
-        return sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))[0][0]
-
     rows = []
     for cid, name in sorted(by_id.items()):
-        cds = deals_by_company.get(cid, [])
-        ccs = by_company.get(cid, [])
-        outcomes = [schema.deal_won(d["stage"]) for d in cds if d.get("stage")]
-        if any(o is True for o in outcomes):
-            relationship = "customer"
-        elif any(o is None for o in outcomes):
-            relationship = "prospect"
-        elif outcomes:
-            relationship = "lost"
-        else:
-            relationship = "none"
-        won_value = sum(int(d.get("value_eur") or 0)
-                        for d in cds if schema.deal_won(d.get("stage", "")) is True)
-        rows.append({
-            "company_id": cid,
-            "name": name,
-            # a company's industry is whatever its people and deals say it is
-            "industry": _modal(ccs or cds, "segment"),
-            "relationship": relationship,
-            "country": _modal(ccs, "country"),
-            "mrr_eur": won_value // 12,
-            "open_deals": sum(1 for d in cds
-                              if schema.deal_won(d.get("stage", "")) is None),
-            "contact_count": len(ccs),
-            # companies <- contacts, walked at load time
-            "technical_contact": any(r.get("role") in schema.TECHNICAL_ROLES
-                                     for r in ccs),
-        })
+        facts, _ = harvest(by_company.get(cid, []), deals_by_company.get(cid, []))
+        rows.append({"company_id": cid, "name": name, **facts})
     return rows
 
 

@@ -96,6 +96,53 @@ describe("knowledge graph explorer", () => {
       expect.objectContaining({ kinds: "company,contact,deal,document" })));
   });
 
+  it("unfolds one account: its rows, each fact's source, and back", async () => {
+    api.graph.mockResolvedValue({ answers: [], ok: 0, failed: [] });
+    const UNFOLD = {
+      nodes: [
+        { ...NET.nodes[0], hold: null,
+          basis: { industry: { value: "accounting", rows: ["sc001"], why: "1 of 1 contacts say accounting", matches: true },
+                   country: { value: "Estonia", rows: ["sc001"], why: "1 of 1 contacts say Estonia", matches: true },
+                   relationship: { value: "prospect", rows: ["sd009"], why: "1 deal open, none won", matches: false },
+                   mrr_eur: { value: 17291, rows: ["sd001"], why: "won value 207500 / 12", matches: true } } },
+        NET.nodes[2],
+        { id: "document:sdc009", kind: "document", label: "Account plan", company_id: "acme-o" },
+        { id: "fact:sfa001", kind: "fact", label: "Commercial lead owns the track", fact_kind: "role",
+          slot: "decision_owner", valid_from: "2026-10-26", company_id: "acme-o",
+          source: { kind: "doc", id: "sdc009", status: "linked", node: "document:sdc009" } },
+        { id: "fact:sfa002", kind: "fact", label: "Sponsor decides", fact_kind: "role", slot: "decision_owner",
+          valid_from: "2026-11-01", company_id: "acme-o",
+          source: { kind: "doc", id: "doc-nope", status: "dangling", node: null } },
+      ],
+      edges: [
+        { source: "contact:sc001", target: "company:acme-o", kind: "works_at" },
+        { source: "fact:sfa001", target: "document:sdc009", kind: "said_in" },
+        { source: "fact:sfa001", target: "company:acme-o", kind: "fact_of" },
+        { source: "fact:sfa002", target: "company:acme-o", kind: "fact_of" },
+      ],
+      counts: { company: 1, contact: 1, document: 1, fact: 2 }, matched: ["company:acme-o"], query: null,
+      filters: {}, focus: "acme-o", kinds: [], unlinked_documents: 0, dropped_edges: 0, requests: [], facets: {},
+    };
+    api.graphNetwork.mockImplementation((p) => Promise.resolve(p.focus ? UNFOLD : NET));
+    render(<GraphView />);
+    await screen.findByText("Acme Oy");
+    fireEvent.click(screen.getByTestId("node-company:acme-o"));
+    fireEvent.click(within(screen.getByRole("complementary")).getByRole("button", { name: /Unfold/ }));
+    await waitFor(() => expect(api.graphNetwork).toHaveBeenLastCalledWith({ focus: "acme-o" }));
+    expect(await screen.findByText(/Unfolded: Acme Oy/)).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("node-company:acme-o"));
+    const panel = within(screen.getByRole("complementary"));
+    expect(panel.getByText("1 of 1 contacts say accounting")).toBeInTheDocument();
+    expect(panel.getByText(/its rows now say prospect/)).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("node-fact:sfa001"));
+    expect(within(screen.getByRole("complementary")).getByText(/said in doc sdc009/)).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("node-fact:sfa002"));
+    expect(within(screen.getByRole("complementary")).getByText(/doc doc-nope: not found/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Whole graph/ }));
+    await waitFor(() => expect(api.graphNetwork).toHaveBeenLastCalledWith(
+      expect.objectContaining({ kinds: "company,contact,deal" })));
+  });
+
   it("lays the same graph out the same way, inside the box", () => {
     const a = layout(NET.nodes, NET.edges, { width: 400, height: 300 });
     const b = layout(NET.nodes, NET.edges, { width: 400, height: 300 });
