@@ -809,3 +809,23 @@ def test_sessions_carry_their_events_and_kpis(t: bt.TestCaseRun) -> None:
                for r in rows.values() for tok in (r.get("events") or "").split())
     assert all(r.get(f"kpi_{k}") in (True, False) for r in rows.values() for k in webanalytics.KPI_EVENTS)
     _clean(client)
+
+
+def test_a_new_event_name_is_reported_not_guessed(t: bt.TestCaseRun) -> None:
+    """docs/36: an event name the site starts sending is not guessed into a
+    KPI. The pull reports product-event names outside KPI_EVENTS and
+    KNOWN_EVENT_TYPES, so someone decides where they belong. Page views,
+    CTA clicks and Amplitude's session bookkeeping are always understood."""
+    client, _, _ = _seeded()
+    events = _events()
+    extra = dict(events[2], event_type="Workbook shared with a colleague",
+                 **{"$insert_id": "ins-new-1"})
+    t.h1("The fixture day: nothing new")
+    report = webanalytics.store_day(client, DAY, events)
+    t.tln(f"  new_event_types: {report['new_event_types']}")
+    assert report["new_event_types"] == {}
+    t.h1("The same day with one event name never seen before")
+    report = webanalytics.store_day(client, DAY, events + [extra])
+    t.tln(f"  new_event_types: {report['new_event_types']}")
+    assert report["new_event_types"] == {"Workbook shared with a colleague": 1}
+    _clean(client)
