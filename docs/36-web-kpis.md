@@ -211,10 +211,15 @@ set on 230.
     account key. `user_id` is never read or stored.
   - **Delete on request.** By visitor key: `delete_entries` in web_sessions
     and web_visitors, plus a suppression list (salted visitor keys) so later
-    pulls skip that browser. The operator triggers it, through a CLI command
-    and an operator-only MCP tool kept off the remote surface.
-  - **Retention: 13 months.** The pull deletes days older than 13 months
-    after each run, and reports how many went.
+    pulls skip that browser. The operator triggers it with
+    `company-ai forget-web-visitor --device-id <Amplitude device_id>` (or
+    `--visitor-key`), or the local MCP tool `forget_web_visitor`, which is in
+    REMOTE_DENY. Built in phase 2: the `web_suppressed` table, and
+    `store_day` reports `suppressed` per day.
+  - **Retention: 13 months.** At the end of each run the pull deletes the
+    days before `retention_cutoff(today)` (13 calendar months back, clamped to
+    the month end), checks none remain, and reports `retention`. A v2 delete
+    takes equality only, so each old day is deleted by its own value.
   - **Backups expire on their own schedule.** Deletion and retention act on
     the live tables. Backups hold whatever was live when they were taken, and
     age out by rotation (docs/21): daily env snapshots after 7 days, tx

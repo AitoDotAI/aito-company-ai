@@ -751,6 +751,17 @@ WEB_VISITORS = {
 }
 
 
+# web_suppressed (docs/36): browsers deleted on request. The pull skips any
+# session whose visitor_key is listed, so a deleted visitor never comes back.
+WEB_SUPPRESSED = {
+    "type": "table",
+    "columns": {
+        "visitor_key": {"type": "String"},
+        "at": {"type": "String"},             # when it was forgotten (ISO date)
+    },
+}
+
+
 TABLES = {
     "users": USERS, "assignments": ASSIGNMENTS, "tokens": TOKENS,
     # companies before contacts/deals — it is their `company_id` link target.
@@ -765,6 +776,7 @@ TABLES = {
     "search_contexts": SEARCH_CONTEXTS, "search_impressions": SEARCH_IMPRESSIONS,
     "web_sessions": WEB_SESSIONS,
     "web_visitors": WEB_VISITORS,
+    "web_suppressed": WEB_SUPPRESSED,
 }
 
 SEGMENTS = {"accounting", "erp", "ecommerce", "analytics", "consultancy", "other"}
