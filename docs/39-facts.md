@@ -45,19 +45,41 @@ that has none, is refused with the row (rule 3):
 | open_question | ours, theirs: **whose move** (required) | none |
 | contact_info | none | current, bounced, invalid (required) |
 | decision | none | none |
-| hold | none | none |
+| hold | none | on_hold, released (required) |
 
 These encode the CRO's requirements. Contact info can be bounced or invalid.
 A commitment is sent or drafted. An open question says whose move it is.
 A role says its slot, so two decision owners show as a conflict.
 
-**Partner-hold rule (pending the CRO's written confirmation on PR #75; not
-built until then).** A `hold` fact records only the hold status, with
+**Partner-hold rule** (confirmed in writing by the CRO on PR #75,
+6.11.2026). A `hold` fact records only the hold status, with
 `source_kind = antti`. Any other source on a hold is refused. Nothing learned
 in the partner's meetings behind a hold is entered as a fact; that part is
 convention. The source
 check guards the hold row, and any `source_kind` outside `FACT_SOURCES` is
 refused. (To confirm with the CRO.)
+
+## Releasing a hold, and failing closed (CRO additions, 6.11.2026)
+
+- **A release is a hold fact** with `state = released` and
+  `source_kind = antti`, which supersedes that account's `on_hold` fact
+  (`supersede_fact(on_hold, released)`). The source rule is the same as for
+  the hold, so a release from any other source is refused.
+- **One account at a time.** `add_fact` takes one company and
+  `supersede_fact` one pair of facts. No tool takes a list, a group or a
+  segment, so there is no way to release a group.
+- **Fail closed.** One active `on_hold` fact (source `antti`, no release)
+  shows plain `HOLD`. The briefing also shows `HOLD` whenever the hold status
+  is unclear, as `HOLD (unclear: <reason>)`:
+  - two or more active hold facts (a conflict);
+  - an active `released` fact that supersedes no `on_hold` fact of the same
+    account;
+  - any hold fact whose `source_kind` isn't `antti` (one that reached the
+    table some other way, such as a direct load). The loader refuses it too
+    (rule 3).
+
+  Each unclear case lists the facts behind it, and the briefing never shows
+  the account as released. "Unclear" is reserved for these anomalies (CRO).
 
 ## Writes, tools and the change log
 
