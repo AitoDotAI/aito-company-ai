@@ -40,6 +40,10 @@ from .aito import AitoClient
 EXPORT_URL = "https://analytics.eu.amplitude.com/api/2/export"
 SITE_HOST = "aito.ai"
 LOOKBACK_DAYS = 3   # referrer_day: a post on the referrer's platform this many days before
+# tier 2 (docs/35): how many days after posting a visit from the post's
+# platform to its link_path is matched to it. An attribution threshold, so
+# Antti's to set: default 7, COMPANY_AI_WEB_MATCH_DAYS overrides it.
+MATCH_DAYS = int(os.environ.get("COMPANY_AI_WEB_MATCH_DAYS", "7"))
 
 # the two page-view shapes the site sends (docs/35)
 PAGE_VIEW_PREFIXES = {"Page View": "Page View: ", "Viewed": "Viewed"}
@@ -377,7 +381,8 @@ def _build(events: list[dict], day: str) -> tuple[list[dict], dict]:
             "device_class": device,
             "country": first.get("country") or "unknown",
             "likely_bot": pages[0].startswith(PROBE_PREFIXES),
-            "post_id": None, "candidate_post_id": None, "experiment_id": None,
+            "post_id": None, "candidate_post_id": None, "matched_post_id": None,
+            "experiment_id": None,
             "link_basis": None,
         })
     return rows, stats
@@ -399,7 +404,8 @@ def _link(client: AitoClient, rows: list[dict], day: str) -> dict:
     a (tag, platform) two posts share links nothing. Returns what was
     refused, by kind."""
     posts = client.query({"from": "posts", "limit": 100000,
-                          "select": ["post_id", "platform", "status", "posted_at", "utm_campaign"]})["hits"]
+                          "select": ["post_id", "platform", "status", "posted_at", "utm_campaign",
+                                     "link_path"]})["hits"]
     by_campaign: dict[str, list[dict]] = {}
     for p in posts:
         if p.get("utm_campaign"):
@@ -413,7 +419,7 @@ def _link(client: AitoClient, rows: list[dict], day: str) -> dict:
     duplicates = {f"{slug}|{plat}": sorted(ids) for (slug, plat), ids in by_key.items()
                   if len(ids) > 1}
     start = (date.fromisoformat(day) - timedelta(days=LOOKBACK_DAYS)).isoformat()
-    before_post = 0
+    before_post = ambiguous = 0
     for row in rows:
         if row["likely_bot"]:
             continue
@@ -438,11 +444,24 @@ def _link(client: AitoClient, rows: list[dict], day: str) -> dict:
         platform = SOCIAL_HOSTS.get(row["referrer_domain"] or "")
         if not platform:
             continue
+        # tier 2: the post's platform, its page, within MATCH_DAYS of posting
+        fits = [p for p in posts if p.get("platform") == platform and p.get("status") == "posted"
+                and p.get("link_path") == row["landing_path"] and p.get("posted_at")
+                and p["posted_at"][:10] <= day <= (date.fromisoformat(p["posted_at"][:10])
+                                                  + timedelta(days=MATCH_DAYS)).isoformat()]
+        if len(fits) == 1:
+            row["matched_post_id"], row["link_basis"] = fits[0]["post_id"], "referrer_landing"
+            continue
+        if len(fits) > 1:
+            ambiguous += 1
+            continue
+        # posts with a link_path are matched by it, never guessed by day alone
         near = [p for p in posts if p.get("platform") == platform and p.get("status") == "posted"
-                and start <= (p.get("posted_at") or "")[:10] <= day]
+                and not p.get("link_path") and start <= (p.get("posted_at") or "")[:10] <= day]
         if len(near) == 1:
             row["candidate_post_id"], row["link_basis"] = near[0]["post_id"], "referrer_day"
-    return {"duplicate_campaigns": duplicates, "before_post": before_post}
+    return {"duplicate_campaigns": duplicates, "before_post": before_post,
+            "ambiguous_matches": ambiguous}
 
 
 def store_day(client: AitoClient, day: str, events: list[dict]) -> dict:

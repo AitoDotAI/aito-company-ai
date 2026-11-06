@@ -816,9 +816,34 @@ def _material_channel_maps(client: AitoClient) -> tuple[dict, dict]:
     return materials, channels
 
 
+def normalize_link_path(value: str) -> str:
+    """A post's link target in web_sessions' landing_path form: an aito.ai
+    URL becomes its path, another host is written host-first
+    (ecommerce.aito.ai/cart), and the query and fragment are dropped."""
+    from urllib.parse import urlsplit
+    value = (value or "").strip()
+    assert value, "link_path is empty"
+    if "://" in value:
+        parts = urlsplit(value)
+        host = (parts.hostname or "").lower()
+        host = host[4:] if host.startswith("www.") else host
+        path = parts.path or "/"
+        return path if host == "aito.ai" else f"{host}{path}"
+    assert value.startswith("/"), f"link_path {value!r}: a URL or a path starting with /"
+    return value.split("?")[0].split("#")[0]
+
+
+def set_post_link_path(client: AitoClient, post_id: str, link_path: str) -> dict:
+    """Record the aito.ai page a post links to (docs/35 attribution tier 2),
+    in place with a read-back, for posts logged before link_path existed."""
+    page = normalize_link_path(link_path)
+    return _write_row(client, "posts", "post_id", post_id,
+                      lambda row: row.update({"link_path": page}))
+
+
 def add_post(client: AitoClient, material_id: str, channel_id: str, tone: str,
              format: str, link_placement: str, status: str = "planned",
-             utm_campaign: str | None = None) -> dict:
+             utm_campaign: str | None = None, link_path: str | None = None) -> dict:
     """Plan a post: a material posted to a channel, with a go/no-go status
     (default planned). KPIs arrive once posted, via log_post_result. The
     material's/channel's attributes are denormalized in (validated live).
@@ -841,6 +866,7 @@ def add_post(client: AitoClient, material_id: str, channel_id: str, tone: str,
         "status": status, "posted_at": "", "tone": tone, "format": format,
         "link_placement": link_placement, "reach_or_views": "", "upvotes": "",
         "trials": "", "outcome": "", "utm_campaign": utm_campaign or "",
+        "link_path": normalize_link_path(link_path) if link_path else "",
     }
     row = parse_post_row(raw, materials, channels)
     client.upload_batch("posts", [row])

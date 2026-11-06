@@ -1,6 +1,6 @@
 # the remote tool surface (read + safe writes)
 
-61 tools exposed over HTTP:
+62 tools exposed over HTTP:
   add_channel
   add_contact
   add_deal
@@ -51,6 +51,7 @@
   score_post
   search
   segment_360
+  set_post_link_path
   tick_routine
   todos_area
   todos_now

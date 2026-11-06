@@ -1106,3 +1106,55 @@ def test_one_tag_serves_one_post_per_platform(t: bt.TestCaseRun) -> None:
     assert rows["linkedin"]["post_id"] == posted["linkedin"]
     assert rows[None].get("post_id") is None
     _clean(client)
+
+
+def test_a_visit_from_the_posts_platform_to_its_page_is_matched(t: bt.TestCaseRun) -> None:
+    """docs/35 attribution, tier 2: a post records the aito.ai page it links
+    to (link_path). A visit whose referrer is the post's platform, landing on
+    that page within MATCH_DAYS of posting, is matched to it
+    (matched_post_id, link_basis referrer_landing): no tag needed. Another
+    page, a later day, or two posts that fit link nothing; ambiguity is
+    reported."""
+    client, _, _ = _seeded()
+    material = client.query({"from": "materials", "limit": 1})["hits"][0]["material_id"]
+    page = "/blog/two-halves-of-the-new-software-wave/"
+    post = log.add_post(client, material_id=material, channel_id="sk04", tone="narrate",
+                        format="link", link_placement="body",
+                        link_path=f"https://www.aito.ai{page}?utm_source=x")
+    log.log_post_result(client, post["post_id"], outcome="modest", reach_or_views=100,
+                        posted_at="2026-10-04")
+    t.h1("link_path is stored like landing_path")
+    stored = client.query({"from": "posts", "where": {"post_id": post["post_id"]}, "limit": 1})["hits"][0]
+    t.tln(f"  {stored['link_path']}")
+    assert stored["link_path"] == page
+    referred = {"[Amplitude] Previous Page Type": "external",
+                "[Amplitude] Previous Page Location": "https://www.linkedin.com/feed/"}
+    visits = [_event(f"{DAY} 10:00:00", page, 1759658000001, device_id="dev-m1", **referred),
+              _event(f"{DAY} 11:00:00", "/pricing/", 1759658000002, device_id="dev-m2", **referred)]
+    webanalytics.store_day(client, DAY, visits)
+    later = "2026-10-20"
+    webanalytics.store_day(client, later, [_event(f"{later} 10:00:00", page, 1760954400003,
+                                                  device_id="dev-m3", **referred)])
+    rows = {r["landing_path"] + "@" + r["day"]: r for r in client.query(
+        {"from": "web_sessions", "where": {"$or": [{"day": DAY}, {"day": later}]}, "limit": 10})["hits"]}
+    t.h1(f"Matched within {webanalytics.MATCH_DAYS} days")
+    for k in sorted(rows):
+        r = rows[k]
+        t.tln(f"  {k}: matched {'<post>' if r.get('matched_post_id') == post['post_id'] else r.get('matched_post_id')}"
+              f" basis {r.get('link_basis')}")
+    assert rows[f"{page}@{DAY}"]["matched_post_id"] == post["post_id"]
+    assert rows[f"{page}@{DAY}"]["link_basis"] == "referrer_landing"
+    assert rows[f"/pricing/@{DAY}"].get("matched_post_id") is None
+    assert rows[f"{page}@{later}"].get("matched_post_id") is None
+    t.h1("Two posts that fit match nothing, and it is reported")
+    twin = log.add_post(client, material_id=material, channel_id="sk04", tone="builder",
+                        format="link", link_placement="body", link_path=page)
+    log.log_post_result(client, twin["post_id"], outcome="modest", reach_or_views=10,
+                        posted_at="2026-10-03")
+    report = webanalytics.store_day(client, DAY, visits)
+    row = next(r for r in client.query({"from": "web_sessions", "where": {"day": DAY, "landing_path": page},
+                                        "limit": 1})["hits"])
+    t.tln(f"  ambiguous_matches {report['ambiguous_matches']}, matched {row.get('matched_post_id')}")
+    assert report["ambiguous_matches"] == 1 and row.get("matched_post_id") is None
+    client.delete_entries("web_sessions", {"day": later})
+    _clean(client)

@@ -267,7 +267,7 @@ Add a destination to the channels catalog (live Aito). name e.g.
 
 ## add_post
 
-params: ['channel_id', 'format', 'link_placement', 'material_id', 'status', 'tone', 'utm_campaign']
+params: ['channel_id', 'format', 'link_path', 'link_placement', 'material_id', 'status', 'tone', 'utm_campaign']
 required: ['channel_id', 'format', 'link_placement', 'material_id', 'tone']
 Plan a post: a material posted to a channel, with a go/no-go status
     (planned/go/no_go/posted). KPIs arrive via log_post_result once posted.
@@ -275,7 +275,17 @@ Plan a post: a material posted to a channel, with a go/no-go status
     The material's/channel's attributes denormalize in (validated live).
     utm_campaign: the readable slug the post's links carry (?utm_campaign=),
     unique across posts, so its aito.ai visits link to it exactly (docs/35);
-    for an experiment's drop, use the experiment_id.
+    for an experiment's drop, use the experiment_id. utm_campaign is unique per
+    platform. link_path: the aito.ai page the post links to (a URL or a path);
+    visits from the post's platform landing on it soon after posting are
+    matched to it even without a tag (docs/35).
+
+## set_post_link_path
+
+params: ['link_path', 'post_id']
+required: ['link_path', 'post_id']
+Record the aito.ai page a post links to (a URL or a path), for a post
+    logged without one, so its visits can be matched (docs/35).
 
 ## log_post_result
 

@@ -366,18 +366,28 @@ def add_channel(name: str, platform: str) -> dict:
 @mcp.tool()
 def add_post(material_id: str, channel_id: str, tone: str, format: str,
              link_placement: str, status: str = "planned",
-             utm_campaign: str | None = None) -> dict:
+             utm_campaign: str | None = None, link_path: str | None = None) -> dict:
     """Plan a post: a material posted to a channel, with a go/no-go status
     (planned/go/no_go/posted). KPIs arrive via log_post_result once posted.
     tone: narrate/announce/explainer/builder; link_placement: comment/body/n_a.
     The material's/channel's attributes denormalize in (validated live).
     utm_campaign: the readable slug the post's links carry (?utm_campaign=),
     unique across posts, so its aito.ai visits link to it exactly (docs/35);
-    for an experiment's drop, use the experiment_id."""
+    for an experiment's drop, use the experiment_id. utm_campaign is unique per
+    platform. link_path: the aito.ai page the post links to (a URL or a path);
+    visits from the post's platform landing on it soon after posting are
+    matched to it even without a tag (docs/35)."""
     return logbook.add_post(
         _client(), material_id=material_id, channel_id=channel_id, tone=tone,
         format=format, link_placement=link_placement, status=status,
-        utm_campaign=utm_campaign)
+        utm_campaign=utm_campaign, link_path=link_path)
+
+
+@mcp.tool()
+def set_post_link_path(post_id: str, link_path: str) -> dict:
+    """Record the aito.ai page a post links to (a URL or a path), for a post
+    logged without one, so its visits can be matched (docs/35)."""
+    return logbook.set_post_link_path(_client(), post_id, link_path)
 
 
 @mcp.tool()
