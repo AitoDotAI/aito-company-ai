@@ -28,6 +28,16 @@ def _ready(t: bt.TestCaseRun):
     return client, embed.embedder(cfg)
 
 
+# the five docs the French pricing query reaches on the seed, and how close a
+# doc must be to the rank-5 similarity to count as a tie when it crosses it
+EXPECTED_TOP = {"Nakatomi OÜ — account plan", "Genco account plan", "Daily note — Genco pilot kickoff",
+                "Pymt Oy — renewal risk", "Ideal customer profile"}
+# TIE: the cross-build noise is at least 0.0009 (the account plans at ranks 1-2,
+# 0.0009 apart, swapped between gates); rank 5 to 6 is 0.0086 apart on the seed,
+# so 0.003 absorbs the noise and still fails a real change at the boundary
+TOP_K, TIE = 5, 0.003
+
+
 def test_crosslingual_query_flips_from_empty_to_semantic(t: bt.TestCaseRun) -> None:
     client, embedder = _ready(t)
     if embedder is None:
@@ -66,16 +76,38 @@ def test_crosslingual_query_flips_from_empty_to_semantic(t: bt.TestCaseRun) -> N
     # first six. Pinning the whole list would make this test flap for a reason
     # that says nothing about the capability; the flip and the leading hits are
     # the claim, so those are what the snapshot holds.
-    t.tln(f"blended (+ $nearest):  semantic={blended['semantic']}, top 5:")
-    for h in blended["hits"][:5]:
-        t.tln(f"   [{h['kind']}] {h['title']}")
+    # Not the ORDER (td-20261106230747909819). The embedding service isn't
+    # bit-deterministic, and the index is rebuilt per run, so docs whose cosine
+    # is near-tied swap places between builds (two consecutive gates flipped
+    # the account plans at ranks 1-2). The claim is WHICH docs the French query
+    # reaches: the top 5 as a set. A doc that crosses the rank-5 boundary counts
+    # only when its similarity is within TIE of the boundary, so a real change
+    # of answer still fails.
+    t.tln(f"blended (+ $nearest):  semantic={blended['semantic']}")
+    top = {h["source_id"] for h in blended["hits"][:TOP_K]}
+    sim = {h["source_id"]: h["$similarity"]
+           for h in search._vector_candidates(client, embedder, fr, "doc", 50)}
+    boundary = sim[blended["hits"][TOP_K - 1]["source_id"]]
+    titles = {h["source_id"]: h["title"] for h in blended["hits"]}
+    expected = {d["doc_id"] for d in loaders._read_csv(SEED_DIR / "documents.csv")
+                if d["title"] in EXPECTED_TOP}
+    crossed = sorted(top ^ expected)
+    t.tln(f"top {TOP_K} as a set, expected: {sorted(EXPECTED_TOP)}")
+    t.tln(f"same set, up to boundary ties within {TIE}: "
+          f"{all(abs(sim.get(d, -1) - boundary) <= TIE for d in crossed)}")
 
     # the flip: text-match finds nothing (no shared tokens); the vector blend does
     assert text_hits == [], "text-match should still find nothing for the French query"
     assert blended["semantic"] and len(sem_hits) > 0, "the vector blend must return semantic hits"
     assert all(h["kind"] == "doc" for h in blended["hits"]), "kind filter honoured"
+    assert len(expected) == TOP_K, f"EXPECTED_TOP names {len(expected)} seed docs"
+    assert all(abs(sim.get(d, -1) - boundary) <= TIE for d in crossed), (
+        f"the French query reaches different docs: {[(titles.get(d, d), sim.get(d)) for d in crossed]}, "
+        f"boundary {boundary:.4f}")
 
     t.h1("an English exact query keeps its exact match (interleave, not vector-only)")
+    exact = search.search(client, "pricing", kind="doc", top_n=1).derived["hits"]
     en = search.ranked(client, "pricing", kind="doc", embed=embedder).derived
-    t.tln(f"'pricing' -> {[h['title'] for h in en['hits']]}")
-    assert en["count"] > 0
+    t.tln(f"text-match's top hit {exact[0]['title']!r} leads the blend: "
+          f"{en['hits'][0]['item_id'] == exact[0]['item_id']}")
+    assert en["count"] > 0 and en["hits"][0]["item_id"] == exact[0]["item_id"]
