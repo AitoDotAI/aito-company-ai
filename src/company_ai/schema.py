@@ -664,6 +664,7 @@ WEB_SESSIONS = {
     "type": "table",
     "columns": {
         "session_key": {"type": "String"},
+        "visitor_key": {"type": "String"},     # HMAC(salt, device_id): one browser (docs/36)
         "day": {"type": "String"},                 # YYYY-MM-DD UTC of the session's first event
         "hour": {"type": "Int"},                   # 0-23 UTC
         "weekday": {"type": "String"},

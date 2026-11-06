@@ -191,9 +191,9 @@ set on 230.
   HMAC-SHA256 with a secret salt, `COMPANY_AI_WEB_SALT`, which Antti places
   in the env file. Without the salt, anyone holding the Amplitude export
   could recompute them. With it they can't be recomputed elsewhere, but here
-  they still identify a browser. Today's web_sessions.session_key is an
-  unsalted sha256, and switching it is part of phase 1. A re-pull replaces
-  each day, so the backfill is redone.
+  they still identify a browser. The salt was placed on 6.11.2026.
+  web_sessions.session_key and visitor_key are salted (phase 1, first PR), and
+  the backfill is re-pulled so that no unsalted key stays stored.
 - Decided by Antti, 6.11.2026:
   - **No account linking.** Journeys stay per browser, and there is no
     account key. `user_id` is never read or stored.

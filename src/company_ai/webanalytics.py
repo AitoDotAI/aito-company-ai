@@ -17,6 +17,7 @@ Aito query (rule 2): `predict_next_path`, and `onward_drivers` (_relate).
 import fcntl
 import gzip
 import hashlib
+import hmac
 import io
 import json
 import os
@@ -128,8 +129,23 @@ def _clean_utm(value: str | None) -> str | None:
     return value if UTM_VALUE.fullmatch(value) and not _is_token(value) else "<invalid>"
 
 
+def _keyed(text: str) -> str:
+    """HMAC-SHA256 of `text` with COMPANY_AI_WEB_SALT, 16 hex (docs/36).
+    Without the salt the keys could be recomputed by anyone holding the
+    Amplitude export, so a missing salt raises, never a bare-hash fallback."""
+    salt = os.environ.get("COMPANY_AI_WEB_SALT")
+    assert salt, "COMPANY_AI_WEB_SALT is not set: the web keys are salted (docs/36)"
+    return hmac.new(salt.encode(), text.encode(), hashlib.sha256).hexdigest()[:16]
+
+
 def _session_key(session_id, device_id) -> str:
-    return hashlib.sha256(f"{session_id}:{device_id}".encode()).hexdigest()[:16]
+    return _keyed(f"{session_id}:{device_id}")
+
+
+def _visitor_key(device_id) -> str:
+    """One browser: the same across its sessions. Journeys stay per browser,
+    never joined across an account's browsers (Antti, 6.11.2026)."""
+    return _keyed(f"visitor:{device_id}")
 
 
 # the labels _source returns besides MEDIUM_SOURCES' values
@@ -282,6 +298,7 @@ def _build(events: list[dict], day: str) -> tuple[list[dict], dict]:
         rows.append({
             "session_key": _session_key(*key[:2]) if key[0] not in NO_SESSION
             else _session_key(key[0], f"{key[1]}:{key[2]}"),
+            "visitor_key": _visitor_key(key[1]),
             "day": day, "hour": start.hour,
             "weekday": schema.WEEKDAYS[start.weekday()],
             "week": f"{start.isocalendar().year}-W{start.isocalendar().week:02d}",

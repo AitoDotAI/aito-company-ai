@@ -30,7 +30,8 @@ LEAKS = {
 # per-row identity a relation would only restate
 NOT_DRIVERS = {
     "posts": {"utm_campaign"},
-    "web_sessions": {"session_key", "day", "week", "pull_run", "link_basis", "likely_bot"},
+    "web_sessions": {"session_key", "visitor_key", "day", "week", "pull_run", "link_basis",
+                     "likely_bot"},
 }
 # identity and free-text fields: unique per row, or words rather than values
 _ID_SUFFIXES = ("_id", "_thread_id", "_event_id")
