@@ -57,4 +57,15 @@ describe("Search view", () => {
     await waitFor(() => expect(api.search).toHaveBeenCalledWith("accounting", "deal"));
     await screen.findByText(/no matches for/);
   });
+
+  it("a failed search shows the server's error text, not a blank page", async () => {
+    // e.g. the kind assert in search._vector_candidates (#86) if an engine
+    // ever stopped pre-filtering a where beside $nearest
+    const msg = "$nearest with where kind='doc' returned [{'kind': 'deal'}]";
+    api.search.mockRejectedValue(new Error(msg));
+    renderSearch();
+    fireEvent.change(screen.getByPlaceholderText(/Search docs/), { target: { value: "pricing" } });
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    expect(await screen.findByText(msg, { exact: false })).toBeInTheDocument();
+  });
 });
