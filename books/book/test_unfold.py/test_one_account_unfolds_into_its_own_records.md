@@ -10,7 +10,10 @@
   deals: where {'company_id': 'nakatomi-o'}
   documents: where {'company_id': 'nakatomi-o'}
   touches: where {'contact_id.company_id': 'nakatomi-o'}
+  GET /api/v2/schema
   facts: where {'company_id': 'nakatomi-o'}
+  documents: where {'doc_id': {'$or': ['sdc009']}}
+  touches: where {'touch_id': {'$or': ['call-seed-0111', 'call-seed-0304', 'call-seed-0910', 'st067']}}
   superseded facts left out: ['sfa011']
 
 # Without focus, the graph is unchanged: no touches or facts

@@ -42,7 +42,7 @@ def test_one_account_unfolds_into_its_own_records(t: bt.TestCaseRun) -> None:
     t.tln(f"  edges: {dict(sorted(_edge_kinds(net).items()))}")
     t.h2("The requests")
     for r in net["requests"]:
-        t.tln(f"  {r['from']}: where {r.get('where')}")
+        t.tln(f"  {r['from']}: where {r.get('where')}" if "from" in r else f"  {r['schema']}")
     by_kind: dict[str, set[str]] = {}
     for n in net["nodes"]:
         by_kind.setdefault(n["kind"], set()).add(n["id"].split(":", 1)[1])
@@ -103,7 +103,50 @@ def test_every_fact_says_where_it_came_from(t: bt.TestCaseRun) -> None:
     edge = next(e for e in net["edges"] if e["kind"] == "said_in" and e["source"] == f"fact:{row['fact_id']}")
     t.tln(f"  call -> {edge['target'] == f'touch:{touch}'}")
     assert edge["target"] == f"touch:{touch}"
-    t.tln(f"  a mail source: {log.add_fact(client, company=REPLICA, kind='decision', statement='Mail decision', source_kind='mail', source_id='mail-x', valid_from='2026-11-06', author='cro')['warnings']}")
+    mail = log.add_fact(client, company=REPLICA, kind="decision", statement="Mail decision",
+                        source_kind="mail", source_id="mail-x", valid_from="2026-11-06", author="cro")
+    t.tln(f"  a mail source warns: {mail['warnings']}")
+    assert mail["warnings"] == [], "mail isn't stored here, so there's nothing to check"
+
+
+def test_a_source_on_another_account(t: bt.TestCaseRun) -> None:
+    client = _seeded()
+    docs = loaders._read_csv(SEED_DIR / "documents.csv")
+    other = sorted((d for d in docs if d["company"] and d["company"] != REPLICA), key=lambda d: d["doc_id"])[0]
+    row = log.add_fact(client, company=REPLICA, kind="decision", statement="Pricing set in the partner note",
+                       source_kind="doc", source_id=other["doc_id"], valid_from="2026-11-06", author="cro")
+    assert row["warnings"] == []
+    own = graph.network(client, focus=RID)
+    nodes = {n["id"]: n for n in own["nodes"]}
+    src = nodes[f"document:{other['doc_id']}"]
+    t.h1("A fact sourced from another account's note")
+    t.tln(f"  drawn: {sorted(src)}")
+    t.tln(f"  counts: {own['counts']}, foreign sources: {own['foreign_sources']}")
+    assert src["foreign"] is True and src["company_id"] == loaders.company_slug(other["company"])
+    assert set(src) == {"id", "kind", "label", "noted_on", "company_id", "foreign"}, "no body"
+    assert own["counts"]["document"] == len(_ids(client, "documents", "doc_id", {"company_id": RID}))
+    assert own["foreign_sources"] == {"document": 1}
+    reads = [r for r in own["requests"] if r.get("from") == "documents"]
+    t.tln(f"  document reads select: {[r.get('select') for r in reads]}")
+    assert all(r.get("select") and "body" not in r["select"] for r in reads)
+    t.tln(f"  every request listed: {[r.get('from') or r.get('schema') for r in own['requests']]}")
+
+    t.h1("kinds is respected: no notes asked for, none drawn as sources")
+    slim = graph.network(client, focus=RID, kinds=["company", "fact"])
+    t.tln(f"  counts: {slim['counts']}, said_in edges: {sum(e['kind'] == 'said_in' for e in slim['edges'])}")
+    assert set(slim["counts"]) == {"company", "fact"} and not slim["foreign_sources"]
+    assert not any(e["kind"] == "said_in" for e in slim["edges"])
+
+
+def test_without_focus_the_graph_is_byte_for_byte_the_same(t: bt.TestCaseRun) -> None:
+    import hashlib
+    import json
+    client = _seeded()
+    t.h1("network() with no focus, all four kinds: a digest of the whole answer")
+    for kinds in (None, ["company", "contact", "deal", "document"]):
+        out = graph.network(client, kinds=kinds)
+        digest = hashlib.sha256(json.dumps(out, sort_keys=True).encode()).hexdigest()[:16]
+        t.tln(f"  kinds={kinds}: {digest}")
 
 
 def test_the_harvested_facts_carry_their_rows(t: bt.TestCaseRun) -> None:
@@ -148,3 +191,17 @@ def _edge_kinds(net: dict) -> dict:
     for e in net["edges"]:
         out[e["kind"]] = out.get(e["kind"], 0) + 1
     return out
+
+
+def test_a_failing_source_check_warns_instead_of_failing_the_write(t: bt.TestCaseRun) -> None:
+    from company_ai import facts
+
+    class Down:
+        def query(self, request):
+            raise ConnectionError("instance unreachable")
+
+    fact = {"source_kind": "doc", "source_id": "sdc001"}
+    t.h1("The source check after a write, with the instance gone")
+    got = facts.source_warnings(Down(), fact)
+    t.tln(f"  {got}")
+    assert got == ["could not check source doc:sdc001: instance unreachable"]

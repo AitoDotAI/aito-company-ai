@@ -168,3 +168,24 @@ for Antti, since it would turn a write that works today into an error.
   - the unfolded view shows each harvested fact's rows, the hold and every
     fact's source;
   - "← Whole graph" goes back.
+
+## Follow-ups from the review of #83 (CPO, 6.11.2026)
+
+- **Every read is listed** in `requests`: the schema read and the source
+  lookups too.
+- **Source lookups select** `SOURCE_SELECT`, never a document body. They use
+  a safe limit and assert on `total`.
+- **`kinds` is respected** for source nodes.
+- **A source on another account** is drawn `foreign: true` and counted in
+  `foreign_sources`, not as this account's note.
+- **A failing source check** after the write returns "could not check source
+  …" rather than failing a write that already happened.
+- **The no-focus graph is byte-for-byte the same as before #83**, for both
+  default and all four kinds (digests compared against main's `graph.py` on
+  one instance). The book keeps the digests.
+
+**Design question, open:** a touch by another account's contact, logged on
+this account's deal, is left out of the unfold today, because touches are
+reached through `contact_id.company_id`. Including touches by `deal_id` too
+would answer "everything on this account's deals", at the cost of drawing
+people from another account.
