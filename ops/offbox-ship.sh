@@ -17,6 +17,17 @@ set -euo pipefail
 
 staging="${1:?staging dir}"
 name="${2:?name}"
+
+# The destination and SAS may live in the instance env file (COMPANY_AI_ENV),
+# placed there by the operator. Only these two keys are read from it, and a
+# value already in the environment wins.
+offbox_key() {
+  local file="${COMPANY_AI_ENV:-}"
+  [ -n "$file" ] && [ -f "$file" ] || return 0
+  sed -n "s/^$1=//p" "$file" | tail -n 1
+}
+: "${COMPANY_AI_OFFBOX_DEST:=$(offbox_key COMPANY_AI_OFFBOX_DEST)}"
+: "${COMPANY_AI_OFFBOX_SAS:=$(offbox_key COMPANY_AI_OFFBOX_SAS)}"
 dest="${COMPANY_AI_OFFBOX_DEST:-}"
 
 if [ -z "$dest" ]; then

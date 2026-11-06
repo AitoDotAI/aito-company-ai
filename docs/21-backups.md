@@ -110,7 +110,7 @@ systemctl --user enable --now company-ai-backup-offbox.timer  # daily 03:50
 **Azure blob destination.** With `COMPANY_AI_OFFBOX_DEST=https://<account>.blob.core.windows.net/company-ai`
 the dump is uploaded with azcopy (from nixpkgs, nothing to install) under one
 dated prefix per run, `offbox-<UTC stamp>/`. It is authorised by
-`COMPANY_AI_OFFBOX_SAS`, which the operator sets in the same service drop-in:
+`COMPANY_AI_OFFBOX_SAS`, which the operator sets in the same service drop-in, or appends to the instance env file alongside the destination (the scripts read only those two keys from it, and an environment value wins):
 a container-scoped SAS with **create and write only**, no delete or list, so
 this machine cannot wipe the history. It expires and is rotated yearly. The SAS
 never appears in the script's output (`ops/offbox-ship.sh` blanks it;

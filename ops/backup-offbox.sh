@@ -27,9 +27,15 @@ export PATH="/run/current-system/sw/bin:${PATH:-}"
 export NIX_PATH="${NIX_PATH:-nixpkgs=flake:nixpkgs:/nix/var/nix/profiles/per-user/root/channels}"
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export COMPANY_AI_ENV="${COMPANY_AI_ENV:-.env.aito}"
+cd "$REPO"
+
+# the destination may be in the instance env file, as offbox-ship.sh reads it
+if [ -z "${COMPANY_AI_OFFBOX_DEST:-}" ] && [ -f "$COMPANY_AI_ENV" ]; then
+  COMPANY_AI_OFFBOX_DEST="$(sed -n 's/^COMPANY_AI_OFFBOX_DEST=//p' "$COMPANY_AI_ENV" | tail -n 1)"
+fi
 
 if [ -z "${COMPANY_AI_OFFBOX_DEST:-}" ]; then
-  echo "backup-offbox: COMPANY_AI_OFFBOX_DEST is not set — refusing to run." >&2
+  echo "backup-offbox: COMPANY_AI_OFFBOX_DEST is not set (environment or the instance env file) — refusing to run." >&2
   echo "  An on-box-only copy is not an off-box backup. Set it to an rsync" >&2
   echo "  destination, e.g. /mnt/backups/company-ai or user@host:/srv/backups," >&2
   echo "  or an Azure container https://<account>.blob.core.windows.net/<container>." >&2
@@ -40,7 +46,6 @@ stamp="$(date -u +%Y-%m-%dT%H%M%SZ)"
 staging="${COMPANY_AI_OFFBOX_STAGING:-$REPO/.backups}/offbox-$stamp"
 keep="${COMPANY_AI_OFFBOX_KEEP:-3}"        # local staging copies to retain
 
-cd "$REPO"
 mkdir -p "$staging"
 echo "backup-offbox: exporting every table -> $staging"
 nix-shell "$REPO/shell.nix" --run "uv run company-ai export-all --dir '$staging'"
