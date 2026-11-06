@@ -1088,6 +1088,58 @@ def make_routines(n, prefix):
     return rows
 
 
+# The account-facts replica (docs/39, T1): the facts that made a call-prep
+# answer name the wrong decision owner (3.11.2026), on a synthetic account.
+# (person, kind, slot, state, statement, due, source_kind, source_id,
+#  valid_from, superseded_by); person is an index into the account's contacts.
+REPLICA_FACTS = [
+    (0, "role", "decision_owner", "", "Commercial lead owns the commercial track from the 26.10 split", "", "doc", "doc-seed-split", "2026-10-26", ""),
+    (1, "role", "decision_owner", "", "Sponsor says she decides what is sold", "", "call", "call-seed-0111", "2026-11-01", ""),
+    (0, "decision", "", "", "The plugin decision mail went to the commercial lead", "", "mail", "mail-seed-0211", "2026-11-02", ""),
+    (2, "open_question", "theirs", "", "Champion asked whether to buy the plugin or publish it themselves", "", "call", "call-seed-0910", "2026-10-09", ""),
+    (2, "role", "champion", "", "Head of Product champions the pilot", "", "call", "call-seed-0910", "2026-10-09", ""),
+    (4, "role", "champion", "", "Head of Finance backs the pilot too", "", "touch", "touch-seed-1020", "2026-10-20", ""),
+    (None, "commitment", "ours", "sent", "Send the pilot scope", "2026-11-09", "mail", "mail-seed-0211", "2026-11-02", ""),
+    (None, "commitment", "ours", "drafted", "Pricing proposal for the pilot", "2026-11-12", "doc", "doc-seed-pricing", "2026-11-03", ""),
+    (3, "contact_info", "", "bounced", "The partner's work address bounced", "", "mail", "mail-seed-0303", "2026-11-03", ""),
+    (3, "contact_info", "", "current", "Reach the partner through the office line", "", "call", "call-seed-0304", "2026-11-04", ""),
+    (1, "decision", "", "", "Decision expected from the founder", "", "call", "call-seed-1001", "2026-10-01", 2),
+]
+
+
+def make_facts(accounts, contacts, deals, prefix):
+    """The facts replica on the account with the most people (ties by name),
+    and a partner hold from antti on the first account with people and no
+    deal. Bound at generation time, never hand-named, so a roster change moves
+    the facts with it. Draws no randomness, so every other file is unchanged.
+    Empty when no account has the five people the replica needs."""
+    by_company = {}
+    for c in contacts:
+        by_company.setdefault(c["company"], []).append(c)
+    replica = max(sorted(by_company), key=lambda co: len(by_company[co]))
+    people = by_company[replica]
+    if len(people) < 5:
+        return []
+    ids = [f"{prefix}{i + 1:03d}" for i in range(len(REPLICA_FACTS) + 1)]
+    rows = []
+    for i, (who, kind, slot, state, statement, due, sk, sid, valid, sup) in enumerate(REPLICA_FACTS):
+        rows.append({"fact_id": ids[i], "company": replica,
+                     "stakeholder_id": people[who]["contact_id"] if who is not None else "",
+                     "kind": kind, "slot": slot, "state": state, "statement": statement,
+                     "due": due, "source_kind": sk, "source_id": sid, "valid_from": valid,
+                     "superseded_by": ids[sup] if sup != "" else "", "author": "cro",
+                     "created_at": valid})
+    with_deals = {d["company"] for d in deals}
+    held = next((co for co in sorted(by_company) if co not in with_deals and co != replica), None)
+    if held:
+        rows.append({"fact_id": ids[-1], "company": held, "stakeholder_id": "", "kind": "hold",
+                     "slot": "", "state": "on_hold", "statement": "On partner hold", "due": "",
+                     "source_kind": "antti", "source_id": "antti-seed-1015",
+                     "valid_from": "2026-10-15", "superseded_by": "", "author": "antti",
+                     "created_at": "2026-10-15"})
+    return rows
+
+
 def write_csv(path: Path, rows: list[dict]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w", newline="", encoding="utf-8") as f:
@@ -1127,6 +1179,7 @@ def generate(out_dir: Path, n_contacts: int, n_touches: int, n_sessions: int,
     events = make_events(rng, n_events, f"{prefix}v")
     routines = make_routines(n_routines, f"{prefix}o")
     documents = make_documents(rng, accounts, contacts, f"{prefix}dc")
+    facts = make_facts(accounts, contacts, deals, f"{prefix}fa")
     # the date this dataset is ABOUT. Without it a fixed seed rots: four months
     # later every deal reads as stalled. `./do seed` hands it to the instance as
     # its reckoning date (clock.py), so a fresh install shows a working week.
@@ -1145,6 +1198,8 @@ def generate(out_dir: Path, n_contacts: int, n_touches: int, n_sessions: int,
     write_csv(out_dir / "events.csv", events)
     write_csv(out_dir / "routines.csv", routines)
     write_csv(out_dir / "documents.csv", documents)
+    if facts:
+        write_csv(out_dir / "facts.csv", facts)
     print(f"{out_dir}: {len(contacts)} contacts, {len(touches)} touches, "
           f"{len(sessions)} sessions, {len(materials)} materials, "
           f"{len(channels)} channels, {len(posts)} posts, {len(todos)} todos, "

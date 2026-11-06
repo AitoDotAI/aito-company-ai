@@ -246,6 +246,22 @@ def create_app(config: Config | None = None) -> FastAPI:
     def documents_delete(doc_id: str):
         return _guarded(lambda: logbook.delete_document(client(), doc_id))
 
+    # ---- Account facts (docs/39) ----
+    @app.get("/api/facts")
+    def facts_list(company: str, active_only: bool = True):
+        from . import facts
+        return _guarded(lambda: facts.list_facts(client(), company, active_only=active_only))
+
+    @app.post("/api/facts")
+    async def facts_create(request: Request):
+        body = await request.json()
+        return _guarded(lambda: logbook.add_fact(client(), **body))
+
+    @app.post("/api/facts/supersede")
+    async def facts_supersede(request: Request):
+        body = await request.json()
+        return _guarded(lambda: logbook.supersede_fact(client(), body["old_id"], body["new_id"]))
+
     # ---- Users & assignments (the small team, docs/27) ----
     def current_user(request: Request) -> dict | None:
         # Entra Easy Auth authenticates in front of the app and passes the

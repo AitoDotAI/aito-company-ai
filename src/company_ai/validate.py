@@ -30,7 +30,7 @@ ID_COLUMNS = {
     "sessions": "session_id", "materials": "material_id", "channels": "channel_id",
     "posts": "post_id", "deals": "deal_id", "todos": "todo_id",
     "decisions": "decision_id", "experiments": "experiment_id", "events": "event_id",
-    "routines": "routine_id", "documents": "doc_id",
+    "routines": "routine_id", "documents": "doc_id", "facts": "fact_id",
 }
 
 # "unknown <field> 'x'" -> the schema set it was checked against. Keyed by
@@ -60,6 +60,7 @@ _SET_FOR = {
     ("experiments", "type"): "EXPERIMENT_TYPES", ("experiments", "effort"): "EXPERIMENT_EFFORTS",
     ("routines", "cadence"): "ROUTINE_CADENCE", ("routines", "prep"): "ROUTINE_PREP",
     ("documents", "kind"): "DOC_KINDS", ("users", "role"): "USER_ROLES",
+    ("facts", "kind"): "FACT_KINDS", ("facts", "source_kind"): "FACT_SOURCES",
 }
 _UNKNOWN = re.compile(r"^unknown (\w+) '(.*)'$")
 
@@ -151,6 +152,8 @@ def validate_dir(data_dir: Path) -> Report:
     def parse(table: str, row: dict) -> dict:
         if table == "touches":
             return loaders.parse_touch_row(row, contact_ids, deal_ids)
+        if table == "facts":
+            return loaders.parse_fact_row(row, contact_ids)
         if table == "posts":
             return loaders.parse_post_row(row, parsed_by_id["materials"], parsed_by_id["channels"])
         return {

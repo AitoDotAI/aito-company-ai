@@ -1488,3 +1488,56 @@ def revoke_token(client: AitoClient, token_id: str) -> dict:
     _write_row(client, "tokens", "token_id", token_id, lambda r: r.update({"active": False}))
     changelog.record(client, "tokens", token_id, "updated", "token revoked")
     return {"revoked": token_id}
+
+
+def add_fact(client: AitoClient, company: str, kind: str, statement: str, source_kind: str,
+             source_id: str, valid_from: str, author: str, slot: str | None = None,
+             state: str | None = None, due: str | None = None,
+             stakeholder_id: str | None = None) -> dict:
+    """Record one account fact (docs/39). Validated like a load against the
+    per-kind vocabulary (rule 3): a hold, or its release, only from antti.
+    One company per call: there is no way to write a group. A retry inside
+    the retry window returns the first row. Writes a change-log row."""
+    from .loaders import company_slug, parse_fact_row
+    if stakeholder_id:
+        known = client.query({"from": "contacts", "where": {"contact_id": stakeholder_id},
+                              "limit": 0})["total"]
+        assert known, f"unknown stakeholder_id {stakeholder_id!r}"
+    raw = {"fact_id": _stamp("fa"), "company": company, "stakeholder_id": stakeholder_id or "",
+           "kind": kind, "slot": slot or "", "state": state or "", "statement": statement,
+           "due": due or "", "source_kind": source_kind, "source_id": source_id,
+           "valid_from": valid_from, "superseded_by": "", "author": author,
+           "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+    row = parse_fact_row(raw)
+    same = lambda f: _stamp_time(f["fact_id"]) if all(
+        f.get(k) == row[k] for k in ("kind", "statement", "source_kind", "source_id", "valid_from")) else None
+    earlier = _recent_same(client, "facts", {"company_id": company_slug(company), "kind": kind},
+                           same, datetime.now())
+    if earlier is not None:
+        return {**earlier, "already_recorded": True}
+    add_company(client, company)   # the link target, so company_id never dangles
+    client.upload_batch("facts", [row])
+    _after_insert("fact", row["fact_id"], lambda: changelog.record(
+        client, "fact", row["fact_id"], "created", f"{kind} fact on {company}: {statement[:80]}"))
+    return row
+
+
+def supersede_fact(client: AitoClient, old_id: str, new_id: str) -> dict:
+    """Mark `old_id` replaced by `new_id` (docs/39): both exist, on the same
+    company and of the same kind, and the old one is still active. Writes one
+    row in place and a change-log row. Never applied automatically."""
+    def one(fact_id):
+        hits = client.query({"from": "facts", "where": {"fact_id": fact_id}, "limit": 2})["hits"]
+        assert len(hits) == 1, f"unknown fact_id {fact_id!r}"
+        return hits[0]
+    old, new = one(old_id), one(new_id)
+    assert old_id != new_id, f"a fact can't supersede itself: {old_id}"
+    assert old["company_id"] == new["company_id"], \
+        f"{old_id} is on {old['company_id']}, {new_id} on {new['company_id']}; one account only"
+    assert old["kind"] == new["kind"], f"{old_id} is a {old['kind']}, {new_id} a {new['kind']}; same kind only"
+    assert not old.get("superseded_by"), f"{old_id} is already superseded by {old['superseded_by']}"
+    assert not new.get("superseded_by"), f"{new_id} is itself superseded by {new['superseded_by']}"
+    row = _write_row(client, "facts", "fact_id", old_id,
+                     lambda r: r.__setitem__("superseded_by", new_id))
+    changelog.record(client, "fact", old_id, "superseded", f"{old['kind']} fact {old_id} -> {new_id}")
+    return row

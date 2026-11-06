@@ -534,6 +534,29 @@ DOCUMENTS = {
     },
 }
 
+# account facts (docs/39): one short, sourced statement per row, linked to its
+# company and optionally a person. Never deleted: a newer fact supersedes it.
+FACTS = {
+    "type": "collection",
+    "columns": {
+        "fact_id": {"type": "String"},
+        "company": {"type": "String"},                          # display name
+        "company_id": {"type": "String", "link": "companies.company_id"},
+        "stakeholder_id": {"type": "String", "nullable": True, "link": "contacts.contact_id"},
+        "kind": {"type": "String"},                             # FACT_KINDS
+        "slot": {"type": "String", "nullable": True},           # FACT_SLOTS[kind]
+        "state": {"type": "String", "nullable": True},          # FACT_STATES[kind]
+        "statement": {"type": "Text", "analyzer": "english"},   # as written, never generated
+        "due": {"type": "String", "nullable": True},            # a commitment's date
+        "source_kind": {"type": "String"},                      # FACT_SOURCES
+        "source_id": {"type": "String"},
+        "valid_from": {"type": "String"},                       # YYYY-MM-DD
+        "superseded_by": {"type": "String", "nullable": True},  # null while active
+        "author": {"type": "String"},
+        "created_at": {"type": "String"},
+    },
+}
+
 # users — the people using the app (docs/27). From a one-person company to a
 # small team: the operator plus, e.g., an SDR. `assignee` on contacts/todos/
 # deals points here (a plain String, validated on write). Auth is NOT here — the
@@ -809,7 +832,7 @@ TABLES = {
     "sessions": SESSIONS, "materials": MATERIALS, "channels": CHANNELS,
     "posts": POSTS, "todos": TODOS, "deals": DEALS, "deal_events": DEAL_EVENTS,
     "experiments": EXPERIMENTS,
-    "events": EVENTS, "routines": ROUTINES, "documents": DOCUMENTS,
+    "events": EVENTS, "routines": ROUTINES, "documents": DOCUMENTS, "facts": FACTS,
     "chat_messages": CHAT_MESSAGES,
     "changelog": CHANGELOG,
     "search_contexts": SEARCH_CONTEXTS, "search_impressions": SEARCH_IMPRESSIONS,
@@ -917,6 +940,25 @@ USER_ROLES = {"operator", "sdr"}
 # documents (docs/25): kind is the top-level split (shareable reference vs
 # private thinking); area is the optional, shared taxonomy.
 DOC_KINDS = {"docs", "internal"}
+
+# account facts (docs/39): the per-kind vocabulary for slot and state. A kind
+# missing from FACT_SLOTS / FACT_STATES takes no value there; a kind present
+# requires one.
+FACT_KINDS = {"role", "commitment", "decision", "open_question", "contact_info", "hold"}
+FACT_SOURCES = {"mail", "doc", "call", "touch", "antti"}
+FACT_SLOTS = {
+    "role": {"champion", "decision_owner", "sponsor", "other"},
+    "commitment": {"ours", "theirs"},
+    "open_question": {"ours", "theirs"},     # whose move
+}
+FACT_STATES = {
+    "commitment": {"sent", "drafted"},
+    "contact_info": {"current", "bounced", "invalid"},
+    "hold": {"on_hold", "released"},
+}
+# a hold or its release is recorded only on Antti's word (CRO, PR #75)
+HOLD_SOURCE = "antti"
+assert set(FACT_SLOTS) <= FACT_KINDS and set(FACT_STATES) <= FACT_KINDS
 DOCUMENT_AREAS = {"sales", "marketing", "operations", "rnd"}
 
 

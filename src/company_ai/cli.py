@@ -60,6 +60,7 @@ def main() -> None:
         ("load-experiments", "(re)load the experiments table (the learning board)"),
         ("load-events", "(re)load the events-to-attend table (the go/no-go board)"),
         ("load-documents", "(re)load the documents store (the knowledge store)"),
+        ("load-facts", "(re)load the account facts (docs/39)"),
     ):
         p = sub.add_parser(name, help=help_text)
         p.add_argument("--seed", action="store_true", help="load from data/seed/")
@@ -204,7 +205,7 @@ def main() -> None:
     WRITE_CMDS = {"create-schema", "load-companies", "load-rolodex", "load-touches", "load-sessions",
                   "load-materials", "load-channels", "load-posts", "load-todos",
                   "load-deals", "load-decisions", "load-experiments", "load-events",
-                  "load-documents", "documents-import", "migrate-journal", "migrate-todo-revs",
+                  "load-documents", "load-facts", "documents-import", "migrate-journal", "migrate-todo-revs",
                   "trilium-import",
                   "load-all", "clear", "export", "export-all", "board-run",
                   "reindex-search",
@@ -299,6 +300,10 @@ def main() -> None:
         directory = _data_dir(args, config)
         count = loaders.load_documents(client, directory)
         print(f"documents: loaded {count} rows from {directory / loaders.DOCUMENTS_FILE}")
+    elif args.command == "load-facts":
+        directory = _data_dir(args, config)
+        count = loaders.load_facts(client, directory)
+        print(f"facts: loaded {count} rows from {directory / loaders.FACTS_FILE}")
     elif args.command == "documents-import":
         from . import documents
         source = Path(args.dir) if args.dir else config.library_dir

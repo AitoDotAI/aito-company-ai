@@ -145,3 +145,24 @@ the row. T1-live (against internal, once the CRO has seeded real facts) is a
 
 Recall (`search_items` and vectors, supersede candidates by `$nearest`), the
 contexts/marks tables, the thin-doc flag, mail ingest, and T2 (the mail-recall test).
+
+## Built (6.11.2026)
+
+`schema.FACTS` with the per-kind vocabulary (`FACT_SLOTS`, `FACT_STATES`,
+`HOLD_SOURCE`); `loaders.parse_fact_row` / `load_facts` (also in `load_all`,
+`validate`, `export-all`, and the `load-facts` CLI); `log.add_fact` /
+`log.supersede_fact`; `facts.list_facts` / `facts.group`; `briefing` gains
+`hold` (first key) and `facts`; MCP `add_fact`, `supersede_fact`,
+`list_facts`; API `GET /api/facts`, `POST /api/facts`,
+`POST /api/facts/supersede`. Book: `book/test_facts.py`.
+
+Two notes on how it was built:
+- **The seed replica is generated, not hand-written.**
+  `scripts/generate_seed.py` `make_facts` binds the replica to the seed
+  account with the most people, and the hold to the first account with
+  people and no deal. It draws no randomness, so every other seed file is
+  unchanged, and a roster change moves the facts with it. The book reads
+  the accounts and fact ids from `data/seed/facts.csv`.
+- **Superseded hold rows still count** toward "a hold fact with another
+  source". Failing closed means a foreign-source hold anywhere in the
+  account's history shows `HOLD (unclear: ...)` until it is dealt with.

@@ -176,7 +176,8 @@ def briefing(client: AitoClient, company: str) -> Result:
     """The current state of one account in one read (td-20261103224048158692,
     slice 1): the company row, its open deals with their recorded next step,
     the latest touches and notes, the open todos linked to it, and its
-    stakeholders. Every fact carries `source` (kind, id, date) so an agent can
+    stakeholders; and the account's active facts (docs/39), with its hold
+    status first. Every fact carries `source` (kind, id, date) so an agent can
     open it; nothing is inferred or summarised. Grouping, sorting and
     formatting over link queries, no prediction (rule 2). Works for an account
     with no deal row. `company` is a company_id or the exact name."""
@@ -216,6 +217,11 @@ def briefing(client: AitoClient, company: str) -> Result:
               "select": ["doc_id", "title", "kind", "topics", "noted_on", "updated", "stakeholder_id"],
               "limit": 10000})
     docs.sort(key=lambda d: (d.get("noted_on") or "", d.get("updated") or "", d["doc_id"]), reverse=True)
+    # every fact, superseded too: a decision says what it replaced, and the
+    # hold fails closed on its history (docs/39)
+    from . import facts as _facts
+    account_facts = _facts.group(q({"from": "facts", "where": {"company_id": cid}, "limit": 10000}),
+                                 names)
 
     def todo_row(x):
         link = (f"{x['linked_type']}:{x['linked_id']}" if x.get("linked_type") else None) \
@@ -236,6 +242,8 @@ def briefing(client: AitoClient, company: str) -> Result:
                         key=lambda d: (d.get("last_touch_date") or d.get("created") or "", d["deal_id"]),
                         reverse=True)
     result.derived = {
+        # first, so it reads first: HOLD, HOLD (unclear: ...), released or None
+        "hold": account_facts["hold"]["status"],
         "company": {"name": co["name"], **{k: co.get(k) for k in COMPANY_ROW_FIELDS},
                     "source": _source("company", cid, None)},
         "open_deals": [{"deal_id": d["deal_id"], "stage": d["stage"], "value_eur": d.get("value_eur"),
@@ -266,6 +274,7 @@ def briefing(client: AitoClient, company: str) -> Result:
                   for d in docs[:BRIEFING_NOTES]],
         "notes_total": len(docs),
         "todos": [todo_row(x) for x in todos],
+        "facts": account_facts,
     }
     return result
 

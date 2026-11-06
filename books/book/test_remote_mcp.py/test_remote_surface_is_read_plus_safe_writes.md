@@ -1,12 +1,13 @@
 # the remote tool surface (read + safe writes)
 
-65 tools exposed over HTTP:
+68 tools exposed over HTTP:
   add_channel
   add_contact
   add_deal
   add_document
   add_event
   add_experiment
+  add_fact
   add_material
   add_post
   add_todo
@@ -31,6 +32,7 @@
   graph_questions
   graph_search
   list_channels
+  list_facts
   list_materials
   list_posts
   list_users
@@ -53,6 +55,7 @@
   search
   segment_360
   set_post_link_path
+  supersede_fact
   tick_routine
   todos_area
   todos_now

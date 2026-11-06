@@ -29,6 +29,7 @@ EXPERIMENTS_FILE = "experiments.csv"
 EVENTS_FILE = "events.csv"
 ROUTINES_FILE = "routines.csv"
 DOCUMENTS_FILE = "documents.csv"
+FACTS_FILE = "facts.csv"
 USERS_FILE = "users.csv"
 
 # the file each table loads from / exports to (export writes a re-loadable CSV)
@@ -37,7 +38,7 @@ TABLE_FILES = {
     "materials": MATERIALS_FILE, "channels": CHANNELS_FILE, "posts": POSTS_FILE,
     "todos": TODOS_FILE, "deals": DEALS_FILE,
     "decisions": DECISIONS_FILE, "experiments": EXPERIMENTS_FILE, "events": EVENTS_FILE,
-    "routines": ROUTINES_FILE, "documents": DOCUMENTS_FILE,
+    "routines": ROUTINES_FILE, "documents": DOCUMENTS_FILE, "facts": FACTS_FILE,
     "users": USERS_FILE,
 }
 
@@ -893,6 +894,65 @@ def load_documents(client: AitoClient, data_dir: Path) -> int:
     return _reload(client, "documents", rows)
 
 
+def _is_iso(value: str) -> bool:
+    try:
+        datetime.fromisoformat(value)
+        return True
+    except ValueError:
+        return False
+
+
+DERIVED_FACT_COLUMNS = {"company_id"}
+
+
+def parse_fact_row(row: dict, contact_ids: set | None = None) -> dict:
+    """One account fact (docs/39), validated against the per-kind vocabulary:
+    a kind in FACT_SLOTS / FACT_STATES requires a value from it, any other kind
+    takes none. A hold, or its release, comes only from antti (CRO, #75)."""
+    expected = set(schema.FACTS["columns"]) - DERIVED_FACT_COLUMNS
+    _require(set(row) == expected, f"unexpected columns {sorted(set(row) ^ expected)}", row)
+    for field in ("fact_id", "company", "kind", "statement", "source_kind", "source_id",
+                  "valid_from", "author", "created_at"):
+        _require(bool(row[field]), f"{field} is empty", row)
+    kind = row["kind"]
+    _require(kind in schema.FACT_KINDS, f"unknown kind {kind!r}", row)
+    _require(row["source_kind"] in schema.FACT_SOURCES, f"unknown source_kind {row['source_kind']!r}", row)
+    for field, vocab in (("slot", schema.FACT_SLOTS), ("state", schema.FACT_STATES)):
+        if kind in vocab:
+            _require(row[field] in vocab[kind],
+                     f"a {kind} fact needs {field} in {sorted(vocab[kind])}, got {row[field]!r}", row)
+        else:
+            _require(not row[field], f"a {kind} fact takes no {field}, got {row[field]!r}", row)
+    if kind == "hold":
+        _require(row["source_kind"] == schema.HOLD_SOURCE,
+                 f"a hold or its release needs source_kind {schema.HOLD_SOURCE!r}, "
+                 f"got {row['source_kind']!r}", row)
+    _require(not row["due"] or kind == "commitment", f"only a commitment has a due date", row)
+    if row["due"]:
+        _parse_date(row["due"], "due", row)
+    _parse_date(row["valid_from"], "valid_from", row)
+    _require(_is_iso(row["created_at"]), f"created_at is not ISO: {row['created_at']!r}", row)
+    if row["stakeholder_id"] and contact_ids is not None:
+        _require(row["stakeholder_id"] in contact_ids,
+                 f"unknown stakeholder_id {row['stakeholder_id']!r}", row)
+    return {
+        **row,
+        "company_id": company_slug(row["company"]),
+        **{k: row[k] or None for k in ("stakeholder_id", "slot", "state", "due", "superseded_by")},
+    }
+
+
+def load_facts(client: AitoClient, data_dir: Path) -> int:
+    contact_ids = {r["contact_id"] for r in _read_csv(data_dir / ROLODEX_FILE)}
+    rows = [parse_fact_row(r, contact_ids) for r in _read_csv(data_dir / FACTS_FILE)]
+    ids = [r["fact_id"] for r in rows]
+    assert len(ids) == len(set(ids)), "duplicate fact_id in facts"
+    for r in rows:
+        _require(not r["superseded_by"] or r["superseded_by"] in ids,
+                 f"superseded_by names an unknown fact {r['superseded_by']!r}", r)
+    return _reload(client, "facts", rows)
+
+
 def parse_user_row(row: dict) -> dict:
     expected = set(schema.USERS["columns"])
     _require(set(row) == expected, f"unexpected columns {sorted(set(row) ^ expected)}", row)
@@ -931,7 +991,7 @@ def export_table(client: AitoClient, table: str, out_dir: Path) -> tuple[Path, i
         "todos": DERIVED_TODO_COLUMNS,
         "decisions": DERIVED_DECISION_COLUMNS,
         "experiments": DERIVED_EXPERIMENT_COLUMNS,
-        "documents": DERIVED_DOCUMENT_COLUMNS,
+        "documents": DERIVED_DOCUMENT_COLUMNS, "facts": DERIVED_FACT_COLUMNS,
     }.get(table, set())
     columns = [c for c in schema.TABLES[table]["columns"] if c not in derived]
     rows = client.query({"from": table, "limit": 100000})["hits"]
@@ -1013,12 +1073,12 @@ LOADERS = {
     "materials": load_materials, "channels": load_channels, "posts": load_posts,
     "deals": load_deals, "todos": load_todos,
     "decisions": load_decisions, "experiments": load_experiments, "events": load_events,
-    "routines": load_routines, "documents": load_documents,
+    "routines": load_routines, "documents": load_documents, "facts": load_facts,
     "users": load_users,
 }
 LOAD_ORDER = ["users", "contacts", "touches", "sessions", "materials", "channels",
               "posts", "deals", "todos", "decisions", "experiments", "events",
-              "routines", "documents"]
+              "routines", "documents", "facts"]
 
 
 def diagnose(client: AitoClient) -> dict:

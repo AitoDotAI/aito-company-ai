@@ -83,6 +83,36 @@ One company node of the knowledge graph: its harvested facts (industry,
     and notes (documents). company_id is the slug company_list and
     graph_search return.
 
+## add_fact
+
+params: ['author', 'company', 'due', 'kind', 'slot', 'source_id', 'source_kind', 'stakeholder_id', 'state', 'statement', 'valid_from']
+required: ['author', 'company', 'kind', 'source_id', 'source_kind', 'statement', 'valid_from']
+Record one short, sourced fact about ONE account (docs/39). kind:
+    role (slot champion|decision_owner|sponsor|other), commitment (slot
+    ours|theirs, state sent|drafted, optional due), decision, open_question
+    (slot ours|theirs: whose move), contact_info (state current|bounced|
+    invalid), hold (state on_hold|released; source_kind must be antti).
+    source_kind mail|doc|call|touch|antti with the source's id; valid_from is
+    the day it became true. Write the statement as the source says it; never
+    infer one. A value outside the vocabulary raises. Retry-safe.
+
+## supersede_fact
+
+params: ['new_id', 'old_id']
+required: ['new_id', 'old_id']
+Mark fact old_id as replaced by new_id: same account, same kind, old
+    still active. The old fact stays (list_facts active_only=False shows it);
+    briefing shows only the new one. Releasing a hold is a hold fact with
+    state released, from antti, superseding the on_hold one. Only on an
+    explicit instruction: never to tidy up.
+
+## list_facts
+
+params: ['active_only', 'company']
+required: ['company']
+One account's facts (company_id or exact name), newest valid_from
+    first; active_only=False includes the superseded ones.
+
 ## briefing
 
 params: ['company']

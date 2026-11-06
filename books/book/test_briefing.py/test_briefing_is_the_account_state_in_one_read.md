@@ -7,6 +7,7 @@
   _query touches    where $or of 3 -> 3 hits
   _query todos      where $or of 6 -> 4 hits
   _query documents  where ['company_id'] -> 2 hits
+  _query facts      where ['company_id'] -> 0 hits
 
 # briefing('Briefing Replica Oy')
 
