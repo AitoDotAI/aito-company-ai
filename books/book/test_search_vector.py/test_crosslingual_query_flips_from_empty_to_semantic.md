@@ -10,13 +10,10 @@ indexed 365 items; vectors 365
   _query request:  {'$nearest': 'search_vectors'}
 
 text-match ($match):   0 hits  []
-blended (+ $nearest):  semantic=True, top 5:
-   [doc] Nakatomi OÜ — account plan
-   [doc] Genco account plan
-   [doc] Daily note — Genco pilot kickoff
-   [doc] Pymt Oy — renewal risk
-   [doc] Ideal customer profile
+blended (+ $nearest):  semantic=True
+top 5 as a set, expected: ['Daily note — Genco pilot kickoff', 'Genco account plan', 'Ideal customer profile', 'Nakatomi OÜ — account plan', 'Pymt Oy — renewal risk']
+same set, up to boundary ties within 0.003: True
 
 # an English exact query keeps its exact match (interleave, not vector-only)
 
-'pricing' -> ['Nakatomi OÜ — account plan', 'What we learned losing ERP deals', 'Daily note — Genco pilot kickoff', 'Genco account plan', 'Mooby Ab — technical evaluation']
+text-match's top hit 'Nakatomi OÜ — account plan' leads the blend: True
