@@ -22,7 +22,7 @@ Two mappings worth noting:
 # spokes. With them, one `where` answers it, and a link hop answers it *about
 # the spokes* ("contacts at paying customers") — see docs/31-knowledge-graph.md.
 COMPANIES = {
-    "type": "table",
+    "type": "collection",
     "columns": {
         "company_id": {"type": "String"},          # slug of the name — the link key
         "name": {"type": "String"},
@@ -62,7 +62,7 @@ def new_company_row(company_id: str, name: str) -> dict:
             "technical_contact": False}
 
 CONTACTS = {
-    "type": "table",
+    "type": "collection",
     "columns": {
         "contact_id": {"type": "String"},
         "name": {"type": "String"},
@@ -103,7 +103,7 @@ CONTACTS = {
 }
 
 TOUCHES = {
-    "type": "table",
+    "type": "collection",
     "columns": {
         "touch_id": {"type": "String"},
         "contact_id": {"type": "String", "link": "contacts.contact_id"},
@@ -155,7 +155,7 @@ TOUCHES = {
 }
 
 DECISIONS = {
-    "type": "table",
+    "type": "collection",
     "columns": {
         "decision_id": {"type": "String"},
         "ts": {"type": "String"},
@@ -184,7 +184,7 @@ DECISIONS = {
 # This is the inbound counterpart to the outbound touches table; `source` and
 # `campaign` are the marketing dimensions. See docs/09-funnels.md.
 SESSIONS = {
-    "type": "table",
+    "type": "collection",
     "columns": {
         "session_id": {"type": "String"},
         "ts": {"type": "String"},
@@ -203,7 +203,7 @@ SESSIONS = {
 # content exists independently of where it's posted; its attributes (topic,
 # lane, ai_made, length) belong here. See docs/10-messaging-formula.md.
 MATERIALS = {
-    "type": "table",
+    "type": "collection",
     "columns": {
         "material_id": {"type": "String"},
         "type": {"type": "String"},          # blog, whitepaper, demo, video, talk, thread, note, other
@@ -220,7 +220,7 @@ MATERIALS = {
 # the blog). A channel rolls up to a `platform`; the scorer predicts the win
 # rate per platform (enough data), sharpening per channel as posts accrue.
 CHANNELS = {
-    "type": "table",
+    "type": "collection",
     "columns": {
         "channel_id": {"type": "String"},
         "name": {"type": "String"},           # "Hacker News", "r/programming", "LinkedIn"
@@ -237,7 +237,7 @@ CHANNELS = {
 # denormalized onto the row at load so the prediction stays one query.
 # docs/10-messaging-formula.md and .ai/input/operator-ground-truth.md §3.
 POSTS = {
-    "type": "table",
+    "type": "collection",
     "columns": {
         "post_id": {"type": "String"},
         "material_id": {"type": "String"},
@@ -281,7 +281,7 @@ POSTS = {
 # ties a todo to a contact/asset so completing it can update that record.
 # Titles are synthetic in seed (no PII). See docs/12-todos-and-now.md.
 TODOS = {
-    "type": "table",
+    "type": "collection",
     "columns": {
         "todo_id": {"type": "String"},
         "area": {"type": "String"},          # see TODO_AREA_ORDER
@@ -344,7 +344,7 @@ TODOS = {
 # todo can link to a deal (linked_type=deal), so resolving an action can
 # advance its deal. Synthetic seed (no PII). See docs/13-deals.md.
 DEALS = {
-    "type": "table",
+    "type": "collection",
     "columns": {
         "deal_id": {"type": "String"},
         "company": {"type": "String"},
@@ -382,7 +382,7 @@ DEALS = {
 # do deals stall, and on what" is a query over rows, not a reading of the
 # changelog's prose. App-state, like the changelog: no CSV, starts empty.
 DEAL_EVENTS = {
-    "type": "table",
+    "type": "collection",
     "columns": {
         "event_id": {"type": "String"},
         "deal_id": {"type": "String", "link": "deals.deal_id"},
@@ -395,7 +395,7 @@ DEAL_EVENTS = {
 }
 
 EXPERIMENTS = {
-    "type": "table",
+    "type": "collection",
     "columns": {
         "experiment_id": {"type": "String"},
         "created": {"type": "String"},
@@ -421,7 +421,7 @@ EXPERIMENTS = {
 # decision: a candidate becomes go or no_go, and a go you actually went to
 # becomes attended (with an outcome). Same lifecycle shape as posts.
 EVENTS = {
-    "type": "table",
+    "type": "collection",
     "columns": {
         "event_id": {"type": "String"},
         "name": {"type": "Text", "analyzer": "english"},
@@ -443,7 +443,7 @@ EVENTS = {
 # prepares, Claude runs — rule 1). Due-ness is computed from cadence +
 # last_done; no scheduler in the repo. See docs/18-routines.md.
 ROUTINES = {
-    "type": "table",
+    "type": "collection",
     "columns": {
         "routine_id": {"type": "String"},
         "title": {"type": "Text", "analyzer": "english"},
@@ -469,7 +469,7 @@ ROUTINES = {
 # conversation via _delete + batch (no full-table rewrite). title/updated are
 # denormalized onto each row so listing needs one query.
 CHAT_MESSAGES = {
-    "type": "table",
+    "type": "collection",
     "columns": {
         "message_id": {"type": "String"},
         "conversation_id": {"type": "String"},
@@ -488,7 +488,7 @@ CHAT_MESSAGES = {
 # state, so excluded from the CSV load/export machinery. Feeds "what changed"
 # and, later, auto-generated notes for the assistant. See docs/22.
 CHANGELOG = {
-    "type": "table",
+    "type": "collection",
     "columns": {
         "change_id": {"type": "String"},
         "at": {"type": "String"},                             # ISO datetime, UTC
@@ -508,7 +508,7 @@ CHANGELOG = {
 # (log._write_row, v2 `_modify`). The full-table rewrite they replaced lost
 # edits under concurrent writers (td-20261012114045038839).
 DOCUMENTS = {
-    "type": "table",
+    "type": "collection",
     "columns": {
         "doc_id": {"type": "String"},
         "title": {"type": "Text", "analyzer": "english"},
@@ -540,7 +540,7 @@ DOCUMENTS = {
 # app reads the signed-in identity from Entra Easy Auth; this table maps that
 # email to a name + role.
 USERS = {
-    "type": "table",
+    "type": "collection",
     "columns": {
         "user_id": {"type": "String"},
         "name": {"type": "Text", "analyzer": "english"},
@@ -559,7 +559,7 @@ USERS = {
 # small); "my work" joins it back onto the entities. App-state (env-snapshot
 # backed up), so it is outside the CSV seed/export machinery like search_*.
 ASSIGNMENTS = {
-    "type": "table",
+    "type": "collection",
     "columns": {
         "assignment_id": {"type": "String"},
         "entity": {"type": "String"},       # ASSIGNABLE_ENTITIES
@@ -576,7 +576,7 @@ ASSIGNABLE_ENTITIES = {"contacts", "todos", "deals"}
 # display; the secret is shown once at creation and never again. App-state, so
 # outside the CSV seed/export machinery — and never in the repo (real secrets).
 TOKENS = {
-    "type": "table",
+    "type": "collection",
     "columns": {
         "token_id": {"type": "String"},
         "label": {"type": "Text", "analyzer": "english"},
@@ -598,7 +598,7 @@ SEARCH_KINDS = {"doc", "contact", "deal"}
 # item (the selected item, "more like this"), and where it came from. The
 # context half of the impressions loop (docs/23). App state, built at serve time.
 SEARCH_CONTEXTS = {
-    "type": "table",
+    "type": "collection",
     "columns": {
         "context_id": {"type": "String"},
         "query": {"type": "Text", "analyzer": "english"},
@@ -619,7 +619,7 @@ SEARCH_CONTEXTS = {
 # item_id.text. App state; impressions are logged server-side on serve, clicks
 # recorded by the dashboard + MCP (the in-app assistant never writes).
 SEARCH_IMPRESSIONS = {
-    "type": "table",
+    "type": "collection",
     "columns": {
         "impression_id": {"type": "String"},
         # context_id is a plain string, NOT a link: a v2 `_modify` update no-ops
@@ -648,7 +648,7 @@ SEARCH_IMPRESSIONS = {
 # reindexing.
 EMBED_DIM = 1000
 SEARCH_VECTORS = {
-    "type": "table",
+    "type": "collection",
     "columns": {
         "item_id": {"type": "String"},                         # "kind:source_id"
         "kind": {"type": "String"},                            # SEARCH_KINDS (post-filter)
@@ -664,7 +664,7 @@ SEARCH_VECTORS = {
 # (docs/35-web-analytics.md). Aggregated to the session: no user ids, device
 # ids, IPs or query strings. session_key is per session, pseudonymous.
 WEB_SESSIONS = {
-    "type": "table",
+    "type": "collection",
     "columns": {
         "session_key": {"type": "String"},
         # HMAC(salt, device_id): one browser (docs/36). Nullable only so
@@ -718,7 +718,7 @@ WEB_SESSIONS = {
 # session's context; journeys stay per browser, never joined across an
 # account's browsers (Antti, 6.11.2026).
 WEB_VISITORS = {
-    "type": "table",
+    "type": "collection",
     "columns": {
         "visitor_key": {"type": "String"},      # HMAC(salt, device_id), as on web_sessions
         "first_day": {"type": "String"},
@@ -759,7 +759,7 @@ WEB_VISITORS = {
 # web_suppressed (docs/36): browsers deleted on request. The pull skips any
 # session whose visitor_key is listed, so a deleted visitor never comes back.
 WEB_SUPPRESSED = {
-    "type": "table",
+    "type": "collection",
     "columns": {
         "visitor_key": {"type": "String"},
         "at": {"type": "String"},             # when it was forgotten (ISO date)

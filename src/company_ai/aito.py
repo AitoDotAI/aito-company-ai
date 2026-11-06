@@ -163,8 +163,9 @@ class AitoClient:
     _ensured: set = set()   # tables known to exist this process (class-wide cache)
 
     def create_table(self, name: str, definition: dict) -> Any:
-        # v2 engine tables are "collection"s (predict/recommend/_modify need it);
-        # our schema dicts are written as v1 "table" — swap on the way out.
+        # v2 engine tables are "collection"s (predict/recommend/_modify need it).
+        # schema.py declares "collection" too (docs/38); the override stays so a
+        # definition written elsewhere as "table" still becomes a collection.
         return self._request("PUT", f"/api/v2/schema/{name}",
                              {**definition, "type": "collection"})
 

@@ -63,3 +63,40 @@ def test_create_schema_idempotent_and_reports_extras(t: bt.TestCaseRun) -> None:
         "extra column was dropped — it should be left in place"
     client.delete_column("deals", "scratch_note")  # cleanup
     t.tln("extra column left in place (surfaced, not dropped)")
+
+
+class _Recorder(AitoClient):
+    """Records the requests create_table would send; talks to no engine."""
+
+    def __init__(self) -> None:
+        super().__init__("http://recorder.invalid", "")
+        self.sent: list[tuple[str, str, dict]] = []
+
+    def _request(self, method, path, body=None, **kwargs):
+        self.sent.append((method, path, body))
+        return {"status": "recorded"}
+
+
+def test_schema_declares_what_create_table_sends(t: bt.TestCaseRun) -> None:
+    """docs/38: AitoClient.create_table sends "type": "collection" whatever
+    schema.py declares, and every internal table is on the v2 engine. So
+    schema.py declares "collection" too. The payload each table's create
+    sends is pinned by its digest, which must be identical before and after
+    the declaration changes; and the definition is now sent as written."""
+    import hashlib
+    import json
+
+    rec = _Recorder()
+    for name, definition in schema.TABLES.items():
+        rec.create_table(name, definition)
+    t.h1("What create_table sends, per table (sha256 of the canonical JSON)")
+    as_written = []
+    for (method, path, body), (name, definition) in zip(rec.sent, schema.TABLES.items()):
+        digest = hashlib.sha256(json.dumps(body, sort_keys=True).encode()).hexdigest()[:16]
+        t.tln(f"  {method} {path:40} type={body['type']:10} {digest}")
+        as_written.append(body == definition)
+    declared = sorted({d["type"] for d in schema.TABLES.values()})
+    t.h1("What schema.py declares")
+    t.tln(f"  {declared}")
+    assert declared == ["collection"], f"schema.py declares {declared}; create_table sends collection"
+    assert all(as_written), "a definition is not sent as written"
