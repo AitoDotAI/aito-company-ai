@@ -1,6 +1,6 @@
 # 37 · Paths through the web data, as a graph
 
-Status: design note, for review. No build yet. Asked by Antti, 6.11.2026:
+Status: design approved (CPO, 6.11.2026); phase 1 (`web_steps`) built. Asked by Antti, 6.11.2026:
 "those graph db functionalities are going to be useful with the new web
 analytics data and journeys, e.g. we want to query paths from e.g. landing
 page to a KPI", and "continue the paths from various distributions like
@@ -125,8 +125,13 @@ the internal Journeys tab.
 ## Phases (after review)
 
 1. `web_steps` (rep2), built in each pull, with replace-by-run per day,
-   deletion and retention. Book: the `$refs` exit form and `_relate` over it
-   on the test engine.
+   deletion and retention (built). Probed first on the test engine (2.12.0),
+   on a scratch collection: 2-hop `prev.prev.token` filters, the `$refs`
+   exit form, `_relate` with that `$refs` where (so gap 3 is not a gap),
+   `$patterns` over the prev chain, and `_predict` of the next token all
+   work. Gaps 1 and 2 already had aito-core tickets (td-20260927120713200883
+   for `$walk`, td-20260926161012650280 for operators inside `$exists`), and
+   our use case and queries were appended to them.
 2. MCP `web_paths_to(kpi, source|platform)` running queries 1–5, and a
    Paths tab in the Web view.
 3. File gaps 1–3 with aito-core, each with the exact request that fails or

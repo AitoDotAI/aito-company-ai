@@ -1021,3 +1021,49 @@ def test_the_web_view_counts_the_kpis(t: bt.TestCaseRun) -> None:
     assert v["kpis"]["pricing_page"] == 1 and v["kpis"]["sandbox"] == 1
     assert v["days"][0]["kpi_sandbox"] == 1
     _clean(client)
+
+
+def test_visits_become_linked_steps(t: bt.TestCaseRun) -> None:
+    """docs/37 phase 1: web_steps, a rep2 collection with one row per event
+    of a visit and a `prev` self-link, so Aito's graph features can walk the
+    path. Each step knows its KPI, whether the visit reaches a KPI later, and
+    whether it is the exit; the arrival (source, post platform) is copied on,
+    since a link can't reach the rep1 tables. Replaced per day with the
+    sessions; deleted with a forgotten visitor."""
+    client, _, _ = _seeded()
+    webanalytics.store_day(client, DAY, _events())
+    webanalytics.store_day(client, DAY, _events())          # a re-pull replaces, never doubles
+    steps = client.query({"from": "web_steps", "where": {"day": DAY}, "limit": 1000})["hits"]
+    t.h1("Steps on the fixture day")
+    t.tln(f"  {len(steps)} steps, runs {len({s['pull_run'] for s in steps})}")
+    assert len({s["pull_run"] for s in steps}) == 1
+    germany = sorted((s for s in steps if s["visitor_key"] == webanalytics._visitor_key("dev-2a3b4c5d")),
+                     key=lambda s: s["n"])
+    for s in germany:
+        t.tln(f"  n={s['n']} {s['token']:32} kpi={s.get('kpi')} after_sandbox={s['kpi_after_sandbox']} "
+              f"exit={s['is_exit']}")
+    assert [s["token"] for s in germany] == ["page:/", "demo_signup_cta_clicked",
+                                            "page:ecommerce.aito.ai/cart", "instance_create"]
+    assert [s["kpi_after_sandbox"] for s in germany] == [True, True, True, False]
+    assert germany[-1]["kpi"] == "sandbox" and germany[-1]["is_exit"] is True
+    assert germany[1]["prev"] == germany[0]["step_id"] and germany[0].get("prev") is None
+    t.h1("The graph walks: two hops back from the sandbox step")
+    two = client.query({"from": "web_steps", "where": {"kpi": "sandbox",
+                                                      "prev.prev.token": "demo_signup_cta_clicked"},
+                        "limit": 0})["total"]
+    t.tln(f"  {two}")
+    assert two == 1
+    t.h1("The arrival is on every step")
+    li = [s for s in steps if s.get("post_platform")]
+    t.tln(f"  steps with a post platform: {sorted({s['post_platform'] for s in li})}, {len(li)} steps")
+    assert {s["post_platform"] for s in li} == {"linkedin"}
+    t.h1("Forgetting a visitor removes its steps")
+    webanalytics.forget_web_visitor(client, device_id="dev-2a3b4c5d")
+    left = client.query({"from": "web_steps", "where": {"visitor_key": webanalytics._visitor_key("dev-2a3b4c5d")},
+                         "limit": 0})["total"]
+    t.tln(f"  steps left: {left}")
+    assert left == 0
+    _clean(client)
+    for table in ("web_steps", "web_suppressed"):
+        client.delete_table(table)
+        client.create_table(table, getattr(schema, table.upper()))

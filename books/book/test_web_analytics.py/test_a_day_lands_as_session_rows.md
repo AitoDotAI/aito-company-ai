@@ -23,6 +23,7 @@
  "no_session_events": 0,
  "referrer_present": 3,
  "sessions": 5,
+ "steps": 11,
  "suppressed": 0,
  "unknown_os": {
   "PlayStation": 1

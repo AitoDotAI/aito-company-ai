@@ -762,6 +762,40 @@ WEB_SUPPRESSED = {
 }
 
 
+# web_steps (docs/37): one row per event of a human visit, in order, as a rep2
+# COLLECTION, because Aito's graph features (multi-hop paths, self-links,
+# $refs) are rep2-only and a link can't cross rep1/rep2. So the visit's
+# arrival is copied on rather than linked to the rep1 web_sessions/posts.
+WEB_STEPS = {
+    "type": "collection",
+    "columns": {
+        "step_id": {"type": "String"},           # <session_key>:<n>
+        "prev": {"type": "String", "nullable": True, "link": "web_steps.step_id"},
+        "token": {"type": "String"},             # page:<page> or an event name (docs/36)
+        "n": {"type": "Int"},                    # position in the visit, 0 = landing
+        "is_kpi": {"type": "Boolean"},
+        "kpi": {"type": "String", "nullable": True},
+        "kpi_after_pricing_page": {"type": "Boolean"},
+        "kpi_after_contact_page": {"type": "Boolean"},
+        "kpi_after_login_page": {"type": "Boolean"},
+        "kpi_after_signup": {"type": "Boolean"},
+        "kpi_after_sandbox": {"type": "Boolean"},
+        "kpi_after_data_loaded": {"type": "Boolean"},
+        "kpi_after_first_query": {"type": "Boolean"},
+        "kpi_after_api_keys": {"type": "Boolean"},
+        "is_exit": {"type": "Boolean"},
+        "source": {"type": "String"},
+        "utm_campaign": {"type": "String", "nullable": True},
+        "referrer_domain": {"type": "String", "nullable": True},
+        "post_platform": {"type": "String", "nullable": True},
+        "post_id": {"type": "String", "nullable": True},
+        "visitor_key": {"type": "String"},
+        "day": {"type": "String"},
+        "pull_run": {"type": "String"},
+    },
+}
+
+
 TABLES = {
     "users": USERS, "assignments": ASSIGNMENTS, "tokens": TOKENS,
     # companies before contacts/deals — it is their `company_id` link target.
@@ -777,6 +811,7 @@ TABLES = {
     "web_sessions": WEB_SESSIONS,
     "web_visitors": WEB_VISITORS,
     "web_suppressed": WEB_SUPPRESSED,
+    "web_steps": WEB_STEPS,
 }
 
 SEGMENTS = {"accounting", "erp", "ecommerce", "analytics", "consultancy", "other"}
