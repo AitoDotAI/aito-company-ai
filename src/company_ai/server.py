@@ -75,6 +75,21 @@ def forget_web_visitor(device_id: str | None = None, visitor_key: str | None = N
 
 
 @mcp.tool()
+def web_paths_to(kpi: str, since: str | None = None, until: str | None = None,
+                 platform: str | None = None) -> dict:
+    """How aito.ai visits reach one KPI (docs/37), from the step graph, all
+    from Aito: top_paths (Aito's $patterns over the steps before the KPI,
+    up to three back, with the visits that took each), raises_later (pages
+    after which the visit more often goes on to reach it) and drop_off (where
+    visits that never reach it end). Each row carries its counts; thin rests
+    on too few to claim a lift. platform keeps visits from a post on it
+    (linkedin, reddit, hackernews). Window since..until, default 30 days."""
+    from . import webanalytics
+    return webanalytics.web_paths_to(_client(), kpi=kpi, since=since, until=until,
+                                     platform=platform)
+
+
+@mcp.tool()
 def web_kpis(kpi: str | None = None, event: str | None = None, since: str | None = None,
              until: str | None = None, source: str | None = None, campaign: str | None = None,
              path: str | None = None, device: str | None = None) -> dict:

@@ -36,6 +36,18 @@ Delete one aito.ai visitor on request (docs/36): its web sessions and
     Give the Amplitude device_id, or the visitor_key. Operator-only: not on
     the remote MCP surface.
 
+## web_paths_to
+
+params: ['kpi', 'platform', 'since', 'until']
+required: ['kpi']
+How aito.ai visits reach one KPI (docs/37), from the step graph, all
+    from Aito: top_paths (Aito's $patterns over the steps before the KPI,
+    up to three back, with the visits that took each), raises_later (pages
+    after which the visit more often goes on to reach it) and drop_off (where
+    visits that never reach it end). Each row carries its counts; thin rests
+    on too few to claim a lift. platform keeps visits from a post on it
+    (linkedin, reddit, hackernews). Window since..until, default 30 days.
+
 ## web_kpis
 
 params: ['campaign', 'device', 'event', 'kpi', 'path', 'since', 'source', 'until']

@@ -484,6 +484,15 @@ def create_app(config: Config | None = None) -> FastAPI:
             client(), start, end, source=source or None, campaign=campaign or None,
             path=path or None, device=device or None, limit=limit, offset=offset))
 
+    @app.get("/api/web/paths")
+    def web_paths_route(kpi: str, since: str = "", until: str = "", platform: str = ""):
+        # how visits reach one KPI, from the step graph (docs/37); aggregates
+        # only, the same webanalytics.web_paths_to as MCP
+        from . import webanalytics
+        return _guarded(lambda: webanalytics.web_paths_to(
+            client(), kpi=kpi, since=since or None, until=until or None,
+            platform=platform or None))
+
     @app.get("/api/web/kpi")
     def web_kpi_route(kpi: str = "", event: str = "", since: str = "", until: str = "",
                       source: str = "", campaign: str = "", path: str = "", device: str = ""):

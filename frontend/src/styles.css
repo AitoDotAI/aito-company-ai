@@ -974,3 +974,4 @@ select:focus { outline:none; border-color:var(--purple); }
 .web-tabs button.on { border-color: var(--purple); color: var(--purple); }
 .web-journeys { display: flex; flex-direction: column; gap: 8px; font-size: 12px; }
 .web-journey { padding: 6px 8px; background: var(--tint); border-radius: 6px; }
+.web-paths h4 { font-size: 12px; margin: 10px 0 6px; color: var(--ink-dim); }

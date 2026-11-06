@@ -1,6 +1,6 @@
 # the remote tool surface (read + safe writes)
 
-62 tools exposed over HTTP:
+63 tools exposed over HTTP:
   add_channel
   add_contact
   add_deal
@@ -59,6 +59,7 @@
   update_todo
   web_kpis
   web_paths
+  web_paths_to
   web_traffic
   what_changed
   who_to_call
