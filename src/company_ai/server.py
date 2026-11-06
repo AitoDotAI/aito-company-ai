@@ -65,6 +65,16 @@ def company_list() -> dict:
 
 
 @mcp.tool()
+def forget_web_visitor(device_id: str | None = None, visitor_key: str | None = None) -> dict:
+    """Delete one aito.ai visitor on request (docs/36): its web sessions and
+    visitor row, and put it on the suppression list so later pulls skip it.
+    Give the Amplitude device_id, or the visitor_key. Operator-only: not on
+    the remote MCP surface."""
+    from . import webanalytics
+    return webanalytics.forget_web_visitor(_client(), device_id=device_id, visitor_key=visitor_key)
+
+
+@mcp.tool()
 def web_kpis(kpi: str | None = None, event: str | None = None, since: str | None = None,
              until: str | None = None, source: str | None = None, campaign: str | None = None,
              path: str | None = None, device: str | None = None) -> dict:

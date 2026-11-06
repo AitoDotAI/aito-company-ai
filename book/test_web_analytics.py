@@ -508,8 +508,8 @@ def test_a_second_pull_at_once_is_refused(t: bt.TestCaseRun) -> None:
             t.tln(f"refused: {str(e).split(' (lock')[0]}")
     t.h1("Once released, a pull runs")
     reports = webanalytics.pull(client, days=1, today=date(2026, 10, 6), fetch=lambda d: [])
-    t.tln(f"{len([r for r in reports if r['day'] != 'web_visitors'])} day(s) pulled")
-    assert len([r for r in reports if r["day"] != "web_visitors"]) == 1
+    t.tln(f"{len([r for r in reports if r['day'] not in webanalytics.RUN_REPORTS])} day(s) pulled")
+    assert len([r for r in reports if r["day"] not in webanalytics.RUN_REPORTS]) == 1
 
 
 def test_broken_tracking_and_a_stale_table_fail_the_run(t: bt.TestCaseRun) -> None:
@@ -910,5 +910,60 @@ def test_visitors_carry_first_touch_and_what_came_before_a_kpi(t: bt.TestCaseRun
     assert not any(r["visitor_key"] == bot for r in rows)
     client.delete_entries("web_sessions", {"day": before})
     _clean(client)
+    client.delete_table("web_visitors")
+    client.create_table("web_visitors", schema.WEB_VISITORS)
+
+
+def test_old_days_are_pruned_after_13_months(t: bt.TestCaseRun) -> None:
+    """docs/36 (Antti, 6.11.2026): rows are kept 13 months. The pull deletes
+    older days, checks none remain, and reports how many went."""
+    client, _, _ = _seeded()
+    old = "2025-09-01"
+    webanalytics.store_day(client, old, [_event(f"{old} 08:00:00", "/", 1756713600000, device_id="dev-old")])
+    webanalytics.store_day(client, DAY, _events())
+    today = date(2026, 10, 10)
+    t.h1(f"Cutoff on {today}")
+    t.tln(f"  {webanalytics.retention_cutoff(today)}")
+    assert webanalytics.retention_cutoff(today) == "2025-09-10"
+    assert webanalytics.retention_cutoff(date(2026, 3, 31)) == "2025-02-28"   # month end clamps
+    report = webanalytics.prune_old_days(client, today)
+    t.tln(f"  {report}")
+    days = {h["day"] for h in client.query({"from": "web_sessions", "select": ["day"], "limit": 1000})["hits"]}
+    t.tln(f"  days left: {sorted(days)}")
+    assert report["pruned"] == 1 and old not in days and DAY in days
+    _clean(client)
+
+
+def test_a_forgotten_visitor_is_deleted_and_stays_out(t: bt.TestCaseRun) -> None:
+    """docs/36 (Antti, 6.11.2026): a visitor can be deleted on request. The
+    operator gives the browser's Amplitude device id (or its visitor key);
+    its sessions and visitor row are deleted and its key is put on a
+    suppression list, so later pulls skip it. Operator-only: never on the
+    remote MCP surface."""
+    from company_ai.remotemcp import REMOTE_DENY
+    client, _, _ = _seeded()
+    client.delete_table("web_suppressed")
+    client.create_table("web_suppressed", schema.WEB_SUPPRESSED)
+    webanalytics.store_day(client, DAY, _events())
+    webanalytics.build_visitors(client)
+    key = webanalytics._visitor_key("dev-2a3b4c5d")
+    t.h1("Forget one browser")
+    report = webanalytics.forget_web_visitor(client, device_id="dev-2a3b4c5d")
+    t.tln(f"  {({k: v for k, v in report.items() if k != 'visitor_key'})}")
+    left = client.query({"from": "web_sessions", "where": {"visitor_key": key}, "limit": 0})["total"]
+    vleft = client.query({"from": "web_visitors", "where": {"visitor_key": key}, "limit": 0})["total"]
+    t.tln(f"  sessions left {left}, visitor rows left {vleft}")
+    assert report["sessions_deleted"] == 1 and left == 0 and vleft == 0
+    t.h1("A re-pull of the same day skips it")
+    again = webanalytics.store_day(client, DAY, _events())
+    left = client.query({"from": "web_sessions", "where": {"visitor_key": key}, "limit": 0})["total"]
+    t.tln(f"  suppressed {again['suppressed']}, stored {again['sessions']}, its sessions {left}")
+    assert again["suppressed"] == 1 and left == 0 and again["sessions"] == 4
+    t.h1("Not on the remote surface")
+    t.tln(f"  forget_web_visitor in REMOTE_DENY: {'forget_web_visitor' in REMOTE_DENY}")
+    assert "forget_web_visitor" in REMOTE_DENY
+    _clean(client)
+    client.delete_table("web_suppressed")
+    client.create_table("web_suppressed", schema.WEB_SUPPRESSED)
     client.delete_table("web_visitors")
     client.create_table("web_visitors", schema.WEB_VISITORS)

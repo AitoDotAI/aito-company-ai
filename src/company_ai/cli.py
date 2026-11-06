@@ -151,6 +151,12 @@ def main() -> None:
     pw.add_argument("--day", help="one UTC day (YYYY-MM-DD); default the last --days days")
     pw.add_argument("--days", type=int, default=3,
                     help="pull the last N complete UTC days (default 3: a missed run backfills)")
+    fw = sub.add_parser("forget-web-visitor",
+                        help="delete one aito.ai visitor on request and keep it out of later "
+                             "pulls (docs/36)")
+    fw_who = fw.add_mutually_exclusive_group(required=True)
+    fw_who.add_argument("--device-id", help="the browser's Amplitude device_id")
+    fw_who.add_argument("--visitor-key", help="its 16-hex visitor_key")
     ie = sub.add_parser("import-engagements",
                         help="import engagements from a CSV (docs/34): checks every row, "
                              "plans by default, writes only with --apply")
@@ -203,7 +209,7 @@ def main() -> None:
                   "load-all", "clear", "export", "export-all", "board-run",
                   "reindex-search",
                   "routines-run", "log", "complete", "archive", "backup", "restore",
-                  "import-engagements", "compact", "pull-web"}
+                  "import-engagements", "compact", "pull-web", "forget-web-visitor"}
     if args.command in WRITE_CMDS:
         _echo_target(config)
     # refuse synthetic seed into a remote instance unless forced
@@ -471,6 +477,11 @@ def main() -> None:
     elif args.command == "dashboard":
         from . import api
         api.serve(config, host=args.host, port=args.port or config.port)
+    elif args.command == "forget-web-visitor":
+        import json
+        from . import webanalytics
+        print(json.dumps(webanalytics.forget_web_visitor(
+            client, device_id=args.device_id, visitor_key=args.visitor_key), sort_keys=True))
     elif args.command == "pull-web":
         import json
         from . import webanalytics

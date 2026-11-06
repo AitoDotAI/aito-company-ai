@@ -47,6 +47,7 @@ OAUTH_PATHS = [
 # delete or run infra/admin.
 REMOTE_DENY = {
     "remove_document",                          # destructive deletes
+    "forget_web_visitor",                       # deletes a visitor's data (docs/36)
     "create_backup",                            # infra — backup rotation deletes restore points
     "reindex_search",                           # infra — drops/rebuilds the index
 }

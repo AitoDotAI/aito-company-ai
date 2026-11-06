@@ -427,6 +427,12 @@ def store_day(client: AitoClient, day: str, events: list[dict]) -> dict:
     empty. Returns the run's report."""
     date.fromisoformat(day)
     rows, stats = _build(events, day)
+    # browsers deleted on request stay out (docs/36)
+    suppressed = {h["visitor_key"] for h in client.query(
+        {"from": "web_suppressed", "select": ["visitor_key"], "limit": 1_000_000})["hits"]}
+    kept = [r for r in rows if r["visitor_key"] not in suppressed]
+    stats["suppressed"] = len(rows) - len(kept)
+    rows = kept
     refused = _link(client, rows, day)
     run = uuid.uuid4().hex[:12]
     for r in rows:
@@ -457,6 +463,7 @@ def store_day(client: AitoClient, day: str, events: list[dict]) -> dict:
             "unknown_os": dict(stats["unknown_os"]),
             "new_event_types": dict(stats["new_event_types"]),
             "no_session_events": stats["no_session_events"],
+            "suppressed": stats["suppressed"],
             "events_on_day": stats["events_on_day"],
             "utm_present": stats["utm_present"], "referrer_present": stats["referrer_present"],
             "invalid_utm": stats["invalid_utm"],
@@ -569,6 +576,12 @@ def pull(client: AitoClient, days: int = LOOKBACK_DAYS, day: str | None = None,
                 reports.append(store_day(client, d, fetch(d)))
             except Exception as e:  # noqa: BLE001 — reported per day; the caller exits non-zero
                 reports.append({"day": d, "error": f"{type(e).__name__}: {e}"})
+        # retention: days older than 13 months go (docs/36)
+        try:
+            reports.append({"day": "retention", **prune_old_days(client, today or
+                                                                  datetime.now(timezone.utc).date())})
+        except Exception as e:  # noqa: BLE001
+            reports.append({"day": "retention", "error": f"{type(e).__name__}: {e}"})
         # the visitor view follows the sessions; a failure is reported like a day's
         try:
             reports.append({"day": "web_visitors", **build_visitors(client)})
@@ -866,3 +879,61 @@ def build_visitors(client: AitoClient) -> dict:
         raise
     return {"visitors": len(rows), "sessions": len(hits), "pull_run": run,
             "replaced_runs": len(old)}
+
+
+# ---- retention and deletion on request (docs/36, Antti 6.11.2026) ----
+
+RETENTION_MONTHS = 13
+# pull() reports that summarise the run rather than one day
+RUN_REPORTS = {"retention", "web_visitors"}
+
+
+def retention_cutoff(today: date) -> str:
+    """The first day kept: `today` minus RETENTION_MONTHS calendar months,
+    clamped to the month's last day (31.3. minus 13 months is 28.2.)."""
+    import calendar
+    months = today.year * 12 + today.month - 1 - RETENTION_MONTHS
+    year, month = divmod(months, 12)
+    month += 1
+    day = min(today.day, calendar.monthrange(year, month)[1])
+    return date(year, month, day).isoformat()
+
+
+def prune_old_days(client: AitoClient, today: date) -> dict:
+    """Delete web_sessions days before the retention cutoff and check none
+    remain. web_visitors follows on the next rebuild."""
+    cutoff = retention_cutoff(today)
+    old = {"day": {"$lt": cutoff}}
+    hits = client.query({"from": "web_sessions", "where": old, "select": ["day"],
+                         "limit": 1_000_000})["hits"]
+    # a v2 delete takes equality only, so each old day goes by its own value
+    for day in sorted({h["day"] for h in hits}):
+        client.delete_entries("web_sessions", {"day": day})
+    left = client.query({"from": "web_sessions", "where": old, "limit": 0})["total"]
+    assert left == 0, f"retention: {left} rows before {cutoff} survived the delete"
+    return {"cutoff": cutoff, "pruned": len(hits)}
+
+
+def forget_web_visitor(client: AitoClient, device_id: str | None = None,
+                       visitor_key: str | None = None) -> dict:
+    """Delete one browser on request: its web_sessions and web_visitors rows,
+    and list its key in web_suppressed so later pulls skip it. Give the
+    Amplitude device_id (the key is derived with the salt) or the visitor_key.
+    Live tables only: backups expire on their own schedule (docs/36)."""
+    assert (device_id is None) != (visitor_key is None), "give exactly one: device_id or visitor_key"
+    key = visitor_key or _visitor_key(device_id)
+    assert re.fullmatch(r"[0-9a-f]{16}", key), f"not a visitor key: {key!r}"
+    where = {"visitor_key": key}
+    counts = {t: client.query({"from": t, "where": where, "limit": 0})["total"]
+              for t in ("web_sessions", "web_visitors", "web_suppressed")}
+    for table in ("web_sessions", "web_visitors"):
+        if counts[table]:
+            client.delete_entries(table, where)
+    if not counts["web_suppressed"]:
+        client.upload_batch("web_suppressed", [{"visitor_key": key, "at": date.today().isoformat()}])
+    left = {t: client.query({"from": t, "where": where, "limit": 0})["total"]
+            for t in ("web_sessions", "web_visitors", "web_suppressed")}
+    assert left == {"web_sessions": 0, "web_visitors": 0, "web_suppressed": 1}, \
+        f"forget {key}: left {left}"
+    return {"visitor_key": key, "sessions_deleted": counts["web_sessions"],
+            "visitors_deleted": counts["web_visitors"], "suppressed": True}

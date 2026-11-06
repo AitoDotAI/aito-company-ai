@@ -27,6 +27,15 @@ Every company (contacts rolled up by company, joined to their deals),
     Each row carries its company_id: pass it to company_detail for the node's
     facts and links, or use graph_search to walk the knowledge graph.
 
+## forget_web_visitor
+
+params: ['device_id', 'visitor_key']
+required: []
+Delete one aito.ai visitor on request (docs/36): its web sessions and
+    visitor row, and put it on the suppression list so later pulls skip it.
+    Give the Amplitude device_id, or the visitor_key. Operator-only: not on
+    the remote MCP surface.
+
 ## web_kpis
 
 params: ['campaign', 'device', 'event', 'kpi', 'path', 'since', 'source', 'until']
