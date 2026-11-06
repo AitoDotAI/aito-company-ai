@@ -1158,3 +1158,17 @@ def test_a_visit_from_the_posts_platform_to_its_page_is_matched(t: bt.TestCaseRu
     assert report["ambiguous_matches"] == 1 and row.get("matched_post_id") is None
     client.delete_entries("web_sessions", {"day": later})
     _clean(client)
+
+
+def test_web_traffic_counts_the_attribution_labels(t: bt.TestCaseRun) -> None:
+    """docs/35: attribution tier 3 is parked until there are enough labelled
+    sessions to learn from (exact + matched). web_traffic reports that count
+    and the trigger, so it can be seen when the trigger is met."""
+    client, _, _ = _seeded()
+    webanalytics.store_day(client, DAY, _events())
+    a = webanalytics.web_traffic(client, DAY, DAY)["attribution"]
+    t.h1("Attribution on the fixture day")
+    t.tln(f"  {a}")
+    assert a == {"exact": 1, "matched": 0, "candidates": 1, "labels": 1,
+                 "inference_trigger": webanalytics.INFERENCE_TRIGGER, "inference_ready": False}
+    _clean(client)

@@ -227,6 +227,11 @@ inferred side by side.
    baseline, this section says so and the column stays off. With roughly 77
    labels, that is the likely outcome for months, and it is the honest one.
 
+   **Parked** (CPO, 6.11.2026) until at least 30 labelled sessions exist
+   (`INFERENCE_TRIGGER`). `web_traffic` reports `attribution` (exact, matched,
+   candidates, labels, the trigger and whether it's met), and the ticket holds
+   this gate verbatim.
+
 Privacy is unchanged: these are links to our own posts, on the same
 pseudonymous sessions.
 
