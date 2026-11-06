@@ -337,8 +337,11 @@ def _build(events: list[dict], day: str) -> tuple[list[dict], dict]:
         if device == "unknown":
             stats["unknown_os"][str(first.get("device_family"))] += 1
         medium = utm["utm_medium"] if utm["utm_medium"] != "<invalid>" else None
-        tokens = [tok for tok in (_event_token(e) for e in group
-                                  if e["event_type"] not in LIFECYCLE_EVENTS) if tok]
+        # each event of the visit as (token, the KPIs its NAME belongs to)
+        steps = [(tok, [k for k, kpi_names in KPI_EVENTS.items() if e["event_type"] in kpi_names])
+                 for e in group if e["event_type"] not in LIFECYCLE_EVENTS
+                 for tok in [_event_token(e)] if tok]
+        tokens = [tok for tok, _ in steps]
         names = {e["event_type"] for e in group}
         rows.append({
             "session_key": _session_key(*key[:2]) if key[0] not in NO_SESSION
@@ -348,6 +351,7 @@ def _build(events: list[dict], day: str) -> tuple[list[dict], dict]:
             # co-occurrence relations (docs/36), plus one flag per KPI
             "events": " ".join(tokens) or None,
             "co_events": " ".join(tokens) or None,
+            "_steps": steps,           # popped by store_day into web_steps (docs/37)
             **{f"kpi_{kpi}": bool(names & kpi_names) for kpi, kpi_names in KPI_EVENTS.items()},
             "day": day, "hour": start.hour,
             "weekday": schema.WEEKDAYS[start.weekday()],
@@ -373,8 +377,9 @@ def _build(events: list[dict], day: str) -> tuple[list[dict], dict]:
 
 def sessions_from_events(events: list[dict], day: str) -> list[dict]:
     """One row per session that started on `day` and has a page view, built
-    field by field. Links are filled in by `store_day`."""
-    return _build(events, day)[0]
+    field by field. Links are filled in by `store_day`. The internal `_steps`
+    (store_day's input for web_steps) is left out: its tokens are `events`."""
+    return [{k: v for k, v in r.items() if k != "_steps"} for r in _build(events, day)[0]]
 
 
 def _link(client: AitoClient, rows: list[dict], day: str) -> dict:
@@ -438,25 +443,38 @@ def store_day(client: AitoClient, day: str, events: list[dict]) -> dict:
     for r in rows:
         assert r["source"] in schema.WEB_SESSION_SOURCES and r["device_class"] in schema.DEVICE_CLASSES, r
         r["pull_run"] = run
+    steps = _steps(client, rows, run)
     old = {r.get("pull_run") for r in client.query(
         {"from": "web_sessions", "where": {"day": day}, "select": ["pull_run"], "limit": 100000})["hits"]}
     kept = 0
     if rows:
+        old_steps = {h.get("pull_run") for h in client.query(
+            {"from": "web_steps", "where": {"day": day}, "select": ["pull_run"],
+             "limit": 1_000_000})["hits"]}
         client.upload_batch("web_sessions", rows)
         try:
+            for i in range(0, len(steps), UPLOAD_CHUNK):
+                client.upload_batch("web_steps", steps[i:i + UPLOAD_CHUNK])
             landed = client.query({"from": "web_sessions", "where": {"day": day, "pull_run": run},
                                    "limit": 0})["total"]
             assert landed == len(rows), f"web_sessions {day}: {landed} of {len(rows)} rows landed"
+            landed = client.query({"from": "web_steps", "where": {"day": day, "pull_run": run},
+                                   "limit": 0})["total"]
+            assert landed == len(steps), f"web_steps {day}: {landed} of {len(steps)} steps landed"
             for previous in sorted(p for p in old if p):
                 client.delete_entries("web_sessions", {"day": day, "pull_run": previous})
+            for previous in sorted(p for p in old_steps if p):
+                client.delete_entries("web_steps", {"day": day, "pull_run": previous})
         except Exception:
             # the old rows stay the day's rows; the new run must not double it
             client.delete_entries("web_sessions", {"day": day, "pull_run": run})
+            client.delete_entries("web_steps", {"day": day, "pull_run": run})
             raise
     else:
         kept = client.query({"from": "web_sessions", "where": {"day": day}, "limit": 0})["total"]
     linked = Counter(r["link_basis"] for r in rows if r["link_basis"])
     return {"day": day, "pull_run": run, "events": len(events), "sessions": len(rows),
+            "steps": len(steps),
             "empty": not rows, "kept_previous": kept,
             "bots": sum(r["likely_bot"] for r in rows), "linked": dict(linked),
             "mapped": dict(stats["mapped"]), "unmapped": dict(stats["unmapped"]),
@@ -951,9 +969,11 @@ def prune_old_days(client: AitoClient, today: date) -> dict:
     old = {"day": {"$lt": cutoff}}
     hits = client.query({"from": "web_sessions", "where": old, "select": ["day"],
                          "limit": 1_000_000})["hits"]
-    # a v2 delete takes equality only, so each old day goes by its own value
+    # a v2 delete takes equality only, so each old day goes by its own value;
+    # the steps go with their sessions
     for day in sorted({h["day"] for h in hits}):
         client.delete_entries("web_sessions", {"day": day})
+        client.delete_entries("web_steps", {"day": day})
     left = client.query({"from": "web_sessions", "where": old, "limit": 0})["total"]
     assert left == 0, f"retention: {left} rows before {cutoff} survived the delete"
     return {"cutoff": cutoff, "pruned": len(hits)}
@@ -970,15 +990,48 @@ def forget_web_visitor(client: AitoClient, device_id: str | None = None,
     assert re.fullmatch(r"[0-9a-f]{16}", key), f"not a visitor key: {key!r}"
     where = {"visitor_key": key}
     counts = {t: client.query({"from": t, "where": where, "limit": 0})["total"]
-              for t in ("web_sessions", "web_visitors", "web_suppressed")}
-    for table in ("web_sessions", "web_visitors"):
+              for t in ("web_sessions", "web_visitors", "web_steps", "web_suppressed")}
+    for table in ("web_sessions", "web_visitors", "web_steps"):
         if counts[table]:
             client.delete_entries(table, where)
     if not counts["web_suppressed"]:
         client.upload_batch("web_suppressed", [{"visitor_key": key, "at": date.today().isoformat()}])
     left = {t: client.query({"from": t, "where": where, "limit": 0})["total"]
-            for t in ("web_sessions", "web_visitors", "web_suppressed")}
-    assert left == {"web_sessions": 0, "web_visitors": 0, "web_suppressed": 1}, \
+            for t in ("web_sessions", "web_visitors", "web_steps", "web_suppressed")}
+    assert left == {"web_sessions": 0, "web_visitors": 0, "web_steps": 0, "web_suppressed": 1}, \
         f"forget {key}: left {left}"
     return {"visitor_key": key, "sessions_deleted": counts["web_sessions"],
-            "visitors_deleted": counts["web_visitors"], "suppressed": True}
+            "visitors_deleted": counts["web_visitors"], "steps_deleted": counts["web_steps"],
+            "suppressed": True}
+
+
+# ---- web_steps: visits as linked steps (docs/37) ----
+
+def _steps(client: AitoClient, rows: list[dict], run: str) -> list[dict]:
+    """Pop each session row's `_steps` into web_steps rows: one per event,
+    `prev` linking to the step before, the KPI the event's name belongs to,
+    whether a later step of the same visit reaches each KPI, whether it is
+    the exit, and the visit's arrival copied on (a link can't reach the rep1
+    tables). Bots are not walked. Working out "later" and "exit" here is a
+    fact about the visit, not a prediction (rule 2)."""
+    platform = {p["post_id"]: p.get("platform") for p in client.query(
+        {"from": "posts", "select": ["post_id", "platform"], "limit": 100000})["hits"]}
+    out = []
+    for r in rows:
+        raw = r.pop("_steps")
+        if r["likely_bot"]:
+            continue
+        key = r["session_key"]
+        for n, (token, kpis) in enumerate(raw):
+            later = {k for _, ks in raw[n + 1:] for k in ks}
+            out.append({
+                "step_id": f"{key}:{n}", "prev": f"{key}:{n - 1}" if n else None,
+                "token": token, "n": n, "is_kpi": bool(kpis), "kpi": kpis[0] if kpis else None,
+                **{f"kpi_after_{k}": k in later for k in KPI_EVENTS},
+                "is_exit": n == len(raw) - 1,
+                "source": r["source"], "utm_campaign": r.get("utm_campaign"),
+                "referrer_domain": r.get("referrer_domain"),
+                "post_platform": platform.get(r.get("post_id")), "post_id": r.get("post_id"),
+                "visitor_key": r["visitor_key"], "day": r["day"], "pull_run": run,
+            })
+    return out

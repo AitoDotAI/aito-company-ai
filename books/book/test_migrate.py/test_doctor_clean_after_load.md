@@ -27,3 +27,4 @@ schema_drift: False
   web_sessions present=True rows=0 missing_cols=[]
   web_visitors present=True rows=0 missing_cols=[]
   web_suppressed present=True rows=0 missing_cols=[]
+  web_steps    present=True rows=0 missing_cols=[]
