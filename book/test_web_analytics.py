@@ -967,3 +967,41 @@ def test_a_forgotten_visitor_is_deleted_and_stays_out(t: bt.TestCaseRun) -> None
     client.create_table("web_suppressed", schema.WEB_SUPPRESSED)
     client.delete_table("web_visitors")
     client.create_table("web_visitors", schema.WEB_VISITORS)
+
+
+def test_web_kpis_adds_acquisition_and_journeys(t: bt.TestCaseRun) -> None:
+    """docs/36 phase 2, step 3: for a KPI, web_kpis also relates the visitors
+    who reached it to their first touch and to what they saw before their
+    first KPI (web_visitors), and lists the latest journeys that reached it:
+    each session with its browser's earlier sessions. Journeys are labelled
+    by number, never by visitor_key."""
+    client, _, _ = _seeded()
+    before = "2026-10-04"
+    webanalytics.store_day(client, before, [
+        _event(f"{before} 08:00:00", "/blog/", 1759564800000, device_id="dev-2a3b4c5d")])
+    webanalytics.store_day(client, DAY, _events())
+    webanalytics.build_visitors(client)
+    r = webanalytics.web_kpis(client, kpi="sandbox", since=before, until=DAY)
+    a = r["acquisition"]
+    t.h1("Acquisition: who reached sandbox, by first touch")
+    t.tln(f"  visitors {a['population']}, reached it {a['with_outcome']}")
+    t.tln(f"  {[(x['field'], x['value'], x['rows_with'], x['thin']) for x in a['relations']]}")
+    fields = {x["field"] for x in a["relations"]}
+    assert fields <= {f for f in schema.WEB_VISITORS["columns"] if f.startswith("first_")} | {"seen_before_first_kpi"}
+    assert ("seen_before_first_kpi", "page:/blog/") in {(x["field"], x["value"]) for x in a["relations"]}
+    assert all(x["thin"] for x in a["relations"])
+    t.h1("Journeys that reached it")
+    for j in r["journeys"]:
+        t.tln(f"  {j['label']}: " + " | ".join(f"{s['day']} {s['landing_path']} [{s['events']}]"
+                                               for s in j["sessions"]))
+    assert len(r["journeys"]) == 1
+    assert [s["day"] for s in r["journeys"][0]["sessions"]] == [before, DAY]
+    assert "visitor_key" not in json.dumps(r["journeys"])
+    t.h1("An event target has no visitor-level flag")
+    e = webanalytics.web_kpis(client, event="demo_signup_cta_clicked", since=before, until=DAY)
+    t.tln(f"  acquisition: {e['acquisition']}")
+    assert e["acquisition"] is None and "journeys" in e
+    client.delete_entries("web_sessions", {"day": before})
+    _clean(client)
+    client.delete_table("web_visitors")
+    client.create_table("web_visitors", schema.WEB_VISITORS)

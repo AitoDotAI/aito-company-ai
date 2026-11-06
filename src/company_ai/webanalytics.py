@@ -794,7 +794,8 @@ def web_kpis(client: AitoClient, kpi: str | None = None, event: str | None = Non
            "filters": {k: v for k, v in filt.items() if v is not None},
            "sessions": sessions, "with_target": with_target, "thin_below": WEB_THIN,
            "dropped_as_linked": linked, "dropped_own_events": sorted(own),
-           "drivers": None, "other_kpis": None, "other_events": None}
+           "drivers": None, "other_kpis": None, "other_events": None,
+           "acquisition": None, "journeys": []}
     if not with_target:
         out["note"] = "no session in the window had the target: nothing to relate"
         return out
@@ -813,6 +814,45 @@ def web_kpis(client: AitoClient, kpi: str | None = None, event: str | None = Non
     events["relations"] = [r for r in events["relations"]
                            if r["field"] == "co_events" and r["value"] not in own][:10]
     out["other_events"] = events
+    if kpi is not None:
+        out["acquisition"] = _acquisition(client, kpi)
+    out["journeys"] = _journeys(client, {**where, "$and": [*clauses, match]})
+    return out
+
+
+JOURNEYS = 5           # the latest sessions with the target
+JOURNEY_DEPTH = 10     # earlier sessions shown per browser
+
+
+def _acquisition(client: AitoClient, kpi: str) -> dict | None:
+    """Over all stored visitors (web_visitors, lifetime, not the window):
+    which first touch, and which events seen before the first KPI, go with
+    reaching `kpi`. Aito's _relate, with counts and the thin flag. A KPI no
+    visitor reached has nothing to relate."""
+    target = {f"kpi_{kpi}": True}
+    if not client.query({"from": "web_visitors", "where": target, "limit": 0})["total"]:
+        return None
+    return relations.relate(client, "web_visitors", target, top_n=10, thin=WEB_THIN,
+                            keep=["seen_before_first_kpi"])
+
+
+def _journeys(client: AitoClient, where: dict) -> list[dict]:
+    """The latest sessions matching `where`, each with its browser's earlier
+    sessions, oldest first. Labelled by number: the visitor_key never leaves
+    the database in a journey."""
+    fields = ["visitor_key", "day", "hour", "landing_path", "source", "events"]
+    latest = client.query({"from": "web_sessions", "where": where, "select": fields,
+                           "orderBy": {"$desc": "day"}, "limit": JOURNEYS})["hits"]
+    histories = client.batch([{"from": "web_sessions", "select": fields[1:],
+                               "where": {"visitor_key": s["visitor_key"], "likely_bot": False,
+                                         "day": {"$lte": s["day"]}},
+                               "limit": 1000} for s in latest])
+    out = []
+    for n, (s, hist) in enumerate(zip(latest, histories), 1):
+        upto = sorted((h for h in hist["hits"] if (h["day"], h["hour"]) <= (s["day"], s["hour"])),
+                      key=lambda h: (h["day"], h["hour"]))[-JOURNEY_DEPTH:]
+        out.append({"label": f"visitor {n}",
+                    "sessions": [{k: h.get(k) for k in fields[1:]} for h in upto]})
     return out
 
 

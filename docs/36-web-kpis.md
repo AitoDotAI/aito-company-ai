@@ -185,7 +185,13 @@ one console-funnel step drops the others as definitionally linked and names
 them (`dropped_as_linked`). The target's own events are dropped from other
 events. For an event target, the count matches the token with `$has` while
 `_relate` takes the bare token, and the two counts must agree or it raises.
-Acquisition (first touch, web_visitors) is phase 2.
+Phase 2 adds `acquisition` and `journeys`:
+- `acquisition` (KPI targets): `_relate` over all stored web_visitors (lifetime,
+  not the window) of first touch and `seen_before_first_kpi`, with counts and
+  the thin flag. An event target has no visitor-level flag, so it is None.
+- `journeys`: the latest 5 sessions with the target, each with its browser's
+  earlier sessions (up to 10), oldest first, labelled "visitor N". The
+  visitor_key never appears in a journey.
 
 ## Privacy
 
@@ -215,7 +221,11 @@ set on 230.
     `company-ai forget-web-visitor --device-id <Amplitude device_id>` (or
     `--visitor-key`), or the local MCP tool `forget_web_visitor`, which is in
     REMOTE_DENY. Built in phase 2: the `web_suppressed` table, and
-    `store_day` reports `suppressed` per day.
+    `store_day` reports `suppressed` per day. The suppression list itself
+    holds the pseudonymous visitor_key, as it must to suppress. A forget
+    request needs the device id or key, which the operator gets from the
+    person's browser (Amplitude's device id in its local storage, or the
+    person sending it); it is never looked up from an email.
   - **Retention: 13 months.** At the end of each run the pull deletes the
     days before `retention_cutoff(today)` (13 calendar months back, clamped to
     the month end), checks none remain, and reports `retention`. A v2 delete
