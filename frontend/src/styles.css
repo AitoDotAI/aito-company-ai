@@ -956,6 +956,17 @@ select:focus { outline:none; border-color:var(--purple); }
 @media (max-width: 900px) {
   .web-grid { grid-template-columns: 1fr; }
   .web-left { position: static; }
+  /* a grid item's min-width is its content: an unwrapped insight row widened
+     the one column past the screen, and the values were clipped */
+  .web-grid > * { min-width: 0; }
+  .web-kpis { grid-template-columns: 1fr 1fr; }
+  .web-kpi { padding: 7px 9px; }
+  .web-kpi-v { font-size: 16px; }
+  .web-kpi-l { font-size: 12px; }
+  .web-driver { flex-wrap: wrap; gap: 2px 10px; }
+  .web-driver-k { overflow-wrap: anywhere; }
+  .web-lift, .web-thin { white-space: normal; }
+  .web-table-h { flex-wrap: wrap; }
 }
 .web-foot { font-size: 11px; margin: -4px 0 10px; }
 .web-tabs { display: flex; gap: 4px; margin: 6px 0 8px; flex-wrap: wrap; }
