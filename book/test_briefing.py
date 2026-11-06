@@ -73,6 +73,7 @@ def _cleanup(client, ids: dict) -> None:
         client.delete_entries("touches", {"contact_id": cid})
         client.delete_entries("contacts", {"contact_id": cid})
     for k in ("open", "lost"):
+        client.delete_entries("deal_events", {"deal_id": ids[k]["deal_id"]})
         client.delete_entries("deals", {"deal_id": ids[k]["deal_id"]})
     for tid in ids["todos"]:
         client.delete_entries("todos", {"todo_id": tid})

@@ -22,6 +22,10 @@ def _client() -> AitoClient:
 def test_doctor_clean_after_load(t: bt.TestCaseRun) -> None:
     from company_ai import schema
     client = _client()
+    # deal_events is written only by the deal paths (docs/34), never by
+    # load_all, so whatever earlier books left there would show in the count
+    # (td-20261106081029617051): start it empty, as the app-state tables below
+    client.delete_table("deal_events")
     loaders.create_schema(client)
     loaders.load_all(client, SEED_DIR)
     # app-state tables (not loaded) — reset to empty so the report is deterministic.
