@@ -19,6 +19,7 @@
   "Viewed": 2
  },
  "multi_host_sessions": 1,
+ "new_event_types": {},
  "no_session_events": 0,
  "referrer_present": 3,
  "sessions": 5,

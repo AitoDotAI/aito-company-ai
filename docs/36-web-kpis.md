@@ -34,8 +34,10 @@ names are those seen in the export, 6.10–5.11.2026:
 
 The console steps form a funnel, in this order: `login_page`, `signup`,
 `sandbox`, `data_loaded`, `first_query`. A new event name the site starts
-sending isn't guessed into a KPI. Each pull reports event names it has never
-seen (`new_event_types`), and someone adds them to the table.
+sending isn't guessed into a KPI. Each pull reports event names outside
+`KPI_EVENTS` and `KNOWN_EVENT_TYPES` (the other product events seen
+6.10–5.11.2026) as `new_event_types`, and the CLI prints them as a warning,
+not a failure. Someone then adds each name to the KPI table or the known list.
 
 ## Any event, not only the KPIs
 

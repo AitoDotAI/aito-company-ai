@@ -63,6 +63,16 @@ KPI_EVENTS = {
 }
 # Amplitude's own session bookkeeping: not something the visitor did
 LIFECYCLE_EVENTS = {"session_start", "session_end"}
+# The product events seen in the export 6.10-5.11.2026 that are not KPI
+# events. A name outside these and KPI_EVENTS is reported as new_event_types,
+# so someone decides whether it belongs to a KPI; it is never guessed in.
+KNOWN_EVENT_TYPES = {
+    "signin_clicked", "tour_started", "tour_step", "tour_skipped",
+    "demo_recommendations_fetched", "demo_autocomplete_fetched", "demo_persona_selected",
+    "demo_product_added_to_cart", "demo_search_executed", "demo_price_estimated",
+    "Instance delete", "Instance delete now",
+}
+_KPI_EVENT_NAMES = set().union(*KPI_EVENTS.values())
 
 # the context a visitor arrives with: what onward clicks may be related to
 PRE_VISIT = ("source", "referrer_domain", "utm_source", "utm_medium", "utm_campaign",
@@ -283,6 +293,7 @@ def _build(events: list[dict], day: str) -> tuple[list[dict], dict]:
     rows: list[dict] = []
     stats = {"mapped": Counter(), "unmapped": Counter(), "unknown_os": Counter(),
              "no_session_events": 0, "utm_present": 0, "referrer_present": 0, "invalid_utm": 0,
+             "new_event_types": Counter(),
              "events_on_day": sum(e["event_time"][:10] == day for e in events)}
     for key, group in _sessions(events).items():
         group.sort(key=_time)
@@ -295,8 +306,11 @@ def _build(events: list[dict], day: str) -> tuple[list[dict], dict]:
         for e in group:
             kind = _page_kind(e)
             if kind is None:
-                if not e["event_type"].endswith(CTA_SUFFIX):
-                    stats["unmapped"][e["event_type"]] += 1
+                name = e["event_type"]
+                if not name.endswith(CTA_SUFFIX):
+                    stats["unmapped"][name] += 1
+                    if name not in LIFECYCLE_EVENTS | KNOWN_EVENT_TYPES | _KPI_EVENT_NAMES:
+                        stats["new_event_types"][name] += 1
                 continue
             page = _page(e)
             if page is None:
@@ -441,6 +455,7 @@ def store_day(client: AitoClient, day: str, events: list[dict]) -> dict:
             "bots": sum(r["likely_bot"] for r in rows), "linked": dict(linked),
             "mapped": dict(stats["mapped"]), "unmapped": dict(stats["unmapped"]),
             "unknown_os": dict(stats["unknown_os"]),
+            "new_event_types": dict(stats["new_event_types"]),
             "no_session_events": stats["no_session_events"],
             "events_on_day": stats["events_on_day"],
             "utm_present": stats["utm_present"], "referrer_present": stats["referrer_present"],
@@ -526,6 +541,10 @@ def health(reports: list[dict], newest: str | None, today: date) -> tuple[list[s
                             "page-view events renamed, or not where the parser looks")
         elif r.get("empty"):
             warnings.append(f"{r['day']}: no visits pulled")
+        if r.get("new_event_types"):
+            names = ", ".join(sorted(r["new_event_types"]))
+            warnings.append(f"{r['day']}: event names never seen before, not in any KPI: {names} "
+                            "(add each to KPI_EVENTS or KNOWN_EVENT_TYPES, docs/36)")
     if newest is None:
         problems.append("web_sessions holds no day at all")
     elif date.fromisoformat(newest) < today - timedelta(days=STALE_DAYS):
