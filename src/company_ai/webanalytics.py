@@ -587,9 +587,9 @@ def onward_drivers(client: AitoClient, since: str, until: str, path: str | None 
 # ---- the dashboard's Web view: one bundle per filter ----
 
 # Below this many sessions a relation is shown as "thin, no claim" instead of
-# a lift. Pending Antti (docs/36 proposes 5); until he decides it is the
-# relate tool's THIN. Changing it is this one line.
-WEB_THIN = relations.THIN
+# a lift. Antti chose 5 (6.11.2026, docs/36): conversions are rare, and the
+# relate tool's 10 would hide nearly every sign-up insight.
+WEB_THIN = 5
 
 WEB_VIEW_FIELDS = ["day", "hour", "landing_path", "next_path", "source", "referrer_domain",
                    "utm_campaign", "post_id", "device_class", "country", "views",

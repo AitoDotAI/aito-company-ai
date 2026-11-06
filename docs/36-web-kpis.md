@@ -116,7 +116,9 @@ One row per visitor_key: the acquisition view across sessions.
 
 It's rebuilt from web_sessions after each pull, with the same replace-by-run
 pattern (docs/35). Identity is per browser: one person's visits join only
-within one browser. Linking an account's browsers is Decision A.
+within one browser, and that is deliberate (Antti, 6.11.2026). People do
+different things in different browsers, such as reading docs in one and using
+the console in another, so joining them would mix two journeys into one.
 
 ## Queries (all Aito)
 
@@ -141,8 +143,8 @@ within one browser. Linking an account's browsers is Decision A.
 Lifts on rare outcomes are unstable: a zero-count option gives a huge lift
 (PR #32). Each insight row shows the counts behind it: rows with the value
 and the target, and rows with the value. A row whose target count is under 5
-is shown as "thin", with no bare lift number. That threshold is Antti's call;
-5 is the proposal.
+is shown as "thin", with no bare lift number. The threshold is 5 (Antti,
+6.11.2026; `webanalytics.WEB_THIN`).
 
 ## Dashboard: Web view
 
@@ -192,14 +194,18 @@ set on 230.
   they still identify a browser. Today's web_sessions.session_key is an
   unsalted sha256, and switching it is part of phase 1. A re-pull replaces
   each day, so the backfill is redone.
-- Decisions for Antti:
-  - **A:** link one account's browsers? Only if yes, add an account key,
-    HMAC(salt, user_id). Pseudonymous too.
-  - **B:** delete on request. By visitor (or account) key: `delete_entries`
-    in web_sessions and web_visitors, plus a suppression list so later pulls
-    skip that key. Who triggers it?
-  - **Retention:** keep rows for N months (13 proposed), with old days deleted
-    by the pull.
+- Decided by Antti, 6.11.2026:
+  - **No account linking.** Journeys stay per browser, and there is no
+    account key. `user_id` is never read or stored.
+  - **Delete on request.** By visitor key: `delete_entries` in web_sessions
+    and web_visitors, plus a suppression list (salted visitor keys) so later
+    pulls skip that browser. The operator triggers it, through a CLI command
+    and an operator-only MCP tool kept off the remote surface.
+  - **Retention: 13 months.** The pull deletes days older than 13 months
+    after each run, and reports how many went.
+  - **Thin threshold: 5** (see Evidence).
+- Still needed from Antti: the salt, `COMPANY_AI_WEB_SALT`, in the env
+  file. Phase 1 starts once it's there.
 
 ## Phases
 
