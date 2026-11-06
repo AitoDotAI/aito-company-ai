@@ -829,3 +829,46 @@ def test_a_new_event_name_is_reported_not_guessed(t: bt.TestCaseRun) -> None:
     t.tln(f"  new_event_types: {report['new_event_types']}")
     assert report["new_event_types"] == {"Workbook shared with a colleague": 1}
     _clean(client)
+
+
+def test_web_kpis_relates_a_kpi_without_its_definitional_links(t: bt.TestCaseRun) -> None:
+    """MCP web_kpis (docs/36): for a KPI or any event, the sessions that had
+    it, the pre-visit drivers, the other KPIs and other events that go with
+    it, all from Aito's _relate. Console-funnel steps imply each other, so
+    relating one drops the others and names them; the target's own events
+    are dropped from "other events". Every relation under WEB_THIN sessions
+    is flagged thin, so no lift is claimed from a handful of visits."""
+    client, _, _ = _seeded()
+    webanalytics.store_day(client, DAY, _events())
+
+    t.h1("kpi=sandbox on the fixture day")
+    r = webanalytics.web_kpis(client, kpi="sandbox", since=DAY, until=DAY)
+    t.tln(f"  sessions {r['sessions']}, with the target {r['with_target']}, thin below {r['thin_below']}")
+    t.tln(f"  dropped as definitionally linked: {r['dropped_as_linked']}")
+    t.tln(f"  dropped as the target's own events: {r['dropped_own_events']}")
+    for part in ("drivers", "other_kpis", "other_events"):
+        rows = r[part]["relations"] if r[part] else []
+        t.tln(f"  {part}: {[(x['field'], x['value'], x['rows_with'], x['thin']) for x in rows]}")
+    assert set(r["dropped_as_linked"]) == {"kpi_login_page", "kpi_signup", "kpi_data_loaded",
+                                           "kpi_first_query", "kpi_api_keys"}
+    assert not any(x["field"].startswith("kpi_") or x["field"] in ("events", "co_events")
+                   for x in r["drivers"]["relations"])
+    assert {x["field"] for x in r["other_kpis"]["relations"]} <= {"kpi_pricing_page", "kpi_contact_page"}
+    assert "instance_create" not in {x["value"] for x in r["other_events"]["relations"]}
+    every = [x for part in ("drivers", "other_kpis", "other_events") for x in r[part]["relations"]]
+    assert all(x["thin"] == (x["rows_with"] < webanalytics.WEB_THIN) for x in every)
+
+    t.h1("Any event: event=demo_signup_cta_clicked")
+    e = webanalytics.web_kpis(client, event="demo_signup_cta_clicked", since=DAY, until=DAY)
+    t.tln(f"  with the target {e['with_target']}; own events dropped: {e['dropped_own_events']}")
+    assert "demo_signup_cta_clicked" not in {x["value"] for x in e["other_events"]["relations"]}
+    assert e["with_target"] == 1, "a token must match within the field, not equal it"
+
+    t.h1("A target must be one KPI or one event")
+    for bad in ({"kpi": "nope"}, {}, {"kpi": "sandbox", "event": "x"}):
+        try:
+            webanalytics.web_kpis(client, since=DAY, until=DAY, **bad)
+            raise RuntimeError(f"accepted {bad}")
+        except AssertionError as err:
+            t.tln(f"  {bad}: {str(err)[:90]}")
+    _clean(client)

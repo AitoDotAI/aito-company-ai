@@ -65,6 +65,24 @@ def company_list() -> dict:
 
 
 @mcp.tool()
+def web_kpis(kpi: str | None = None, event: str | None = None, since: str | None = None,
+             until: str | None = None, source: str | None = None, campaign: str | None = None,
+             path: str | None = None, device: str | None = None) -> dict:
+    """aito.ai visits for one KPI or any event (docs/36). kpi: pricing_page,
+    contact_page, login_page, signup, sandbox, data_loaded, first_query or
+    api_keys; or event: a token like "demo_search_executed" or
+    "page:/pricing/". Window since..until (default the last 30 days) and
+    filters source/campaign/path/device. Returns the session counts, the
+    pre-visit drivers, the other KPIs and the other events that go with it,
+    all from Aito's _relate, each with its counts. A relation flagged thin
+    rests on too few sessions to claim a lift. Console-funnel steps that imply
+    each other are dropped and named in dropped_as_linked."""
+    from . import webanalytics
+    return webanalytics.web_kpis(_client(), kpi=kpi, event=event, since=since, until=until,
+                                 source=source, campaign=campaign, path=path, device=device)
+
+
+@mcp.tool()
 def company_detail(company_id: str) -> dict:
     """One company node of the knowledge graph: its harvested facts (industry,
     relationship customer/prospect/lost/none, country, mrr_eur, open_deals,

@@ -174,8 +174,14 @@ The layout follows the e-commerce demo's Analytics page
 - State lives in the URL (kpi, filters, tab, date range), and a slow older
   response never overwrites a newer one.
 
-MCP: `web_kpis(kpi, filters)` returns the same drivers, other events,
-acquisition and rates, so an agent and the view see the same answer.
+MCP: `web_kpis(kpi | event, since, until, filters)` (built in phase 1) returns
+the session counts, the pre-visit drivers, the other KPIs and the other events
+(from `co_events`), so an agent and the view see the same answer. Relating
+one console-funnel step drops the others as definitionally linked and names
+them (`dropped_as_linked`). The target's own events are dropped from other
+events. For an event target, the count matches the token with `$has` while
+`_relate` takes the bare token, and the two counts must agree or it raises.
+Acquisition (first touch, web_visitors) is phase 2.
 
 ## Privacy
 
