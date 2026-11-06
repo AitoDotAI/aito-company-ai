@@ -1214,3 +1214,45 @@ def test_paths_to_a_kpi_come_from_the_graph(t: bt.TestCaseRun) -> None:
     t.tln(f"  {empty['note']}")
     assert empty["top_paths"] == []
     _clean(client)
+
+
+def test_a_crawler_mid_visit_is_a_bot_and_lists_keep_their_direction(t: bt.TestCaseRun) -> None:
+    """Found on the first real run of web_paths_to (6.11.2026): sessions that
+    fetch /sitemap/sitemap.xml or /wp-sitemap.xml mid-visit are crawlers, but
+    only the landing page was checked against PROBE_PREFIXES, so they were
+    walked as people. And drop_off / raises_later listed Aito's relations in
+    its mi order, so pages visits CONTINUE from (lift < 1) led the drop-off
+    list. Now any probe page marks the session a likely bot, and each list
+    keeps only lift > 1 rows."""
+    rows = webanalytics.sessions_from_events(
+        _visits([["/", "/sitemap/sitemap.xml"], ["/blog/", "/wp-sitemap.xml"], ["/", "/pricing/"]]), DAY)
+    t.h1("Bots")
+    for r in rows:
+        t.tln(f"  {r['pages']}: likely_bot={r['likely_bot']}")
+    assert {r["pages"]: r["likely_bot"] for r in rows} == {
+        "/ /sitemap/sitemap.xml": True, "/blog/ /wp-sitemap.xml": True, "/ /pricing/": False}
+    client, _, _ = _seeded()
+    paths = ([["/", "/blog/", "/pricing/"]] * 5 + [["/docs/", "/pricing/"]] * 3
+             + [["/", "/blog/"]] * 6 + [["/docs/"]] * 4)
+    webanalytics.store_day(client, DAY, _visits(paths))
+    r = webanalytics.web_paths_to(client, kpi="pricing_page", since=DAY, until=DAY)
+    t.h1("Drop-off leads with where visits end more often; the rest is kept apart")
+    t.tln(f"  ends: {[(x['value'], x['lift']) for x in r['drop_off']['relations']]}")
+    t.tln(f"  continues from: {[(x['value'], x['lift']) for x in r['drop_off']['protective']]}")
+    assert r["drop_off"]["relations"] and all(x["lift"] > 1 for x in r["drop_off"]["relations"])
+    assert all(x["lift"] <= 1 for x in r["drop_off"]["protective"])
+    assert "page:/" in {x["value"] for x in r["drop_off"]["protective"]}
+    assert all(x["lift"] > 1 for x in r["raises_later"]["relations"])
+
+    t.h1("Thin is judged on visits, not steps: one visitor reloading stays thin")
+    reloads = ([["/x/", "/x/", "/x/", "/x/", "/x/", "/x/", "/pricing/"]]
+               + [["/", "/pricing/"]] * 6 + [["/"]] * 6)
+    webanalytics.store_day(client, DAY, _visits(reloads))
+    r = webanalytics.web_paths_to(client, kpi="pricing_page", since=DAY, until=DAY)
+    x = next(x for x in r["raises_later"]["relations"] + r["raises_later"]["protective"]
+             if x["value"] == "page:/x/")
+    t.tln(f"  page:/x/: {x['rows_with']} steps, {x['visits']} visit, thin {x['thin']}")
+    assert x["rows_with"] >= 5 and x["visits"] == 1 and x["thin"] is True
+    for p in r["top_paths"]:
+        assert p["thin"] == (p["visits"] < webanalytics.WEB_THIN)
+    _clean(client)
