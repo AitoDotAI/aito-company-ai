@@ -66,8 +66,16 @@ def test_log_decision(t: bt.TestCaseRun) -> None:
 
 
 def test_predict_escape_hatch(t: bt.TestCaseRun) -> None:
+    """The escape hatch passes a predict through to Aito unchanged. Its $p
+    are Aito's and are pinned exactly, but they move with the engine: both
+    re-accepts of this snapshot were engine bumps with the data unchanged
+    (2.11.2; 2.11.4 -> 2.11.6), td-20260926215926901519. So the engine build
+    is printed beside them, and a diff that moves the numbers shows whether
+    the engine moved too. What the hatch itself promises is asserted."""
     t.h1("predict: ad-hoc question through the escape hatch")
     client = _client()
+    build = client.version()
+    t.tln(f"engine build: {build.get('version')} ({build.get('gitRevision', '')[:8]})")
     loaders.create_schema(client)
     loaders.load_rolodex(client, SEED_DIR)
     loaders.load_touches(client, SEED_DIR)
@@ -81,3 +89,9 @@ def test_predict_escape_hatch(t: bt.TestCaseRun) -> None:
     t.tln(f"request:  {json.dumps(request, sort_keys=True)}")
     response = client.predict(request)
     t.tln(f"response: {json.dumps(response, sort_keys=True)}")
+    from company_ai import schema
+    hits = response["hits"]
+    assert [h["$value"] for h in hits if h["$value"] not in schema.WINDOWS] == [], hits
+    assert len(hits) == len(schema.WINDOWS), "every window is a candidate"
+    assert [h["$p"] for h in hits] == sorted((h["$p"] for h in hits), reverse=True), "Aito's order"
+    assert abs(sum(h["$p"] for h in hits) - 1) < 1e-6, "a distribution over the windows"
