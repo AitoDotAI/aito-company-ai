@@ -132,6 +132,42 @@ def company_detail(company_id: str) -> dict:
 
 
 @mcp.tool()
+def add_fact(company: str, kind: str, statement: str, source_kind: str, source_id: str,
+             valid_from: str, author: str, slot: str | None = None, state: str | None = None,
+             due: str | None = None, stakeholder_id: str | None = None) -> dict:
+    """Record one short, sourced fact about ONE account (docs/39). kind:
+    role (slot champion|decision_owner|sponsor|other), commitment (slot
+    ours|theirs, state sent|drafted, optional due), decision, open_question
+    (slot ours|theirs: whose move), contact_info (state current|bounced|
+    invalid), hold (state on_hold|released; source_kind must be antti).
+    source_kind mail|doc|call|touch|antti with the source's id; valid_from is
+    the day it became true. Write the statement as the source says it; never
+    infer one. A value outside the vocabulary raises. Retry-safe."""
+    return logbook.add_fact(_client(), company=company, kind=kind, statement=statement,
+                        source_kind=source_kind, source_id=source_id, valid_from=valid_from,
+                        author=author, slot=slot, state=state, due=due,
+                        stakeholder_id=stakeholder_id)
+
+
+@mcp.tool()
+def supersede_fact(old_id: str, new_id: str) -> dict:
+    """Mark fact old_id as replaced by new_id: same account, same kind, old
+    still active. The old fact stays (list_facts active_only=False shows it);
+    briefing shows only the new one. Releasing a hold is a hold fact with
+    state released, from antti, superseding the on_hold one. Only on an
+    explicit instruction: never to tidy up."""
+    return logbook.supersede_fact(_client(), old_id, new_id)
+
+
+@mcp.tool()
+def list_facts(company: str, active_only: bool = True) -> list:
+    """One account's facts (company_id or exact name), newest valid_from
+    first; active_only=False includes the superseded ones."""
+    from . import facts
+    return facts.list_facts(_client(), company, active_only=active_only)
+
+
+@mcp.tool()
 def briefing(company: str) -> dict:
     """The current state of one account in one read, for call prep: the
     company row; its open deals with stage, value, blocker, the recorded next

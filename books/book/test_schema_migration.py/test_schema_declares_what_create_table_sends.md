@@ -18,6 +18,7 @@
   PUT /api/v2/schema/events                    type=collection 7ac19c48d7e26e23
   PUT /api/v2/schema/routines                  type=collection 9a094d45ef55bfcb
   PUT /api/v2/schema/documents                 type=collection 72cb3d25ac124b7f
+  PUT /api/v2/schema/facts                     type=collection 4fcfadbb8a5ed081
   PUT /api/v2/schema/chat_messages             type=collection 1f01b00f69811ce2
   PUT /api/v2/schema/changelog                 type=collection 9fec5699835f51af
   PUT /api/v2/schema/search_contexts           type=collection 224c2461d73f5df5

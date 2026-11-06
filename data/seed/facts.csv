@@ -1,0 +1,13 @@
+fact_id,company,stakeholder_id,kind,slot,state,statement,due,source_kind,source_id,valid_from,superseded_by,author,created_at
+sfa001,Nakatomi OÜ,sc016,role,decision_owner,,Commercial lead owns the commercial track from the 26.10 split,,doc,doc-seed-split,2026-10-26,,cro,2026-10-26
+sfa002,Nakatomi OÜ,sc020,role,decision_owner,,Sponsor says she decides what is sold,,call,call-seed-0111,2026-11-01,,cro,2026-11-01
+sfa003,Nakatomi OÜ,sc016,decision,,,The plugin decision mail went to the commercial lead,,mail,mail-seed-0211,2026-11-02,,cro,2026-11-02
+sfa004,Nakatomi OÜ,sc021,open_question,theirs,,Champion asked whether to buy the plugin or publish it themselves,,call,call-seed-0910,2026-10-09,,cro,2026-10-09
+sfa005,Nakatomi OÜ,sc021,role,champion,,Head of Product champions the pilot,,call,call-seed-0910,2026-10-09,,cro,2026-10-09
+sfa006,Nakatomi OÜ,sc054,role,champion,,Head of Finance backs the pilot too,,touch,touch-seed-1020,2026-10-20,,cro,2026-10-20
+sfa007,Nakatomi OÜ,,commitment,ours,sent,Send the pilot scope,2026-11-09,mail,mail-seed-0211,2026-11-02,,cro,2026-11-02
+sfa008,Nakatomi OÜ,,commitment,ours,drafted,Pricing proposal for the pilot,2026-11-12,doc,doc-seed-pricing,2026-11-03,,cro,2026-11-03
+sfa009,Nakatomi OÜ,sc052,contact_info,,bounced,The partner's work address bounced,,mail,mail-seed-0303,2026-11-03,,cro,2026-11-03
+sfa010,Nakatomi OÜ,sc052,contact_info,,current,Reach the partner through the office line,,call,call-seed-0304,2026-11-04,,cro,2026-11-04
+sfa011,Nakatomi OÜ,sc020,decision,,,Decision expected from the founder,,call,call-seed-1001,2026-10-01,sfa003,cro,2026-10-01
+sfa012,Strickland GmbH,,hold,,on_hold,On partner hold,,antti,antti-seed-1015,2026-10-15,,antti,2026-10-15
