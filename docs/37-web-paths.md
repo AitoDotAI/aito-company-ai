@@ -132,7 +132,10 @@ the internal Journeys tab.
    work. Gaps 1 and 2 already had aito-core tickets (td-20260927120713200883
    for `$walk`, td-20260926161012650280 for operators inside `$exists`), and
    our use case and queries were appended to them.
-2. MCP `web_paths_to(kpi, source|platform)` running queries 1–5, and a
-   Paths tab in the Web view.
+2. MCP `web_paths_to(kpi, since, until, platform)` and a Paths tab in the Web
+   view's KPI insights (built). It returns top paths ($patterns, up to three
+   steps back, with visits, lift and thin), the pages after which the KPI more
+   often follows (`kpi_after_<kpi>` over the token) and drop-off (`is_exit`
+   among visits that never reach it). Aggregates only.
 3. File gaps 1–3 with aito-core, each with the exact request that fails or
    has to be worked around.

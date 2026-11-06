@@ -1095,3 +1095,57 @@ def _steps(client: AitoClient, rows: list[dict], run: str) -> list[dict]:
                 "visitor_key": r["visitor_key"], "day": r["day"], "pull_run": run,
             })
     return out
+
+
+# ---- paths into a KPI, from the step graph (docs/37 phase 2) ----
+
+PATH_DEPTH = ("prev.token", "prev.prev.token", "prev.prev.prev.token")
+
+
+def web_paths_to(client: AitoClient, kpi: str, since: str | None = None,
+                 until: str | None = None, platform: str | None = None) -> dict:
+    """How visits reach one KPI, from web_steps and all in Aito (rule 2):
+    - top_paths: Aito's $patterns over the prev chain into the KPI's steps
+      (up to three steps back), each with the visits that took it, its lift,
+      and the thin flag. These are Aito's top patterns, not a full count
+      (paths of any length wait for aito-core's $walk, docs/37 gap 1);
+    - raises_later: _relate of kpi_after_<kpi> over the step's token: the
+      pages after which the visit more often goes on to reach the KPI;
+    - drop_off: among visits that never reach it, _relate of is_exit over
+      the token: where they end.
+    `platform` keeps only visits that came from a post on that platform."""
+    assert kpi in KPI_EVENTS, f"unknown kpi {kpi!r}; have {sorted(KPI_EVENTS)}"
+    until = until or date.today().isoformat()
+    since = since or (date.fromisoformat(until) - timedelta(days=29)).isoformat()
+    clauses = [*_window(since, until), *([{"post_platform": platform}] if platform else [])]
+    out = {"kpi": kpi, "since": since, "until": until, "platform": platform,
+           "thin_below": WEB_THIN, "top_paths": [], "raises_later": None, "drop_off": None}
+    reached = client.query({"from": "web_steps", "where": {"$and": [*clauses, {"kpi": kpi}]},
+                            "limit": 0})["total"]
+    out["kpi_steps"] = reached
+    if not reached:
+        out["note"] = "no visit in the window reached it: nothing to walk"
+        return out
+    response = client.relate({"from": "web_steps", "where": {"$and": [*clauses, {"kpi": kpi}]},
+                              "relate": {"$patterns": list(PATH_DEPTH)}, "limit": 10})
+    for hit in response.get("hits", []):
+        props = (hit.get("related") or {}).get("$and") or [hit.get("related") or {}]
+        steps = {k: v for p in props for k, v in p.items()}
+        path = [steps[k] for k in reversed(PATH_DEPTH) if k in steps]
+        visits = int(hit.get("f", 0))
+        out["top_paths"].append({"path": path + [_kpi_token(kpi)], "visits": visits,
+                                 "lift": hit.get("lift"), "thin": visits < WEB_THIN})
+    keep_tokens = lambda r: {**r, "relations": [x for x in r["relations"] if x["field"] == "token"]}
+    out["raises_later"] = keep_tokens(relations.relate(
+        client, "web_steps", {f"kpi_after_{kpi}": True},
+        where={"is_kpi": False, "$and": clauses}, top_n=30, thin=WEB_THIN))
+    out["drop_off"] = keep_tokens(relations.relate(
+        client, "web_steps", {"is_exit": True},
+        where={f"kpi_after_{kpi}": False, "is_kpi": False, "$and": clauses}, top_n=30, thin=WEB_THIN))
+    return out
+
+
+def _kpi_token(kpi: str) -> str:
+    """How a path ends: the KPI's page when it is one page view, else its name."""
+    tokens = sorted(_own_tokens(kpi))
+    return tokens[0] if len(tokens) == 1 else f"kpi:{kpi}"

@@ -3,7 +3,7 @@ import { render, screen, fireEvent, waitFor, within } from "@testing-library/rea
 import { WebView } from "./web.jsx";
 import { api } from "./api.js";
 
-vi.mock("./api.js", async (orig) => ({ ...(await orig()), api: { web: vi.fn(), webKpi: vi.fn() } }));
+vi.mock("./api.js", async (orig) => ({ ...(await orig()), api: { web: vi.fn(), webKpi: vi.fn(), webPaths: vi.fn() } }));
 import { setPublicDemo } from "./session.js";
 afterEach(() => { vi.clearAllMocks(); setPublicDemo(false); });
 
@@ -101,5 +101,27 @@ describe("web view KPIs", () => {
     fireEvent.click(kpis.getByRole("button", { name: /Sandbox/ }));
     await screen.findByRole("tab", { name: "Drivers" });
     expect(screen.queryByRole("tab", { name: "Journeys" })).toBeNull();
+  });
+});
+
+
+describe("web view paths", () => {
+  it("shows the top paths, the pages that raise it, and the drop-off for a KPI", async () => {
+    api.web.mockResolvedValue(BUNDLE);
+    api.webKpi.mockResolvedValue(KPI_ANSWER);
+    api.webPaths.mockResolvedValue({
+      kpi: "sandbox", thin_below: 5, kpi_steps: 9,
+      top_paths: [{ path: ["page:/", "page:/blog/", "kpi:sandbox"], visits: 5, lift: 3.5, thin: false }],
+      raises_later: { relations: [{ field: "token", value: "page:/pricing/", lift: 2.1, rate_with: 0.4, rate_without: 0.2, rows_with: 12, thin: false }] },
+      drop_off: { relations: [{ field: "token", value: "page:/blog/", lift: 1.4, rate_with: 0.9, rate_without: 0.6, rows_with: 3, thin: true }] },
+    });
+    render(<WebView />);
+    const kpis = within(await screen.findByTestId("web-kpis"));
+    fireEvent.click(kpis.getByRole("button", { name: /Sandbox/ }));
+    fireEvent.click(await screen.findByRole("tab", { name: "Paths" }));
+    await waitFor(() => expect(api.webPaths).toHaveBeenLastCalledWith(expect.objectContaining({ kpi: "sandbox" })));
+    expect(await screen.findByText("page:/ → page:/blog/ → kpi:sandbox")).toBeInTheDocument();
+    expect(screen.getByText("token = page:/pricing/")).toBeInTheDocument();
+    expect(screen.getByText("token = page:/blog/")).toBeInTheDocument();
   });
 });

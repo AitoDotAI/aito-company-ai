@@ -84,9 +84,43 @@ function Relations({ rels, empty, testid, unit = "sessions" }) {
   );
 }
 
-function KpiInsights({ answer, hideJourneys }) {
+function Paths({ query }) {
+  const [paths, setPaths] = useState(null);
+  const [err, setErr] = useState(null);
+  useEffect(() => {
+    let live = true;
+    Promise.resolve(api.webPaths(query))
+      .then((d) => { if (live && d) setPaths(d); })
+      .catch((e) => { if (live) setErr(String(e.message || e)); });
+    return () => { live = false; };
+  }, [query.kpi, query.since, query.until]);
+  if (err) return <ErrorBox msg={err} />;
+  if (!paths) return <Loading label="Walking the steps…" />;
+  if (paths.note) return <div className="muted">{paths.note}</div>;
+  return (
+    <div className="web-paths">
+      <h4>Top paths into it <span className="muted">· Aito $patterns</span></h4>
+      {paths.top_paths.length ? paths.top_paths.map((p, i) => (
+        <div key={i} className="web-driver">
+          <span className="web-driver-k">{p.path.join(" → ")}</span>
+          {p.thin ? <span className="web-thin">thin · {p.visits} visits, no claim</span>
+                  : <span className="web-lift">{p.visits} visits · {p.lift.toFixed(1)}×</span>}
+        </div>
+      )) : <div className="muted">No path repeats often enough yet.</div>}
+      <h4>Pages after which it more often follows</h4>
+      <Relations rels={(paths.raises_later && paths.raises_later.relations) || []} unit="steps"
+                 empty="Nothing to relate yet." />
+      <h4>Where visits that never reach it end</h4>
+      <Relations rels={(paths.drop_off && paths.drop_off.relations) || []} unit="steps"
+                 empty="Nothing to relate yet." />
+    </div>
+  );
+}
+
+function KpiInsights({ answer, hideJourneys, pathsQuery }) {
   const tabs = [["drivers", "Drivers"], ["other_kpis", "Other KPIs"], ["other_events", "Other events"],
-                ["acquisition", "Acquisition"], ...(hideJourneys ? [] : [["journeys", "Journeys"]])];
+                ["acquisition", "Acquisition"], ["paths", "Paths"],
+                ...(hideJourneys ? [] : [["journeys", "Journeys"]])];
   const [tab, setTab] = useState("drivers");
   const rels = (part) => (answer[part] && answer[part].relations) || [];
   return (
@@ -110,6 +144,7 @@ function KpiInsights({ answer, hideJourneys }) {
       {tab === "acquisition" && (answer.acquisition
         ? <Relations rels={rels("acquisition")} unit="visitors" empty="No first touch goes with it yet." />
         : <div className="muted">No visitor has reached it yet.</div>)}
+      {tab === "paths" && pathsQuery && <Paths query={pathsQuery} />}
       {tab === "journeys" && !hideJourneys && (
         <div className="web-journeys">
           {(answer.journeys || []).map((j) => (
@@ -211,7 +246,8 @@ export function WebView() {
           {isKpi ? (
             <>
               <h3>{kpi.label} <span className="muted">· Aito _relate</span></h3>
-              {answer ? <KpiInsights key={kpiKey} answer={answer} hideJourneys={hideJourneys} />
+              {answer ? <KpiInsights key={kpiKey} answer={answer} hideJourneys={hideJourneys}
+                                     pathsQuery={{ kpi: kpiKey.slice(4), since, until }} />
                       : <Loading label="Relating…" />}
             </>
           ) : (

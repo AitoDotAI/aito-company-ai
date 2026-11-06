@@ -52,7 +52,9 @@ def _seeded() -> AitoClient:
     for load in (loaders.load_materials, loaders.load_channels, loaders.load_posts,
                  loaders.load_experiments):
         load(client, SEED_DIR)
-    client.delete_table("web_sessions")
+    # every web table starts empty, so no book sees another's leftovers
+    for table in ("web_sessions", "web_steps", "web_visitors", "web_suppressed"):
+        client.delete_table(table)
     loaders.create_schema(client)
     material = client.query({"from": "materials", "limit": 1})["hits"][0]["material_id"]
     li = log.add_post(client, material_id=material, channel_id="sk04", tone="narrate",
@@ -1171,4 +1173,44 @@ def test_web_traffic_counts_the_attribution_labels(t: bt.TestCaseRun) -> None:
     t.tln(f"  {a}")
     assert a == {"exact": 1, "matched": 0, "candidates": 1, "labels": 1,
                  "inference_trigger": webanalytics.INFERENCE_TRIGGER, "inference_ready": False}
+    _clean(client)
+
+
+def _visits(paths: list[list[str]], day: str = DAY) -> list[dict]:
+    """Page-view visits along the given paths, one browser each."""
+    out = []
+    for v, pages in enumerate(paths):
+        for n, page in enumerate(pages):
+            out.append(_event(f"{day} 1{n}:{v:02d}:00", page, 1759700000000 + v, device_id=f"dev-path-{v}"))
+    return out
+
+
+def test_paths_to_a_kpi_come_from_the_graph(t: bt.TestCaseRun) -> None:
+    """docs/37 phase 2: web_paths_to(kpi) answers from web_steps, all in Aito:
+    the top paths into the KPI ($patterns over the prev chain, with counts),
+    the pages that raise the chance of reaching it later in the visit
+    (_relate of kpi_after_<kpi>), and where visits that never reach it drop
+    off (_relate of is_exit). Each row carries its count and the thin flag."""
+    client, _, _ = _seeded()
+    paths = ([["/", "/blog/", "/pricing/"]] * 5 + [["/docs/", "/pricing/"]] * 3
+             + [["/", "/blog/"]] * 6 + [["/docs/"]] * 4)
+    webanalytics.store_day(client, DAY, _visits(paths))
+    r = webanalytics.web_paths_to(client, kpi="pricing_page", since=DAY, until=DAY)
+    t.h1("Top paths into pricing_page")
+    for p in r["top_paths"]:
+        t.tln(f"  {' → '.join(p['path'])}: {p['visits']} visits, lift {p['lift']:.2f}, thin {p['thin']}")
+    assert r["top_paths"][0]["path"] == ["page:/", "page:/blog/", "kpi:pricing_page"]
+    assert r["top_paths"][0]["visits"] == 5
+    t.h1("Pages that raise it later in the visit")
+    for x in r["raises_later"]["relations"]:
+        t.tln(f"  {x['value']}: lift {x['lift']}, {x['rows_with']} steps, thin {x['thin']}")
+    assert all(x["field"] == "token" for x in r["raises_later"]["relations"])
+    t.h1("Where visits that never reach it end")
+    for x in r["drop_off"]["relations"]:
+        t.tln(f"  {x['value']}: lift {x['lift']}, {x['rows_with']} steps, thin {x['thin']}")
+    assert "page:/blog/" in {x["value"] for x in r["drop_off"]["relations"]}
+    t.h1("A KPI no visit reached")
+    empty = webanalytics.web_paths_to(client, kpi="api_keys", since=DAY, until=DAY)
+    t.tln(f"  {empty['note']}")
+    assert empty["top_paths"] == []
     _clean(client)
