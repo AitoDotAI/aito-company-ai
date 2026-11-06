@@ -1005,3 +1005,19 @@ def test_web_kpis_adds_acquisition_and_journeys(t: bt.TestCaseRun) -> None:
     _clean(client)
     client.delete_table("web_visitors")
     client.create_table("web_visitors", schema.WEB_VISITORS)
+
+
+def test_the_web_view_counts_the_kpis(t: bt.TestCaseRun) -> None:
+    """docs/36 phase 3: the Web view's bundle carries, for the filter, how
+    many human sessions reached each KPI, overall and per day, so the KPI
+    widget and the trend need no extra call. Counting is formatting."""
+    client, _, _ = _seeded()
+    webanalytics.store_day(client, DAY, _events())
+    v = webanalytics.web_view(client, DAY, DAY)
+    t.h1("KPI sessions on the fixture day")
+    t.tln(f"  {v['kpis']}")
+    t.tln(f"  day: { {k: v2 for k, v2 in v['days'][0].items() if k.startswith('kpi_')} }")
+    assert set(v["kpis"]) == set(webanalytics.KPI_EVENTS)
+    assert v["kpis"]["pricing_page"] == 1 and v["kpis"]["sandbox"] == 1
+    assert v["days"][0]["kpi_sandbox"] == 1
+    _clean(client)

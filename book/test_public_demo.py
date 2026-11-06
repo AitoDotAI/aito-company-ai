@@ -150,3 +150,23 @@ def test_a_public_demo_shows_the_seeds_working_week(t: bt.TestCaseRun) -> None:
     t.tln(f"public demo, nothing set:   {reckon({'COMPANY_AI_PUBLIC_DEMO': '1', 'COMPANY_AI_AS_OF': None})}")
     t.tln(f"public demo, a date set:    {reckon({'COMPANY_AI_PUBLIC_DEMO': '1', 'COMPANY_AI_AS_OF': '2026-07-01'})}")
     t.tln(f"not a demo, nothing set:    {reckon({'COMPANY_AI_PUBLIC_DEMO': None, 'COMPANY_AI_AS_OF': None})}")
+
+
+def test_journeys_never_reach_a_public_demo(t: bt.TestCaseRun) -> None:
+    """docs/36: journeys are individual browsing histories, pseudonymous or
+    not, so /api/web/kpi drops them when the app serves a public demo, and
+    serves them on the internal dashboard."""
+    from company_ai import webanalytics
+    fake = {"target": {"kpi": "sandbox"}, "journeys": [{"label": "visitor 1", "sessions": []}]}
+    real = webanalytics.web_kpis
+    webanalytics.web_kpis = lambda client, **kw: dict(fake)
+    try:
+        demo = _app().get("/api/web/kpi", params={"kpi": "sandbox"}).json()
+        internal = _app(public_demo=False).get("/api/web/kpi", params={"kpi": "sandbox"}).json()
+    finally:
+        webanalytics.web_kpis = real
+    t.h1("/api/web/kpi")
+    t.tln(f"  public demo: journeys {demo.get('journeys')}, hidden {demo.get('journeys_hidden')}")
+    t.tln(f"  internal:    journeys {len(internal.get('journeys', []))}")
+    assert demo["journeys"] == [] and demo["journeys_hidden"] is True
+    assert len(internal["journeys"]) == 1

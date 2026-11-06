@@ -1,19 +1,32 @@
-// Web: aito.ai visits (docs/35), laid out like the e-commerce Analytics page:
-// KPIs and filters on the left, the trend and Aito's insights on the right,
-// the sessions at the bottom. Totals are counts; the drivers are Aito's
-// _relate and the next pages its _predict, each shown with its evidence.
+// Web: aito.ai visits (docs/35, docs/36), laid out like the e-commerce
+// Analytics page: KPIs and filters on the left, the trend and Aito's insights
+// on the right, the sessions at the bottom. Totals are counts; the drivers,
+// other KPIs, other events and acquisition are Aito's _relate and the next
+// pages its _predict, each shown with its evidence. Journeys are individual
+// browsing histories: internal only, never on a public demo.
 import React, { useState, useEffect, useRef } from "react";
 import { todayIso } from "./clock.js";
 import { api } from "./api.js";
+import { publicDemo } from "./session.js";
 import { Loading, ErrorBox } from "./primitives.jsx";
 
-const KPIS = [
+const pct = (v) => `${Math.round(v * 100)}%`;
+const rate = (n, d) => (d ? n / d : 0);
+
+// the visit-level KPIs (docs/35)
+const VISIT_KPIS = [
   { key: "sessions", label: "Sessions", value: (t) => t.sessions, day: (d) => d.sessions,
     fmt: (v) => String(v) },
-  { key: "onward", label: "Onward click", value: (t) => (t.sessions ? t.onward_clicks / t.sessions : 0),
-    day: (d) => (d.sessions ? d.onward_clicks / d.sessions : 0), fmt: (v) => `${Math.round(v * 100)}%` },
-  { key: "cta", label: "Sign-up CTA", value: (t) => (t.sessions ? t.signup_ctas / t.sessions : 0),
-    day: (d) => (d.sessions ? d.signup_ctas / d.sessions : 0), fmt: (v) => `${Math.round(v * 100)}%` },
+  { key: "onward", label: "Onward click", value: (t) => rate(t.onward_clicks, t.sessions),
+    day: (d) => rate(d.onward_clicks, d.sessions), fmt: pct },
+  { key: "cta", label: "Sign-up CTA", value: (t) => rate(t.signup_ctas, t.sessions),
+    day: (d) => rate(d.signup_ctas, d.sessions), fmt: pct },
+];
+// the preselected KPIs (docs/36), in funnel order
+const KPI_LABELS = [
+  ["pricing_page", "Pricing page"], ["contact_page", "Contact page"], ["login_page", "Login page"],
+  ["signup", "Sign-up"], ["sandbox", "Sandbox"], ["data_loaded", "Data loaded"],
+  ["first_query", "First query"], ["api_keys", "API keys"],
 ];
 const PERIODS = [["7", "7 days"], ["30", "30 days"], ["90", "90 days"]];
 const PAGE = 25;
@@ -52,36 +65,121 @@ function Trend({ days, kpi }) {
   );
 }
 
+// one Aito relation per row: the lift with its counts, or "thin" without a claim
+function Relations({ rels, empty, testid, unit = "sessions" }) {
+  if (!rels || !rels.length) return <div className="muted">{empty}</div>;
+  return (
+    <div className="web-drivers" data-testid={testid}>
+      {rels.map((r, i) => (
+        <div key={i} className="web-driver">
+          <span className="web-driver-k">{`${r.field} = ${r.value}`}</span>
+          {r.thin
+            ? <span className="web-thin">thin · {r.rows_with} {unit}, no claim</span>
+            : <span className="web-lift">
+                {r.lift.toFixed(1)}× · {pct(r.rate_with)} vs {pct(r.rate_without)} · {r.rows_with} {unit}
+              </span>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function KpiInsights({ answer, hideJourneys }) {
+  const tabs = [["drivers", "Drivers"], ["other_kpis", "Other KPIs"], ["other_events", "Other events"],
+                ["acquisition", "Acquisition"], ...(hideJourneys ? [] : [["journeys", "Journeys"]])];
+  const [tab, setTab] = useState("drivers");
+  const rels = (part) => (answer[part] && answer[part].relations) || [];
+  return (
+    <>
+      <div className="muted web-foot">
+        {answer.with_target} of {answer.sessions} sessions reached it.
+        {answer.dropped_as_linked && answer.dropped_as_linked.length > 0 && (
+          <> Left out as steps of the same console funnel:{" "}
+            {answer.dropped_as_linked.map((f) => f.replace(/^kpi_/, "")).join(", ")}.</>
+        )}
+      </div>
+      <div className="web-tabs" role="tablist">
+        {tabs.map(([k, label]) => (
+          <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? "on" : ""}
+                  onClick={() => setTab(k)}>{label}</button>
+        ))}
+      </div>
+      {tab === "drivers" && <Relations rels={rels("drivers")} empty="Nothing to relate yet." />}
+      {tab === "other_kpis" && <Relations rels={rels("other_kpis")} empty="No other KPI goes with it yet." />}
+      {tab === "other_events" && <Relations rels={rels("other_events")} empty="No other event goes with it yet." />}
+      {tab === "acquisition" && (answer.acquisition
+        ? <Relations rels={rels("acquisition")} unit="visitors" empty="No first touch goes with it yet." />
+        : <div className="muted">No visitor has reached it yet.</div>)}
+      {tab === "journeys" && !hideJourneys && (
+        <div className="web-journeys">
+          {(answer.journeys || []).map((j) => (
+            <div key={j.label} className="web-journey">
+              <b>{j.label}</b>
+              {j.sessions.map((s, i) => (
+                <div key={i} className="muted">{s.day} {String(s.hour).padStart(2, "0")}h · {s.landing_path}
+                  {" · "}{s.source} · <span className="web-driver-k">{s.events}</span></div>
+              ))}
+            </div>
+          ))}
+          {!(answer.journeys || []).length && <div className="muted">No journey reached it yet.</div>}
+        </div>
+      )}
+      <div className="muted web-foot">
+        Thin = fewer than {answer.thin_below} carry the value: listed, but no lift is claimed.
+      </div>
+    </>
+  );
+}
+
 export function WebView() {
   const [period, setPeriod] = useState("30");
   const [f, setF] = useState({ source: "", path: "", campaign: "", device: "" });
   const [kpiKey, setKpiKey] = useState("sessions");
   const [offset, setOffset] = useState(0);
   const [data, setData] = useState(null);
+  const [answer, setAnswer] = useState(null);
   const [err, setErr] = useState(null);
   const latest = useRef(0);
+  const latestKpi = useRef(0);
+  const since = daysBack(Number(period)), until = todayIso();
+  const isKpi = kpiKey.startsWith("kpi:");
 
   useEffect(() => {
     const call = ++latest.current;                    // a slow older answer never wins
-    Promise.resolve(api.web({ since: daysBack(Number(period)), until: todayIso(), ...f,
-                              limit: PAGE, offset }))
+    Promise.resolve(api.web({ since, until, ...f, limit: PAGE, offset }))
       .then((d) => { if (call === latest.current && d) { setData(d); setErr(null); } })
       .catch((e) => { if (call === latest.current) setErr(String(e.message || e)); });
   }, [period, f.source, f.path, f.campaign, f.device, offset]);
 
+  useEffect(() => {
+    if (!isKpi) { setAnswer(null); return; }
+    const call = ++latestKpi.current;
+    setAnswer(null);
+    Promise.resolve(api.webKpi({ kpi: kpiKey.slice(4), since, until, ...f }))
+      .then((d) => { if (call === latestKpi.current && d) setAnswer(d); })
+      .catch((e) => { if (call === latestKpi.current) setErr(String(e.message || e)); });
+  }, [kpiKey, period, f.source, f.path, f.campaign, f.device]);
+
   const pick = (k) => (ev) => { setOffset(0); setF((s) => ({ ...s, [k]: ev.target.value })); };
-  const kpi = KPIS.find((k) => k.key === kpiKey);
   if (err) return <ErrorBox msg={err} />;
   if (!data) return <Loading label="Reading the visits…" />;
   const t = data.totals;
-  const rels = (data.drivers && data.drivers.relations) || [];
+  const kpiList = [
+    ...VISIT_KPIS,
+    ...KPI_LABELS.map(([k, label]) => ({
+      key: `kpi:${k}`, label, value: () => (data.kpis || {})[k] || 0,
+      day: (d) => d[`kpi_${k}`] || 0, fmt: (v) => String(v),
+    })),
+  ];
+  const kpi = kpiList.find((k) => k.key === kpiKey);
+  const hideJourneys = publicDemo() || (answer && answer.journeys_hidden);
 
   return (
     <div className="web">
       <div className="web-grid">
         <aside className="web-left">
           <div className="web-kpis" data-testid="web-kpis">
-            {KPIS.map((k) => (
+            {kpiList.map((k) => (
               <button key={k.key} className={"web-kpi" + (k.key === kpiKey ? " on" : "")}
                       onClick={() => setKpiKey(k.key)}>
                 <span className="web-kpi-l">{k.label}</span>
@@ -110,37 +208,36 @@ export function WebView() {
         <section className="web-right">
           <h3>{kpi.label} per day</h3>
           <Trend days={data.days} kpi={kpi} />
-          <h3>What goes with an onward click <span className="muted">· Aito _relate</span></h3>
-          <div className="web-drivers" data-testid="web-drivers">
-            {rels.length ? rels.map((r, i) => (
-              <div key={i} className="web-driver">
-                <span className="web-driver-k">{`${r.field} = ${r.value}`}</span>
-                {r.thin
-                  ? <span className="web-thin">thin · {r.rows_with} sessions, no claim</span>
-                  : <span className="web-lift">
-                      {r.lift.toFixed(1)}× · {Math.round(r.rate_with * 100)}% vs{" "}
-                      {Math.round(r.rate_without * 100)}% · {r.rows_with} sessions
-                    </span>}
-              </div>
-            )) : <div className="muted">Not enough sessions with an onward click to relate.</div>}
-          </div>
-          {data.thin_below != null && (
-            <div className="muted web-foot">
-              Thin = fewer than {data.thin_below} sessions carry the value: listed, but no lift is claimed.
-            </div>
-          )}
-          {data.next_paths && (
+          {isKpi ? (
             <>
-              <h3>Next page from {data.filters.landing_path}{" "}
-                <span className="muted">· Aito _predict</span></h3>
-              <div className="web-next" data-testid="web-next">
-                {data.next_paths.hits.map((h) => (
-                  <div key={String(h.value)} className="web-driver">
-                    <span className="web-driver-k">{h.value == null ? "(left the site)" : h.value}</span>
-                    <span className="web-lift">{Math.round(h.p * 100)}%</span>
+              <h3>{kpi.label} <span className="muted">· Aito _relate</span></h3>
+              {answer ? <KpiInsights key={kpiKey} answer={answer} hideJourneys={hideJourneys} />
+                      : <Loading label="Relating…" />}
+            </>
+          ) : (
+            <>
+              <h3>What goes with an onward click <span className="muted">· Aito _relate</span></h3>
+              <Relations rels={(data.drivers && data.drivers.relations) || []} testid="web-drivers"
+                         empty="Not enough sessions with an onward click to relate." />
+              {data.thin_below != null && (
+                <div className="muted web-foot">
+                  Thin = fewer than {data.thin_below} sessions carry the value: listed, but no lift is claimed.
+                </div>
+              )}
+              {data.next_paths && (
+                <>
+                  <h3>Next page from {data.filters.landing_path}{" "}
+                    <span className="muted">· Aito _predict</span></h3>
+                  <div className="web-next" data-testid="web-next">
+                    {data.next_paths.hits.map((h) => (
+                      <div key={String(h.value)} className="web-driver">
+                        <span className="web-driver-k">{h.value == null ? "(left the site)" : h.value}</span>
+                        <span className="web-lift">{Math.round(h.p * 100)}%</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </>
+              )}
             </>
           )}
         </section>

@@ -1,12 +1,12 @@
 # Everything on the day
 
   totals: {'sessions': 4, 'onward_clicks': 3, 'signup_ctas': 2, 'bots': 1}
-  days: [{'day': '2026-10-05', 'sessions': 4, 'onward_clicks': 3, 'signup_ctas': 2}]
+  days: [{'day': '2026-10-05', 'sessions': 4, 'onward_clicks': 3, 'signup_ctas': 2, 'kpi_pricing_page': 1, 'kpi_contact_page': 0, 'kpi_login_page': 0, 'kpi_signup': 0, 'kpi_sandbox': 1, 'kpi_data_loaded': 0, 'kpi_first_query': 0, 'kpi_api_keys': 0}]
   facets: {'source': ['direct', 'organic', 'social'], 'device_class': ['desktop', 'mobile', 'unknown'], 'utm_campaign': ['ecom-screen'], 'landing_path': ['/', '/blog/every-screen-a-decision/', '/docs/']}
   drivers request: {"from": "web_sessions", "limit": 300, "relate": {"$on": [{"onward_click": true}, {"$and": [{"likely_bot": false}, {"$and": [{"day": {"$gte": "2026-10-05"}}, {"day": {"$lte": "2026-10-05"}}]}]}]}}
   sessions: 5 rows, page of 5
   thin below: 5 sessions
-  first row fields: ['country', 'day', 'device_class', 'engaged_seconds', 'hour', 'landing_path', 'likely_bot', 'next_path', 'onward_click', 'referrer_domain', 'signup_cta', 'source', 'views']
+  first row fields: ['country', 'day', 'device_class', 'engaged_seconds', 'hour', 'kpi_api_keys', 'kpi_contact_page', 'kpi_data_loaded', 'kpi_first_query', 'kpi_login_page', 'kpi_pricing_page', 'kpi_sandbox', 'kpi_signup', 'landing_path', 'likely_bot', 'next_path', 'onward_click', 'referrer_domain', 'signup_cta', 'source', 'views']
 
 # One source, one landing page
 
