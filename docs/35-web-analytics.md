@@ -35,7 +35,8 @@ carries a planted signal the funnel books depend on. Feeding the funnel from
 
 | field | type | from |
 |---|---|---|
-| session_key | String | sha256 of Amplitude session_id + device_id, first 16 hex characters. Stable, so a re-pull replaces the same row. One key per session: the same visitor's next session gets an unrelated key, so rows are not linkable across sessions. Still pseudonymous, not anonymous: someone holding the raw Amplitude data could recompute it. |
+| session_key | String | HMAC-SHA256 of Amplitude session_id + device_id with the secret `COMPANY_AI_WEB_SALT`, first 16 hex characters. Stable for a given salt, so a re-pull replaces the same row. Pseudonymous, not anonymous; without the salt it can't be recomputed from the raw Amplitude data (docs/36). A missing salt raises. |
+| visitor_key | String | HMAC-SHA256 of device_id with the same salt: one browser, the same across that browser's sessions. Journeys stay per browser, never joined across an account's browsers (Antti, 6.11.2026). Never a driver in relations. |
 | day | String (YYYY-MM-DD) | UTC date of the session's first event; hour, weekday and week are of the same event |
 | hour | Int | 0-23 UTC |
 | weekday | String | derived from day |

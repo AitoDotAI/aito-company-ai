@@ -28,6 +28,10 @@ from company_ai.aito import AitoClient
 from company_ai.config import SEED_DIR, Config
 
 FIXTURE = Path(__file__).resolve().parent.parent / "data" / "fixtures" / "amplitude_export_2026-10-05.jsonl"
+# the keys are salted HMACs (docs/36); the books use a salt of their own,
+# never the operator's
+BOOK_SALT = "book-only-salt-not-a-secret"
+os.environ["COMPANY_AI_WEB_SALT"] = BOOK_SALT
 DAY = "2026-10-05"
 
 
@@ -93,7 +97,8 @@ PATH_FIELDS = ("landing_path", "next_path", "pages")
 
 TOKEN = re.compile(r"[0-9a-f]{16,}|[A-Za-z0-9_]{24,}")
 # the generated ids the table is allowed to hold (session_key is the 16-hex hash)
-ID_FIELDS = {"session_key", "post_id", "candidate_post_id", "experiment_id", "pull_run"}
+ID_FIELDS = {"session_key", "visitor_key", "post_id", "candidate_post_id", "experiment_id",
+             "pull_run"}
 
 
 def _leaks(rows) -> list[str]:
@@ -130,7 +135,7 @@ def test_a_day_lands_as_session_rows(t: bt.TestCaseRun) -> None:
     names = {li_post: "<li-post>", hn_post: "<hn-post>"}
     for country in sorted(rows):
         t.tln(_masked({k: v for k, v in rows[country].items()
-                       if k not in ("session_key", "pull_run")}, names))
+                       if k not in ("session_key", "visitor_key", "pull_run")}, names))
 
     li = rows["Finland"]
     t.h1("The LinkedIn session")
@@ -727,3 +732,53 @@ def test_the_web_view_bundles_one_filter(t: bt.TestCaseRun) -> None:
     assert f["facets"]["source"] == v["facets"]["source"]
     assert f["next_paths"] is not None
     _clean(client)
+
+
+
+def test_keys_are_salted_hmacs(t: bt.TestCaseRun) -> None:
+    """session_key and visitor_key are HMAC-SHA256 with COMPANY_AI_WEB_SALT
+    (docs/36): someone holding the Amplitude export cannot recompute them
+    without the salt. The visitor key is per browser (device_id), the same
+    across that browser's sessions. A missing salt raises rather than falling
+    back to a bare hash."""
+    import hashlib
+    bare = hashlib.sha256(b"1759654800000:dev-2a3b4c5d").hexdigest()[:16]
+    key = webanalytics._session_key(1759654800000, "dev-2a3b4c5d")
+    t.h1("session_key")
+    t.tln(f"  16 hex: {bool(re.fullmatch(r'[0-9a-f]{16}', key))}, equals the bare sha256: {key == bare}")
+    assert re.fullmatch(r"[0-9a-f]{16}", key) and key != bare
+    os.environ["COMPANY_AI_WEB_SALT"] = "another-salt"
+    try:
+        other = webanalytics._session_key(1759654800000, "dev-2a3b4c5d")
+    finally:
+        os.environ["COMPANY_AI_WEB_SALT"] = BOOK_SALT
+    t.tln(f"  changes with the salt: {other != key}")
+    assert other != key
+
+    t.h1("visitor_key: one per browser")
+    v1 = webanalytics._visitor_key("dev-2a3b4c5d")
+    v2 = webanalytics._visitor_key("dev-8c9d0e1f")
+    t.tln(f"  same browser twice: {v1 == webanalytics._visitor_key('dev-2a3b4c5d')}, "
+          f"two browsers differ: {v1 != v2}, "
+          f"equals the bare sha256: {v1 == hashlib.sha256(b'dev-2a3b4c5d').hexdigest()[:16]}")
+    assert v1 == webanalytics._visitor_key("dev-2a3b4c5d") and v1 != v2
+
+    t.h1("Stored rows carry it")
+    client, _, _ = _seeded()
+    webanalytics.store_day(client, DAY, _events())
+    rows = client.query({"from": "web_sessions", "where": {"day": DAY},
+                         "select": ["session_key", "visitor_key"], "limit": 100})["hits"]
+    t.tln(f"  {len(rows)} rows, every visitor_key 16 hex: "
+          f"{all(re.fullmatch(r'[0-9a-f]{16}', r.get('visitor_key') or '') for r in rows)}")
+    assert rows and all(re.fullmatch(r"[0-9a-f]{16}", r.get("visitor_key") or "") for r in rows)
+    _clean(client)
+
+    t.h1("No salt, no key")
+    del os.environ["COMPANY_AI_WEB_SALT"]
+    try:
+        webanalytics._session_key(1, "dev")
+        raise RuntimeError("a key was made without a salt")
+    except AssertionError as e:
+        t.tln(f"  raised: {e}")
+    finally:
+        os.environ["COMPANY_AI_WEB_SALT"] = BOOK_SALT
