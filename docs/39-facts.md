@@ -51,7 +51,8 @@ These encode the CRO's requirements. Contact info can be bounced or invalid.
 A commitment is sent or drafted. An open question says whose move it is.
 A role says its slot, so two decision owners show as a conflict.
 
-**Partner-hold rule.** A `hold` fact records only the hold status, with
+**Partner-hold rule (pending the CRO's written confirmation on PR #75; not
+built until then).** A `hold` fact records only the hold status, with
 `source_kind = antti`. Any other source on a hold is refused. Nothing learned
 in the partner's meetings behind a hold is entered as a fact; that part is
 convention. The source
@@ -91,9 +92,11 @@ safe writes on the remote surface, as `add_document` is.
 - **open questions**, with whose move.
 - **contact info**: current ones only. Bounced and invalid ones are listed
   apart as not current, never as an address to use.
-- **conflicts**: two or more active `role` facts in the same slot (other
-  than `other`), or two active holds, with both sources shown. Picking one
-  is the reader's job, never the code's.
+- **conflicts**: two or more active `decision_owner` roles, or two or more
+  active holds, with both sources shown. Picking one is the reader's job,
+  never the code's. Two champions or two sponsors are normal on a real
+  account, so they are listed under roles and **not** flagged: a conflict
+  list that fires on them would teach people to ignore it (CPO review).
 
 "Last touch" is already in slice 1 (stakeholders and touches). Nothing is
 ranked or inferred: grouping by `kind`/`slot`, and sorting by date.
