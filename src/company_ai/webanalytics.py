@@ -74,6 +74,14 @@ KNOWN_EVENT_TYPES = {
 }
 _KPI_EVENT_NAMES = set().union(*KPI_EVENTS.values())
 
+# utm_source values that name a posting platform (docs/35 attribution): an
+# exact link needs the visit's platform to be the post's. Anything else
+# matches only a tag used on a single platform.
+UTM_SOURCE_PLATFORMS = {"linkedin": "linkedin", "linkedin.com": "linkedin", "lnkd.in": "linkedin",
+                        "reddit": "reddit", "reddit.com": "reddit", "old.reddit.com": "reddit",
+                        "hackernews": "hackernews", "hn": "hackernews",
+                        "news.ycombinator.com": "hackernews"}
+
 # the context a visitor arrives with: what onward clicks may be related to
 PRE_VISIT = ("source", "referrer_domain", "utm_source", "utm_medium", "utm_campaign",
              "landing_path", "device_class", "country", "weekday", "hour")
@@ -383,11 +391,13 @@ def sessions_from_events(events: list[dict], day: str) -> list[dict]:
 
 
 def _link(client: AitoClient, rows: list[dict], day: str) -> dict:
-    """Fill the links. Exact: utm_campaign is one post's slug (post_id) or an
-    experiment_id. Candidate: exactly one post on the referrer's platform in
-    the LOOKBACK_DAYS before (candidate_post_id). A visit before the post went
-    out is never credited; a slug two posts share links nothing. Returns what
-    was refused, by kind."""
+    """Fill the links. Exact: (utm_campaign, the platform utm_source names) is
+    one post (post_id); a tag on a single platform also matches a visit with
+    no recognised source; or utm_campaign is an experiment_id. Candidate:
+    exactly one post on the referrer's platform in the LOOKBACK_DAYS before
+    (candidate_post_id). A visit before the post went out is never credited;
+    a (tag, platform) two posts share links nothing. Returns what was
+    refused, by kind."""
     posts = client.query({"from": "posts", "limit": 100000,
                           "select": ["post_id", "platform", "status", "posted_at", "utm_campaign"]})["hits"]
     by_campaign: dict[str, list[dict]] = {}
@@ -396,20 +406,31 @@ def _link(client: AitoClient, rows: list[dict], day: str) -> dict:
             by_campaign.setdefault(p["utm_campaign"], []).append(p)
     experiments = {e["experiment_id"] for e in client.query(
         {"from": "experiments", "limit": 100000, "select": ["experiment_id"]})["hits"]}
-    duplicates = {slug: sorted(p["post_id"] for p in ps)
-                  for slug, ps in by_campaign.items() if len(ps) > 1}
+    by_key: dict[tuple, list[str]] = {}
+    for slug, ps in by_campaign.items():
+        for p in ps:
+            by_key.setdefault((slug, p.get("platform")), []).append(p["post_id"])
+    duplicates = {f"{slug}|{plat}": sorted(ids) for (slug, plat), ids in by_key.items()
+                  if len(ids) > 1}
     start = (date.fromisoformat(day) - timedelta(days=LOOKBACK_DAYS)).isoformat()
     before_post = 0
     for row in rows:
         if row["likely_bot"]:
             continue
         campaign = row["utm_campaign"]
-        if campaign and campaign in by_campaign and campaign not in duplicates:
-            post = by_campaign[campaign][0]
-            if (post.get("posted_at") or "9999")[:10] > day:
-                before_post += 1
-            else:
-                row["post_id"], row["link_basis"] = post["post_id"], "utm_campaign"
+        if campaign and campaign in by_campaign:
+            tagged = by_campaign[campaign]
+            platform = UTM_SOURCE_PLATFORMS.get(row.get("utm_source") or "")
+            if platform:
+                matches = [p for p in tagged if p.get("platform") == platform]
+            else:     # no recognised source: only a tag on a single platform is unambiguous
+                matches = tagged if len({p.get("platform") for p in tagged}) == 1 else []
+            if len(matches) == 1:
+                post = matches[0]
+                if (post.get("posted_at") or "9999")[:10] > day:
+                    before_post += 1
+                else:
+                    row["post_id"], row["link_basis"] = post["post_id"], "utm_campaign"
         if campaign and campaign in experiments:
             row["experiment_id"], row["link_basis"] = campaign, "utm_campaign"
         if row["link_basis"] or (campaign and campaign in by_campaign):
