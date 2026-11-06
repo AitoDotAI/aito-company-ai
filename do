@@ -280,7 +280,16 @@ cmd_logs() { resolve "${1:-}"; tail -f "$LOGFILE"; }
 # A run that executed no test is an error, not a green: booktest itself exits
 # 0 on "0/0" (td-20260926220026663014). Interactive review runs (-i, -w) keep
 # the terminal to themselves and skip the check.
+# One run at a time per checkout: runs share books/.out, and two at once
+# corrupt it and can report a clean count after running nothing
+# (td-20260926220026663014). The lock is held for the whole run, the
+# interactive exec included, and released when the process ends.
+TEST_LOCK="books/.out/.run-lock"
+
 cmd_test() {
+  mkdir -p books/.out
+  exec 9>"$TEST_LOCK"
+  flock -n 9 || die "another ./do test is running in this checkout (lock $TEST_LOCK). Runs share books/.out and corrupt each other; wait for it to finish."
   local arg
   for arg in "$@"; do
     case "$arg" in -i|-w|--interactive|--review|-[a-z]*[iw]*) exec uv run booktest "$@" ;; esac
