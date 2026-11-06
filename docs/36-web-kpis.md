@@ -192,6 +192,17 @@ Phase 2 adds `acquisition` and `journeys`:
 - `journeys`: the latest 5 sessions with the target, each with its browser's
   earlier sessions (up to 10), oldest first, labelled "visitor N". The
   visitor_key never appears in a journey.
+- **Journeys are internal only.** They are individual browsing histories,
+  pseudonymous or not. `/api/web/kpi` replaces them with `[]` and sets
+  `journeys_hidden` when the app serves a public demo (docs/33), and the Web
+  view doesn't offer the tab there (book `test_journeys_never_reach_a_public_demo`).
+
+Phase 3 (built): the Web view's KPI widget lists the 8 KPIs with their
+session counts for the filter (`web_view` bundle `kpis`, plus per-day
+`kpi_*` counts for the trend). Picking one shows its trend and, from
+`/api/web/kpi` (the same `web_kpis` as MCP), tabs for drivers, other KPIs,
+other events, acquisition and journeys, with the console-funnel steps left out
+named above them, and each relation's counts or "thin".
 
 ## Privacy
 

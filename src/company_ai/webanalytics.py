@@ -701,15 +701,18 @@ def web_view(client: AitoClient, since: str, until: str, source: str | None = No
     (rule 2)."""
     filt = {"source": source, "utm_campaign": campaign, "landing_path": path,
             "device_class": device}
-    rows = _rows(client, since, until, WEB_VIEW_FIELDS, filt)
+    kpi_fields = [f"kpi_{k}" for k in KPI_EVENTS]
+    rows = _rows(client, since, until, WEB_VIEW_FIELDS + kpi_fields, filt)
     human = [r for r in rows if not r["likely_bot"]]
     days: dict = {}
     for r in human:
         d = days.setdefault(r["day"], {"day": r["day"], "sessions": 0, "onward_clicks": 0,
-                                       "signup_ctas": 0})
+                                       "signup_ctas": 0, **{f: 0 for f in kpi_fields}})
         d["sessions"] += 1
         d["onward_clicks"] += r["onward_click"]
         d["signup_ctas"] += r["signup_cta"]
+        for f in kpi_fields:
+            d[f] += bool(r.get(f))
     n = len(human)
     totals = {"sessions": n, "onward_clicks": sum(r["onward_click"] for r in human),
               "signup_ctas": sum(r["signup_cta"] for r in human), "bots": len(rows) - n}
@@ -737,6 +740,8 @@ def web_view(client: AitoClient, since: str, until: str, source: str | None = No
             "filters": {k: v for k, v in filt.items() if v is not None},
             "totals": totals, "days": [days[d] for d in sorted(days)], "facets": facets,
             "thin_below": WEB_THIN,
+            # human sessions that reached each KPI in the filter (docs/36)
+            "kpis": {k: sum(bool(r.get(f"kpi_{k}")) for r in human) for k in KPI_EVENTS},
             "drivers": drivers, "next_paths": next_paths,
             "session_total": len(rows), "sessions": ordered[offset:offset + limit]}
 

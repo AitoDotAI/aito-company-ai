@@ -958,3 +958,8 @@ select:focus { outline:none; border-color:var(--purple); }
   .web-left { position: static; }
 }
 .web-foot { font-size: 11px; margin: -4px 0 10px; }
+.web-tabs { display: flex; gap: 4px; margin: 6px 0 8px; flex-wrap: wrap; }
+.web-tabs button { font: inherit; font-size: 12px; padding: 4px 10px; border: 1px solid var(--line-bright); border-radius: 6px; background: var(--card); cursor: pointer; }
+.web-tabs button.on { border-color: var(--purple); color: var(--purple); }
+.web-journeys { display: flex; flex-direction: column; gap: 8px; font-size: 12px; }
+.web-journey { padding: 6px 8px; background: var(--tint); border-radius: 6px; }

@@ -484,6 +484,24 @@ def create_app(config: Config | None = None) -> FastAPI:
             client(), start, end, source=source or None, campaign=campaign or None,
             path=path or None, device=device or None, limit=limit, offset=offset))
 
+    @app.get("/api/web/kpi")
+    def web_kpi_route(kpi: str = "", event: str = "", since: str = "", until: str = "",
+                      source: str = "", campaign: str = "", path: str = "", device: str = ""):
+        # one KPI or event in the Web view: the same webanalytics.web_kpis as
+        # MCP web_kpis. Journeys are individual browsing histories, so a
+        # public demo never gets them (docs/36)
+        from . import webanalytics
+
+        def go():
+            out = webanalytics.web_kpis(
+                client(), kpi=kpi or None, event=event or None, since=since or None,
+                until=until or None, source=source or None, campaign=campaign or None,
+                path=path or None, device=device or None)
+            if config.public_demo:
+                out = {**out, "journeys": [], "journeys_hidden": True}
+            return out
+        return _guarded(go)
+
     @app.get("/api/companies")
     def companies_route():
         from . import companies

@@ -3,8 +3,9 @@ import { render, screen, fireEvent, waitFor, within } from "@testing-library/rea
 import { WebView } from "./web.jsx";
 import { api } from "./api.js";
 
-vi.mock("./api.js", async (orig) => ({ ...(await orig()), api: { web: vi.fn() } }));
-afterEach(() => vi.clearAllMocks());
+vi.mock("./api.js", async (orig) => ({ ...(await orig()), api: { web: vi.fn(), webKpi: vi.fn() } }));
+import { setPublicDemo } from "./session.js";
+afterEach(() => { vi.clearAllMocks(); setPublicDemo(false); });
 
 const BUNDLE = {
   since: "2026-10-06", until: "2026-11-04", filters: {},
@@ -18,7 +19,9 @@ const BUNDLE = {
     { field: "country", value: "Finland", lift: 3.1, rate_with: 0.5, rate_without: 0.14, rows_with: 4, thin: true },
   ], request: { from: "web_sessions" } },
   next_paths: null,
-  thin_below: 10,
+  thin_below: 5,
+  kpis: { pricing_page: 9, contact_page: 2, login_page: 14, signup: 3, sandbox: 2,
+          data_loaded: 0, first_query: 1, api_keys: 0 },
   session_total: 124,
   sessions: [{ day: "2026-11-04", hour: 9, landing_path: "/pricing/", next_path: "/contact-us/",
                source: "organic", referrer_domain: "google.com", utm_campaign: null, post_id: null,
@@ -38,7 +41,7 @@ describe("web view", () => {
     expect(drivers.getByText(/2\.4×/)).toBeInTheDocument();
     expect(drivers.getByText(/11 sessions/)).toBeInTheDocument();
     expect(drivers.getByText(/thin/)).toBeInTheDocument();              // 4 sessions: no bare claim
-    expect(screen.getByText(/fewer than 10 sessions/)).toBeInTheDocument();
+    expect(screen.getByText(/fewer than 5 sessions/)).toBeInTheDocument();
     const table = within(screen.getByTestId("web-sessions"));
     expect(table.getByText("/pricing/")).toBeInTheDocument();
     expect(table.getByText("google.com")).toBeInTheDocument();
@@ -57,5 +60,46 @@ describe("web view", () => {
     const next = within(await screen.findByTestId("web-next"));
     expect(next.getByText("/contact-us/")).toBeInTheDocument();
     expect(next.getByText("42%")).toBeInTheDocument();
+  });
+});
+
+
+const KPI_ANSWER = {
+  target: { kpi: "sandbox" }, sessions: 120, with_target: 2, thin_below: 5,
+  dropped_as_linked: ["kpi_login_page", "kpi_signup"], dropped_own_events: ["instance_create"],
+  drivers: { relations: [{ field: "source", value: "direct", lift: 1.8, rate_with: 0.03, rate_without: 0.01, rows_with: 2, thin: true }] },
+  other_kpis: { relations: [{ field: "kpi_pricing_page", value: true, lift: 4.0, rate_with: 0.2, rate_without: 0.05, rows_with: 9, thin: false }] },
+  other_events: { relations: [] },
+  acquisition: { relations: [{ field: "first_landing_path", value: "/blog/", lift: 2.0, rate_with: 0.1, rate_without: 0.05, rows_with: 3, thin: true }] },
+  journeys: [{ label: "visitor 1", sessions: [{ day: "2026-11-04", hour: 9, landing_path: "/blog/", source: "direct", events: "page:/blog/" }] }],
+};
+
+describe("web view KPIs", () => {
+  it("lists the KPIs and opens one with its insights", async () => {
+    api.web.mockResolvedValue(BUNDLE);
+    api.webKpi.mockResolvedValue(KPI_ANSWER);
+    render(<WebView />);
+    const kpis = within(await screen.findByTestId("web-kpis"));
+    fireEvent.click(kpis.getByRole("button", { name: /Sandbox/ }));
+    await waitFor(() => expect(api.webKpi).toHaveBeenLastCalledWith(expect.objectContaining({ kpi: "sandbox" })));
+    expect(await screen.findByText(/login_page, signup/)).toBeInTheDocument();          // dropped as linked
+    expect(screen.getByText("source = direct")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "Other KPIs" }));
+    expect(screen.getByText("kpi_pricing_page = true")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "Acquisition" }));
+    expect(screen.getByText("first_landing_path = /blog/")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "Journeys" }));
+    expect(screen.getByText("visitor 1")).toBeInTheDocument();
+  });
+
+  it("never offers journeys on a public demo", async () => {
+    setPublicDemo(true);
+    api.web.mockResolvedValue(BUNDLE);
+    api.webKpi.mockResolvedValue({ ...KPI_ANSWER, journeys: [], journeys_hidden: true });
+    render(<WebView />);
+    const kpis = within(await screen.findByTestId("web-kpis"));
+    fireEvent.click(kpis.getByRole("button", { name: /Sandbox/ }));
+    await screen.findByRole("tab", { name: "Drivers" });
+    expect(screen.queryByRole("tab", { name: "Journeys" })).toBeNull();
   });
 });

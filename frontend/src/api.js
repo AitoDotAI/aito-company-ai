@@ -47,6 +47,7 @@ export const api = {
   graph: () => get("/graph"),
   graphNetwork: (params) => get("/graph/network", params),
   web: (params) => get("/web", params),
+  webKpi: (params) => get("/web/kpi", params),
   companies: () => get("/companies"),
   companyDetail: (id) => get(`/companies/${id}`),
   createCompany: (name) => post("/companies", { name }),
