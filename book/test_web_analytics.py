@@ -782,3 +782,30 @@ def test_keys_are_salted_hmacs(t: bt.TestCaseRun) -> None:
         t.tln(f"  raised: {e}")
     finally:
         os.environ["COMPANY_AI_WEB_SALT"] = BOOK_SALT
+
+
+def test_sessions_carry_their_events_and_kpis(t: bt.TestCaseRun) -> None:
+    """docs/36 phase 1: each session row carries `events` (every event kind,
+    in order, as a token), its mirror `co_events`, and one kpi_* flag per
+    preselected KPI from the real event names. Tokens come from event NAMES
+    and redacted pages, never from property values; Amplitude's own
+    session_start/session_end are not events of the visit."""
+    client, _, _ = _seeded()
+    webanalytics.store_day(client, DAY, _events())
+    rows = {r["country"]: r for r in client.query(
+        {"from": "web_sessions", "where": {"day": DAY}, "limit": 100})["hits"]}
+    t.h1("Events and KPIs per session")
+    for country in sorted(rows):
+        r = rows[country]
+        kpis = sorted(k for k in r if k.startswith("kpi_") and r[k])
+        t.tln(f"  {country:13} events: {r.get('events')}")
+        t.tln(f"  {'':13} kpis: {kpis}")
+    finland, germany = rows["Finland"], rows["Germany"]
+    assert finland["kpi_pricing_page"] is True and "page:/pricing/" in finland["events"].split()
+    assert germany["kpi_sandbox"] is True
+    assert {"instance_create", "demo_signup_cta_clicked"} <= set(germany["events"].split())
+    assert all(r.get("co_events") == r.get("events") for r in rows.values())
+    assert all(re.fullmatch(r"[a-z0-9_]{1,64}|page:\S{1,200}", tok)
+               for r in rows.values() for tok in (r.get("events") or "").split())
+    assert all(r.get(f"kpi_{k}") in (True, False) for r in rows.values() for k in webanalytics.KPI_EVENTS)
+    _clean(client)

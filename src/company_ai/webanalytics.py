@@ -47,6 +47,23 @@ CTA_SUFFIX = "_cta_clicked"
 SIGNUP_PATHS = ("/signup", "/sign-up", "/register")
 NO_SESSION = (-1, None)   # Amplitude's "no session": each such event stands alone
 
+# The preselected KPIs (docs/36, chosen by Antti 5.11.2026), from the real
+# Amplitude event names seen 6.10-5.11.2026. A session has the KPI when any of
+# its events has one of these names. A new name is not guessed into a KPI:
+# the pull reports names it has never seen (new_event_types).
+KPI_EVENTS = {
+    "pricing_page": {"Page View: /pricing/", "Page View: Demo - Pricing"},
+    "contact_page": {"Page View: /contact-us/"},
+    "login_page": {"Page View: Sign In"},
+    "signup": {"Page View: Sign Up", "Page View: /sign-up/", "signup_clicked", "signup_completed"},
+    "sandbox": {"sandbox_created", "Instance create", "Instance ready"},
+    "data_loaded": {"File upload", "data_uploaded"},
+    "first_query": {"Workbook query executed", "playground_query_executed"},
+    "api_keys": {"Get API keys"},
+}
+# Amplitude's own session bookkeeping: not something the visitor did
+LIFECYCLE_EVENTS = {"session_start", "session_end"}
+
 # the context a visitor arrives with: what onward clicks may be related to
 PRE_VISIT = ("source", "referrer_domain", "utm_source", "utm_medium", "utm_campaign",
              "landing_path", "device_class", "country", "weekday", "hour")
@@ -204,6 +221,17 @@ def _page(event: dict) -> str | None:
     return path if host == SITE_HOST else f"{host}{path}"
 
 
+def _event_token(event: dict) -> str | None:
+    """One event as a token for the `events` field: a page view is
+    `page:<page>` (redacted like `pages`), anything else its event NAME
+    snake-cased to [a-z0-9_]. Never a property value."""
+    if _page_kind(event) is not None:
+        page = _page(event)
+        return f"page:{page}" if page else None
+    token = re.sub(r"[^a-z0-9]+", "_", event["event_type"].lower()).strip("_")[:64]
+    return token or None
+
+
 def _device_class(family: str | None) -> str:
     """From the export's device_family, which is the OS (Windows, Mac OS X,
     iOS); its os_name is the browser."""
@@ -295,10 +323,18 @@ def _build(events: list[dict], day: str) -> tuple[list[dict], dict]:
         if device == "unknown":
             stats["unknown_os"][str(first.get("device_family"))] += 1
         medium = utm["utm_medium"] if utm["utm_medium"] != "<invalid>" else None
+        tokens = [tok for tok in (_event_token(e) for e in group
+                                  if e["event_type"] not in LIFECYCLE_EVENTS) if tok]
+        names = {e["event_type"] for e in group}
         rows.append({
             "session_key": _session_key(*key[:2]) if key[0] not in NO_SESSION
             else _session_key(key[0], f"{key[1]}:{key[2]}"),
             "visitor_key": _visitor_key(key[1]),
+            # every event of the visit, in order, and its mirror for
+            # co-occurrence relations (docs/36), plus one flag per KPI
+            "events": " ".join(tokens) or None,
+            "co_events": " ".join(tokens) or None,
+            **{f"kpi_{kpi}": bool(names & kpi_names) for kpi, kpi_names in KPI_EVENTS.items()},
             "day": day, "hour": start.hour,
             "weekday": schema.WEEKDAYS[start.weekday()],
             "week": f"{start.isocalendar().year}-W{start.isocalendar().week:02d}",

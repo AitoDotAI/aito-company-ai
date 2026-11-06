@@ -668,6 +668,19 @@ WEB_SESSIONS = {
         # create-schema can add it to a live table; every row the pull writes
         # carries it (test_keys_are_salted_hmacs asserts that)
         "visitor_key": {"type": "String", "nullable": True},
+        # docs/36 phase 1: every event of the visit as tokens, its mirror for
+        # co-occurrence relations, and one flag per preselected KPI.
+        # Nullable so create-schema can add them to the live table.
+        "events": {"type": "Text", "analyzer": "whitespace", "nullable": True},
+        "co_events": {"type": "Text", "analyzer": "whitespace", "nullable": True},
+        "kpi_pricing_page": {"type": "Boolean", "nullable": True},
+        "kpi_contact_page": {"type": "Boolean", "nullable": True},
+        "kpi_login_page": {"type": "Boolean", "nullable": True},
+        "kpi_signup": {"type": "Boolean", "nullable": True},
+        "kpi_sandbox": {"type": "Boolean", "nullable": True},
+        "kpi_data_loaded": {"type": "Boolean", "nullable": True},
+        "kpi_first_query": {"type": "Boolean", "nullable": True},
+        "kpi_api_keys": {"type": "Boolean", "nullable": True},
         "day": {"type": "String"},                 # YYYY-MM-DD UTC of the session's first event
         "hour": {"type": "Int"},                   # 0-23 UTC
         "weekday": {"type": "String"},

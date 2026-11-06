@@ -24,7 +24,10 @@ LEAKS = {
     "posts": {"outcome", "won", *schema.POST_ENGAGEMENT},
     "sessions": {"signed_up", "started_trial", "converted_paid"},
     # what happened during the visit defines an onward click (docs/35)
-    "web_sessions": {"onward_click", "next_path", "views", "signup_cta", "engaged_seconds"},
+    "web_sessions": {"onward_click", "next_path", "views", "signup_cta", "engaged_seconds",
+                     "events", "co_events", "kpi_pricing_page", "kpi_contact_page",
+                     "kpi_login_page", "kpi_signup", "kpi_sandbox", "kpi_data_loaded",
+                     "kpi_first_query", "kpi_api_keys"},
 }
 # fields that are never a driver, whatever the outcome: bookkeeping and
 # per-row identity a relation would only restate

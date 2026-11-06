@@ -91,7 +91,7 @@ So `_relate` can take any event as the target, not only the KPIs. Probed on
 
 | Field | Type | Meaning |
 |---|---|---|
-| events | Text, whitespace | every event token in the session, in order |
+| events | Text, whitespace | every event token in the session, in order: a page view is `page:<page>` (redacted like `pages`), any other event its name snake-cased to `[a-z0-9_]`, never a property value; Amplitude's session_start/session_end are left out |
 | co_events | Text, whitespace | the same tokens, for co-occurrence relations (see above) |
 | kpi_pricing_page … kpi_api_keys | Boolean | one per KPI: the session had one of its events |
 | visitor_key | String | HMAC-SHA256(salt, device_id), see Privacy |
@@ -203,6 +203,13 @@ set on 230.
     and an operator-only MCP tool kept off the remote surface.
   - **Retention: 13 months.** The pull deletes days older than 13 months
     after each run, and reports how many went.
+  - **Backups expire on their own schedule.** Deletion and retention act on
+    the live tables. Backups hold whatever was live when they were taken, and
+    age out by rotation (docs/21): daily env snapshots after 7 days, tx
+    snapshots after 16 newer tx ones, off-box CSVs after 90 days (the
+    storage lifecycle rule). So a deleted visitor, or the unsalted
+    session_keys before the 6.11.2026 re-pull (tx-1793943346), disappear from
+    the backups within that time, not at once.
   - **Thin threshold: 5** (see Evidence).
 - Still needed from Antti: the salt, `COMPANY_AI_WEB_SALT`, in the env
   file. Phase 1 starts once it's there.

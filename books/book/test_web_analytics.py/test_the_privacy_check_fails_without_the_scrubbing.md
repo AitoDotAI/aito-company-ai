@@ -1,5 +1,9 @@
 # Sessions built with the path scrubber and the key hash stubbed out
 
+co_events: redirect_to
+co_events: ref=abc
+events: redirect_to
+events: ref=abc
 landing_path: query/fragment in '/#top'
 landing_path: query/fragment in '/docs/?ref=abc'
 landing_path: query/fragment in '/wp-login.php?redirect_to=x'
