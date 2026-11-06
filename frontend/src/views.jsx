@@ -2301,6 +2301,7 @@ function GraphNodePanel({ node, neighbours, onPick, onUnfold }) {
       {node.kind === "contact" && <div className="muted">{[node.role, node.tier && `tier ${node.tier}`].filter(Boolean).join(" · ")}</div>}
       {node.kind === "deal" && <div className="muted">{node.stage}{node.value_eur != null ? ` · ${eur(node.value_eur)}` : ""}</div>}
       {node.kind === "document" && node.noted_on && <div className="muted">{node.noted_on}</div>}
+      {node.foreign && <div className="muted">on another account, drawn as a fact's source</div>}
       {node.kind === "touch" && <div className="muted">{[node.outcome, node.ts && node.ts.slice(0, 10)].filter(Boolean).join(" · ")}</div>}
       {node.kind === "fact" && (
         <>

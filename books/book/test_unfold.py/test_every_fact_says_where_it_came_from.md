@@ -19,4 +19,4 @@
 # A call logged as a touch links to it
 
   call -> True
-  a mail source: []
+  a mail source warns: []

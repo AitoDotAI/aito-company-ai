@@ -435,6 +435,10 @@ def _unfold(client: AitoClient, company_id: str, kinds: list[str] | None) -> dic
         requests.append(request)
         return client.query(request)["hits"]
 
+    def record(request: dict) -> dict:
+        requests.append(request)
+        return client.query(request)
+
     found = q("companies", {"company_id": company_id}, ["company_id", "name", *COMPANY_FACTS])
     if not found:
         raise LookupError(f"no company with company_id {company_id!r}")
@@ -447,6 +451,7 @@ def _unfold(client: AitoClient, company_id: str, kinds: list[str] | None) -> dic
                   ["doc_id", "title", "noted_on", "company_id", "stakeholder_id"])
     touches = q("touches", {"contact_id.company_id": company_id},
                 ["touch_id", "contact_id", "deal_id", "ts", "channel", "outcome"])
+    requests.append({"schema": "GET /api/v2/schema"})   # does this instance have facts yet
     every = q("facts", {"company_id": company_id}) if "facts" in client.get_schema()["schema"] else []
     active = [f for f in every if not f.get("superseded_by")]
 
@@ -460,14 +465,16 @@ def _unfold(client: AitoClient, company_id: str, kinds: list[str] | None) -> dic
                     "facts": {k: co.get(k) for k in COMPANY_FACTS}, "basis": basis,
                     "hold": facts_mod._hold(every, active)["status"]}
 
-    def touch_node(h: dict) -> dict:
+    def touch_node(h: dict, foreign: bool = False) -> dict:
         return {"id": f"touch:{h['touch_id']}", "kind": "touch",
                 "label": f"{h.get('channel') or 'touch'} {(h.get('ts') or '')[:10]}".strip(),
-                "ts": h.get("ts"), "outcome": h.get("outcome"), "contact_id": h.get("contact_id")}
+                "ts": h.get("ts"), "outcome": h.get("outcome"), "contact_id": h.get("contact_id"),
+                **({"foreign": True} if foreign else {})}
 
-    def document_node(d: dict) -> dict:
+    def document_node(d: dict, foreign: bool = False) -> dict:
         return {"id": f"document:{d['doc_id']}", "kind": "document", "label": d["title"],
-                "noted_on": d.get("noted_on"), "company_id": d.get("company_id")}
+                "noted_on": d.get("noted_on"), "company_id": d.get("company_id"),
+                **({"foreign": True} if foreign else {})}
 
     if "contact" in kinds:
         for c in contacts:
@@ -497,7 +504,7 @@ def _unfold(client: AitoClient, company_id: str, kinds: list[str] | None) -> dic
                 edges.append({"source": f"touch:{h['touch_id']}", "target": f"deal:{h['deal_id']}",
                               "kind": "on_deal"})
     if "fact" in kinds:
-        sources = facts_mod.find_sources(client, active)
+        sources = facts_mod.find_sources(client, active, query=record)
         for f in sorted(active, key=lambda f: (f["valid_from"], f["fact_id"])):
             fid = f"fact:{f['fact_id']}"
             src = facts_mod.source_of(f, sources)
@@ -507,19 +514,24 @@ def _unfold(client: AitoClient, company_id: str, kinds: list[str] | None) -> dic
             edges.append({"source": fid, "target": cnode, "kind": "fact_of"})
             if f.get("stakeholder_id"):
                 edges.append({"source": fid, "target": f"contact:{f['stakeholder_id']}", "kind": "concerns"})
-            if src["node"]:
-                # a source on another account is still this fact's record: draw it
+            node_kind = src["node"].split(":", 1)[0] if src["node"] else None
+            if node_kind in kinds:
+                # a source on another account is still this fact's record: drawn,
+                # marked foreign, and counted apart from this account's own
                 if src["node"] not in nodes:
                     row = sources[(f["source_kind"], f["source_id"])]
-                    nodes[src["node"]] = (document_node(row) if src["node"].startswith("document:")
-                                          else touch_node(row))
+                    nodes[src["node"]] = (document_node(row, foreign=True) if node_kind == "document"
+                                          else touch_node(row, foreign=True))
                 edges.append({"source": fid, "target": src["node"], "kind": "said_in"})
     edges_out = [e for e in edges if e["source"] in nodes and e["target"] in nodes]
     ordered = sorted(nodes.values(), key=lambda n: (NODE_KINDS.index(n["kind"]), n["label"] or ""))
     counts: dict[str, int] = {}
+    foreign: dict[str, int] = {}
     for n in ordered:
-        counts[n["kind"]] = counts.get(n["kind"], 0) + 1
-    return {"nodes": ordered, "edges": edges_out, "counts": counts, "matched": [cnode],
+        tally = foreign if n.get("foreign") else counts
+        tally[n["kind"]] = tally.get(n["kind"], 0) + 1
+    return {"nodes": ordered, "edges": edges_out, "counts": counts, "foreign_sources": foreign,
+            "matched": [cnode],
             "query": None, "filters": {}, "kinds": kinds, "focus": company_id,
             "facets": {}, "dropped_edges": len(edges) - len(edges_out),
             "unlinked_documents": 0, "requests": requests}

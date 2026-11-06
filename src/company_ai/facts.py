@@ -19,6 +19,10 @@ ROLE_ORDER = ("champion", "decision_owner", "sponsor", "other")
 # where a fact's source can be stored (docs/41): kind -> (table, key, node kind).
 # A call is a touch when it was logged as one; mail isn't stored (no mail
 # ingest), and an antti source is an operator statement.
+# the columns read for a source record: never a document body (CPO review of #83)
+SOURCE_SELECT = {"documents": ["doc_id", "title", "noted_on", "company_id", "stakeholder_id"],
+                 "touches": ["touch_id", "contact_id", "deal_id", "ts", "channel", "outcome"]}
+SOURCE_LIMIT = 10000
 STORED_SOURCES = {"doc": ("documents", "doc_id", "document"),
                   "touch": ("touches", "touch_id", "touch"),
                   "call": ("touches", "touch_id", "touch")}
@@ -26,10 +30,14 @@ STORED_SOURCES = {"doc": ("documents", "doc_id", "document"),
 MUST_RESOLVE = ("doc", "touch")
 
 
-def find_sources(client: AitoClient, facts: list[dict]) -> dict[tuple[str, str], dict]:
+def find_sources(client: AitoClient, facts: list[dict], query=None) -> dict[tuple[str, str], dict]:
     """(source_kind, source_id) -> the stored row it names, for every fact
-    whose source kind can be stored and is. One query per table. A lookup, no
-    ranking."""
+    whose source kind can be stored and is. One query per table, through
+    `query(request)` when given (so a caller can list its requests). Reads
+    SOURCE_SELECT only, never a body. A lookup, no ranking."""
+    if query is None:
+        def query(request):
+            return client.query(request)
     wanted: dict[str, set[str]] = {}
     for f in facts:
         if f["source_kind"] in STORED_SOURCES:
@@ -37,8 +45,11 @@ def find_sources(client: AitoClient, facts: list[dict]) -> dict[tuple[str, str],
     found: dict[tuple[str, str], dict] = {}
     for table, ids in sorted(wanted.items()):
         key = next(k for t, k, _ in STORED_SOURCES.values() if t == table)
-        hits = client.query({"from": table, "where": {key: {"$or": sorted(ids)}},
-                             "limit": len(ids)})["hits"]
+        response = query({"from": table, "where": {key: {"$or": sorted(ids)}},
+                          "select": SOURCE_SELECT[table], "limit": SOURCE_LIMIT})
+        if response["total"] > SOURCE_LIMIT:
+            raise AssertionError(f"{table}: {response['total']} rows for {len(ids)} source ids")
+        hits = response["hits"]
         for h in hits:
             for kind, (t, k, _) in STORED_SOURCES.items():
                 if t == table:
@@ -64,7 +75,10 @@ def source_of(fact: dict, found: dict[tuple[str, str], dict]) -> dict:
 def source_warnings(client: AitoClient, fact: dict) -> list[str]:
     """add_fact's warnings: a doc or touch source that names nothing stored.
     The fact is accepted as before; refusing it is Antti's option (docs/41)."""
-    src = source_of(fact, find_sources(client, [fact]))
+    try:
+        src = source_of(fact, find_sources(client, [fact]))
+    except Exception as e:   # the fact is already written: say so, don't fail the write
+        return [f"could not check source {fact['source_kind']}:{fact['source_id']}: {e}"]
     return [f"source {src['kind']}:{src['id']} not found"] if src["status"] == "dangling" else []
 
 
