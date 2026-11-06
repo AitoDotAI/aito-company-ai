@@ -129,7 +129,7 @@ The current state of one account in one read, for call prep: the
 
 ## graph_search
 
-params: ['country', 'industry', 'kinds', 'query', 'relationship']
+params: ['country', 'focus', 'industry', 'kinds', 'query', 'relationship']
 required: []
 The knowledge graph as nodes and links. Nodes are companies (with their
     facts), contacts, deals and documents; links are works_at
@@ -140,6 +140,14 @@ The knowledge graph as nodes and links. Nodes are companies (with their
     link, in Aito. `query` finds nodes by name, title or role and keeps their
     direct neighbours. `facets` lists the filter values present. `requests`
     are the Aito queries that built it.
+
+    `focus` (a company_id) unfolds ONE account instead: its contacts, deals,
+    documents, touches and active account facts. Each fact carries `source`
+    {kind, id, status: linked|external|dangling}, and a `said_in` link to the
+    stored record when there is one. The company node carries `basis`, the
+    rows each harvested fact (industry, country, relationship, mrr_eur) was
+    derived from, with `matches` false when live writes have moved them, and
+    `hold`.
 
 ## graph_questions
 

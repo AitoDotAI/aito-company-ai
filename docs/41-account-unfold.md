@@ -1,6 +1,6 @@
 # 41 — Unfold one account, with every fact traced to its record (spec for td-20260926220007895967)
 
-Status: **spec, for review.** Parts 1 and 2 of the ticket: the entity unfold,
+Status: **built (6.11.2026); spec approved in #81.** Parts 1 and 2 of the ticket: the entity unfold,
 and provenance. Part 3, harvesting facts *out of* meeting notes, gets its own
 ticket once these exist, as the ticket says.
 
@@ -135,3 +135,36 @@ change.
 - Harvesting facts out of meeting notes (part 3; its own ticket).
 - New predictive features from graph position.
 - Unfolding a contact or a deal as the focus.
+
+## Decision 5, as settled in review (CPO, 6.11.2026)
+
+`add_fact` accepts a fact whose `doc` or `touch` source names nothing, as
+before, and returns `warnings: ["source <kind>:<id> not found"]`. The unfold
+draws it as dangling. **Refusing an unresolved source** is kept as an option
+for Antti, since it would turn a write that works today into an error.
+
+## Built (6.11.2026)
+
+- **`graph.network(focus=company_id)`**, with MCP `graph_search(focus=)` and
+  `/api/graph/network?focus=`. It runs one query per table on `company_id`;
+  touches go through `contact_id.company_id`. Without `focus` the graph is
+  unchanged, and `touch` and `fact` are refused as kinds.
+- **The source rule** (`facts.source_of`):
+  - `doc` and `touch` sources are linked or dangling;
+  - a `call` is linked when its id is a logged touch, otherwise external,
+    since calls needn't be logged;
+  - `mail` and `antti` are external.
+
+  A source record on another account is still drawn, as the fact's record.
+- **One harvest rule.** `loaders.harvest(contacts, deals)` returns the node
+  facts and their basis. The load uses it, giving byte-identical rows on the
+  seed, and so does the unfold. The unfold runs it over the live rows, so a
+  write since the load shows as `matches: false` and is not hidden: the book
+  adds a deal to a `none` account.
+- **Seed:** the replica's `doc` facts point at its document, and its `touch`
+  fact at its stakeholder's first touch. Only `facts.csv` changed.
+- **Dashboard:**
+  - the company panel has "Unfold this account";
+  - the unfolded view shows each harvested fact's rows, the hold and every
+    fact's source;
+  - "← Whole graph" goes back.

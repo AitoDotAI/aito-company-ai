@@ -290,7 +290,10 @@ def board(client: AitoClient) -> dict:
 
 # ---- the graph itself: nodes and links (the explorer view, MCP graph_search) ----
 
-NODE_KINDS = ("company", "contact", "deal", "document")
+NODE_KINDS = ("company", "contact", "deal", "document", "touch", "fact")
+# drawn only when one account is unfolded (docs/41): across every account they
+# would bury the graph
+FOCUS_KINDS = ("touch", "fact")
 COMPANY_FACTS = ("industry", "relationship", "country", "mrr_eur", "open_deals",
                  "contact_count", "technical_contact")
 # the company facts a caller may filter on; the filter crosses the link
@@ -300,7 +303,7 @@ FILTER_FACTS = ("industry", "relationship", "country")
 
 def network(client: AitoClient, query: str | None = None, kinds: list[str] | None = None,
             industry: str | None = None, relationship: str | None = None,
-            country: str | None = None) -> dict:
+            country: str | None = None, focus: str | None = None) -> dict:
     """The knowledge graph as nodes and links: companies, the contacts and
     deals linked to them by company_id, and the documents about them (and the
     contact a document names). `industry`/`relationship`/`country` filter the
@@ -311,8 +314,18 @@ def network(client: AitoClient, query: str | None = None, kinds: list[str] | Non
     If fuzzy matching is wanted, this lookup can move to the search index
     (search.serve), which ranks in Aito.
     No ranking or scoring here (rule 2): the order is the database's, then by
-    label for a stable layout."""
+    label for a stable layout.
+
+    `focus` unfolds ONE account (docs/41): the company, its contacts, deals,
+    documents and touches, and its active account facts, each fact linked to
+    the record it came from (`said_in`) or marked external or dangling. The
+    company node also carries the `basis` of each harvested fact (the rows it
+    was derived from, by the load-time rule) and its `hold`."""
+    if focus is not None:
+        return _unfold(client, focus, kinds)
     kinds = list(kinds or ("company", "contact", "deal"))
+    if set(kinds) & set(FOCUS_KINDS):
+        raise AssertionError(f"{sorted(set(kinds) & set(FOCUS_KINDS))} are drawn only with focus")
     unknown = set(kinds) - set(NODE_KINDS)
     assert not unknown, f"unknown node kinds {sorted(unknown)}; have {list(NODE_KINDS)}"
     filters = {k: v for k, v in (("industry", industry), ("relationship", relationship),
@@ -401,3 +414,112 @@ def network(client: AitoClient, query: str | None = None, kinds: list[str] | Non
         "dropped_edges": dropped, "unlinked_documents": unlinked_documents,
         "requests": requests,
     }
+
+
+def _unfold(client: AitoClient, company_id: str, kinds: list[str] | None) -> dict:
+    """network(focus=...): one account as a graph (docs/41). One query per
+    table on company_id (touches through their contact), plus one per source
+    table for the facts' records. Grouping and lookups only (rule 2)."""
+    from . import facts as facts_mod
+    from .loaders import harvest
+    kinds = list(kinds or NODE_KINDS)
+    unknown = set(kinds) - set(NODE_KINDS)
+    if unknown:
+        raise AssertionError(f"unknown node kinds {sorted(unknown)}; have {list(NODE_KINDS)}")
+    requests = []
+
+    def q(table: str, where: dict, select: list[str] | None = None) -> list[dict]:
+        request = {"from": table, "where": where, "limit": 100000}
+        if select:
+            request["select"] = select
+        requests.append(request)
+        return client.query(request)["hits"]
+
+    found = q("companies", {"company_id": company_id}, ["company_id", "name", *COMPANY_FACTS])
+    if not found:
+        raise LookupError(f"no company with company_id {company_id!r}")
+    co = found[0]
+    contacts = q("contacts", {"company_id": company_id},
+                 ["contact_id", "name", "role", "tier", "segment", "country", "company_id"])
+    deals = q("deals", {"company_id": company_id},
+              ["deal_id", "stage", "value_eur", "segment", "company_id"])
+    documents = q("documents", {"company_id": company_id},
+                  ["doc_id", "title", "noted_on", "company_id", "stakeholder_id"])
+    touches = q("touches", {"contact_id.company_id": company_id},
+                ["touch_id", "contact_id", "deal_id", "ts", "channel", "outcome"])
+    every = q("facts", {"company_id": company_id}) if "facts" in client.get_schema()["schema"] else []
+    active = [f for f in every if not f.get("superseded_by")]
+
+    stored, basis = harvest(contacts, deals)
+    for field, b in basis.items():
+        b["matches"] = b["value"] == co.get(field)
+    nodes: dict[str, dict] = {}
+    edges: list[dict] = []
+    cnode = f"company:{company_id}"
+    nodes[cnode] = {"id": cnode, "kind": "company", "label": co["name"], "company_id": company_id,
+                    "facts": {k: co.get(k) for k in COMPANY_FACTS}, "basis": basis,
+                    "hold": facts_mod._hold(every, active)["status"]}
+
+    def touch_node(h: dict) -> dict:
+        return {"id": f"touch:{h['touch_id']}", "kind": "touch",
+                "label": f"{h.get('channel') or 'touch'} {(h.get('ts') or '')[:10]}".strip(),
+                "ts": h.get("ts"), "outcome": h.get("outcome"), "contact_id": h.get("contact_id")}
+
+    def document_node(d: dict) -> dict:
+        return {"id": f"document:{d['doc_id']}", "kind": "document", "label": d["title"],
+                "noted_on": d.get("noted_on"), "company_id": d.get("company_id")}
+
+    if "contact" in kinds:
+        for c in contacts:
+            nodes[f"contact:{c['contact_id']}"] = {
+                "id": f"contact:{c['contact_id']}", "kind": "contact", "label": c["name"],
+                "role": c.get("role"), "tier": c.get("tier"), "company_id": company_id}
+            edges.append({"source": f"contact:{c['contact_id']}", "target": cnode, "kind": "works_at"})
+    if "deal" in kinds:
+        for d in deals:
+            nodes[f"deal:{d['deal_id']}"] = {
+                "id": f"deal:{d['deal_id']}", "kind": "deal", "label": d["stage"],
+                "stage": d["stage"], "value_eur": d.get("value_eur"), "company_id": company_id}
+            edges.append({"source": f"deal:{d['deal_id']}", "target": cnode, "kind": "deal_with"})
+    if "document" in kinds:
+        for d in documents:
+            nodes[f"document:{d['doc_id']}"] = document_node(d)
+            edges.append({"source": f"document:{d['doc_id']}", "target": cnode, "kind": "about"})
+            if d.get("stakeholder_id"):
+                edges.append({"source": f"document:{d['doc_id']}",
+                              "target": f"contact:{d['stakeholder_id']}", "kind": "mentions"})
+    if "touch" in kinds:
+        for h in touches:
+            nodes[f"touch:{h['touch_id']}"] = touch_node(h)
+            edges.append({"source": f"touch:{h['touch_id']}", "target": f"contact:{h['contact_id']}",
+                          "kind": "touched"})
+            if h.get("deal_id"):
+                edges.append({"source": f"touch:{h['touch_id']}", "target": f"deal:{h['deal_id']}",
+                              "kind": "on_deal"})
+    if "fact" in kinds:
+        sources = facts_mod.find_sources(client, active)
+        for f in sorted(active, key=lambda f: (f["valid_from"], f["fact_id"])):
+            fid = f"fact:{f['fact_id']}"
+            src = facts_mod.source_of(f, sources)
+            nodes[fid] = {"id": fid, "kind": "fact", "label": f["statement"], "fact_kind": f["kind"],
+                          "slot": f.get("slot"), "state": f.get("state"), "due": f.get("due"),
+                          "valid_from": f["valid_from"], "source": src, "company_id": company_id}
+            edges.append({"source": fid, "target": cnode, "kind": "fact_of"})
+            if f.get("stakeholder_id"):
+                edges.append({"source": fid, "target": f"contact:{f['stakeholder_id']}", "kind": "concerns"})
+            if src["node"]:
+                # a source on another account is still this fact's record: draw it
+                if src["node"] not in nodes:
+                    row = sources[(f["source_kind"], f["source_id"])]
+                    nodes[src["node"]] = (document_node(row) if src["node"].startswith("document:")
+                                          else touch_node(row))
+                edges.append({"source": fid, "target": src["node"], "kind": "said_in"})
+    edges_out = [e for e in edges if e["source"] in nodes and e["target"] in nodes]
+    ordered = sorted(nodes.values(), key=lambda n: (NODE_KINDS.index(n["kind"]), n["label"] or ""))
+    counts: dict[str, int] = {}
+    for n in ordered:
+        counts[n["kind"]] = counts.get(n["kind"], 0) + 1
+    return {"nodes": ordered, "edges": edges_out, "counts": counts, "matched": [cnode],
+            "query": None, "filters": {}, "kinds": kinds, "focus": company_id,
+            "facets": {}, "dropped_edges": len(edges) - len(edges_out),
+            "unlinked_documents": 0, "requests": requests}
