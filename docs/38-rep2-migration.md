@@ -1,173 +1,61 @@
-# 38 — Moving the tables from rep1 to rep2 (design note, for review)
+# 38 — rep1 → rep2: already done (corrected 6.11.2026)
 
-Status: **plan only, for Antti's approval.** Nothing here changes a schema
-until he approves it. Board item td-20261106100502161570.
+Status: **nothing to migrate.** Every table on internal is already on Aito's
+v2 storage engine. This note first held a plan for moving the tables
+(PR #68). The premise was wrong, and the evidence is below so the plan isn't
+revived by mistake. Board item td-20261106100502161570.
 
-## Where we are
+## The evidence
 
-26 of our 27 tables are rep1 (`"type": "table"`, Aito's TableDb). Only
-`web_steps` is rep2 (`"type": "collection"`, CollectionDb), because a
-self-link needs it (docs/37). The client already speaks **`/api/v2` for every
-call** (`aito.py`): there is no v1 endpoint to retire on our side. The move is
-from one storage engine to the other under the same API.
+Read-only, `GET /api/v2/schema/<table>` per table on internal
+(2.12.0-dev+11141e6c), 6.11.2026 (`.ai/maintenance/engines_report.py`):
 
-Aito's direction is clear: v2 is built for collections, and a rep1 table's
-v2 support is "deliberately minimal" because v1 is being retired
-(aito-core `collectiondb-v2.md`, `query-types-v2.md`).
-
-Aito has an in-place move: the `_modify` verb `migrate`
-(`{"migrate": "<table>", "engine": "v2"}`, or `POST /schema/{table}/_migrate`).
-It rebuilds the table as rep2 under the same name, keeping schema and rows.
-Several `migrate` ops in one request commit atomically, and warm the table
-before it becomes visible. **There is no reverse migration.**
-
-## What the probe showed (6.11.2026)
-
-A throwaway local container, `ghcr.io/aitohq/aito:v2.12.0` (ef016d9b), held
-two linked tables (a link, Text, String and Boolean columns), once as rep1 and
-once as rep2. The same calls ran against both
-(`.ai/maintenance/probe_rep2_ops.py`):
-
-| call | rep1 | rep2 | answer shape |
-| --- | --- | --- | --- |
-| `_predict`, with `$why` | ok | ok | same keys; `$why` is `{type: product, factors}` on both |
-| `_predict` of a link | ok | ok | same |
-| `_recommend` with a goal | ok | ok | same |
-| `_match`, `_similarity` | ok | ok | same |
-| `_relate`, a field array and through a link (`co.name`) | ok | ok | same hit keys (`condition fs info lift n ps related relation`) |
-| `_query` with `$match`, `$has`, a link path | ok | ok | same |
-| batch upsert, `?on_conflict=update` | needs a declared top-level `primaryKey` on **both** | | |
-| `migrate` of the linked pair in one `_modify` | ok: `type: collection`, `engine: v2`, link kept, 60 of 60 rows, `_relate` through the link still answers | | |
-
-On that data the numbers were **identical** too: predict `$p` 0.9535,
-relate lift 2.838, recommend `$p` 0.3017 on both engines. A toy table proves
-the shapes, not the numbers on our data: see "How we judge it" below.
-
-Two findings differ from the docs. Both were seen on 2.12.0 and should be
-re-checked on internal's build:
-- `$match` answered on rep1 here, though the docs call it collection-only.
-- Upsert by `primaryKey` worked on rep1 when the key was declared through the
-  v2 schema route. So **upsert is not a reason to migrate by itself**: the
-  duplicate-on-resend hazard (td-20261106110308568348) is closed by declaring
-  `primaryKey`, which is its own schema change on either engine.
-
-## What rep2 gives us
-
-1. **Links between our tables and `web_steps`.** A link can't cross engines,
-   so today `web_steps` can't link to `web_sessions`, `web_visitors` or
-   `posts`. That's docs/37's post → visit → steps → KPI chain in one graph,
-   instead of the step ids we parse.
-2. **`$patterns` on every table.** It's refused (`501`) on rep1, and used
-   today only on `web_steps`.
-3. **Cheaper writes to link targets.** On rep1, every write to a table others
-   link to costs time in proportion to the linking rows, and blocks other
-   databases' writes. A 100-row `_modify` is ~50 ms on a collection, up to
-   ~30 s on a large rep1 link target (aito-core changelog). `companies`,
-   `contacts`, `deals` and `posts` are our link targets.
-4. **In-place column alter**, plus `_plan`/`_apply`, on collections. That
-   removes our `needs_reload` path in `create_schema`, and some of the
-   drop-and-reload fallback in `delete_column`.
-5. Aito's own path forward: new engine features land on collections.
-
-## What can break, or changes
-
-- **`_evaluate`** on a collection covers only `predict` and `estimate`.
-  `recommend`, `relate`, `match` and `similarity` are refused on collections
-  ("not yet"). We don't call `_evaluate` in `src/` today, but any notebook or
-  maintenance script that evaluates a `_recommend` (for example
-  search_impressions) loses it.
-- **Cross-engine links during the move.** While one table of a linked pair is
-  rep2 and the other rep1, a query that follows the link is a `400`. Each
-  linked group must move **in one `_modify`**.
-- **The `search_items` view** unions `contacts`, `deals` and `documents`.
-  Whether a view may union tables of different engines is untested, so these
-  three move together with their group, and the view is refreshed and checked
-  right after.
-- **Vectors** (`search_vectors.vec`, `$nearest`): verify on a branch that the
-  column and its queries behave the same after the move.
-- **`schema.py`** must flip each moved table's `"type"` to `"collection"` in
-  the same release, or a fresh clone and the booktest env would create rep1
-  again. `create_schema` only adds missing tables and columns and never
-  compares types, so a deploy's `create-schema` can't undo a move.
-- A stale comment: `search.py` says documents are "a real collection now
-  (docs/25)", but `schema.DOCUMENTS` is `"type": "table"`. To be fixed with
-  the move.
-
-## Which queries may change answers
-
-By shape: **none** on 2.12.0, per the probe. By numbers, every inference on
-a moved table could change, because the engines score separately. That
-change counts as prediction semantics, so Antti sees it per group, as
-booktest diffs. The surfaces by group:
-
-| group | tables | inference that reads them |
+| declared `type` | `engine` | tables |
 | --- | --- | --- |
-| standalone, app state | `tokens`, `users`, `assignments`, `chat_messages`, `routines`, `changelog`, `web_suppressed`, `search_contexts` | none or lookups only: no prediction |
-| standalone, inference | `todos`, `decisions`, `events`, `materials`, `channels`, `sessions`, `search_impressions`, `search_vectors` | todo classify (`_predict`), decision scorecard, website funnel (`sessions`), smart-search ranking (`_recommend` over impressions), semantic search (`$nearest`) |
-| web | `posts`, `experiments`*, `web_sessions`, `web_visitors` | `web_kpis` / `web_view` (`_relate`, `_predict` next path), experiment board (`_predict`), post scorer (`_predict`/`_recommend` on posts), attribution |
-| sales graph | `companies`, `contacts`, `deals`, `deal_events`, `documents`, `touches` (+ the `search_items` view) | the morning brief, who to call, segment 360 and funnels (`_predict`/`_recommend`/`_relate` on touches), deal close-likelihood, knowledge graph (`$refs`, link paths), `_match` in validate/chats |
+| `collection` | `v2` | 21: assignments, companies, contacts, deal_events, deals, documents, events, search_contexts, search_impressions, search_vectors, todos, tokens, touches, users, web_sessions, web_steps, web_suppressed, web_visitors, and three app tables outside `schema.py` |
+| `table` | `v2` | 11: changelog, channels, chat_messages, decisions, experiments, materials, posts, routines, sessions, and two app tables outside `schema.py` |
+| `view` | `v2` | search_items |
+| any | `v1` | **none** |
 
-\* `web_sessions.experiment_id` links to `experiments`, so `experiments`
-moves with the web group.
+## Why it looked otherwise
 
-## The order: smallest and least linked first
+- `schema.py` declares 26 tables as `"type": "table"`. But
+  `AitoClient.create_table` (`src/company_ai/aito.py`) sends
+  `{**definition, "type": "collection"}`. So every table our client creates
+  is a collection, whatever `schema.py` says.
+- Aito itself, given `"type": "table"` on the **v2** schema route, makes a
+  table on the **v2 engine** (`type: table, engine: v2`). Only the **v1**
+  route makes `engine: v1`. Checked on a throwaway local
+  `aito:v2.12.0` (ef016d9b):
+  - `PUT /api/v2/schema/t {"type": "table", ...}` → `{"type": "table", "engine": "v2"}`;
+  - `PUT /api/v1/schema/t` (same body) → `{"type": "table", "engine": "v1"}`.
 
-1. **App-state tables** (no links, no inference): proves the mechanics, the
-   backup and the verification, at no risk to any answer.
-2. **Standalone inference tables**, one at a time: the first number changes,
-   each reviewable alone.
-3. **The web group** in one `_modify`: `posts`, `experiments`,
-   `web_sessions`, `web_visitors`. After it, `web_steps` can link to
-   `web_sessions` (a follow-up schema change, separately approved).
-4. **The sales graph** in one `_modify`, last: the core of the brief.
+  The 11 `table`/`v2` tables on internal came through some route other than
+  our current client (an older client, or a `migrate`, which also leaves
+  `table`/`v2`).
+- aito-core's docs call `table` rep1/TableDb. That gap is filed as
+  td-20261106175554336673.
+- The first probe for the plan created its "rep1" tables through our client,
+  so it compared v2 with v2. Its "doc differences" (`$match` and upsert on
+  rep1) were artifacts, and weren't filed.
 
-Each step is a separate release and a separate approval.
+## What follows
 
-## How we judge it (rule 4)
+1. `schema.py` says `"collection"`, matching what is created. That's code
+   only: the payload sent is unchanged, and a book pins it.
+2. What still needs an answer from aito-core (td-20261106175554336673): does
+   `table`/`v2` behave exactly like a collection (links to and from
+   collections, `$patterns`, in-place alter, `_evaluate` kinds)? Until it
+   does, treat the 11 as v2 but unverified for collection-only features.
+   Recreating one as a collection would be a schema change on internal, and
+   that is Antti's yes.
+3. docs/37's "links can't cross rep1/rep2, and our tables are rep1" premise
+   was wrong for the same reason. Corrected there.
+4. Upsert by `primaryKey` (the duplicate-on-resend hazard,
+   td-20261106110308568348) doesn't depend on any of this. Declaring a key is
+   its own schema decision.
 
-For each step, before touching internal:
-1. **Booktests on rep2.** Flip that step's tables to `"collection"` in
-   `schema.py` on a branch, and run the whole suite. The snapshot diffs are
-   the before/after on the seed data. Antti and the CPO review them; an
-   unexplained number change stops the step.
-2. **A rehearsal on a branch of internal.** Branch internal into an env
-   (copy-on-write, docs/21), run the `migrate` batch there, and run a
-   read-only verifier against master and the branch:
-   - per table, the row count and the schema columns;
-   - every link resolves;
-   - a fixed set of reads gives the same answer shape, with their numbers
-     side by side: brief, who_to_call, deal_pipeline, segment_360,
-     web_kpis, web_paths_to, smart_search.
-   The internal build's `migrate` support is confirmed here first.
+## Method lesson
 
-## The cutover
-
-Outside the 08:00–10:00 no-touch window, with no deploy or bulk write
-running.
-
-1. A fresh backup env (`backups.py`, the guarded snapshot), its name noted.
-2. One `_modify` with the step's `migrate` ops (with warm queries for the
-   text-heavy tables).
-3. The same verifier as the rehearsal, against the backup: counts equal,
-   links resolve, the fixed reads answer. For web tables, also
-   `verify_salted_repull.py` / `verify_steps.py`, as on every re-pull.
-4. Refresh `search_items` and check it, when the step touches its sources.
-5. Deploy the release that flips `schema.py` for those tables.
-
-## Rollback
-
-There is no reverse `migrate`. Rollback is **promoting the backup env from
-step 1** (docs/21's guarded restore), which brings back the rep1 tables as
-they were at the snapshot. Writes made after the snapshot are lost. So the
-cutover runs in a quiet hour, the pull and routine timers are paused for it,
-and the decision to roll back is made at verification (step 3), before
-anyone writes again. The code side rolls back by reverting the `schema.py`
-flip.
-
-## Asks
-
-- **Antti:** approve the plan and its order, and each step's booktest diffs
-  as it comes. Each cutover on internal is a separate yes.
-- **aito-core:** confirm `migrate` on internal's build (2.12.0-dev+11141e6c),
-  and whether a view may union mixed engines. The probe's two doc
-  differences (`$match` and upsert on rep1) are for them to confirm or fix.
+Check the `engine` field before comparing engines. A declared `type` is
+not evidence of the storage engine.

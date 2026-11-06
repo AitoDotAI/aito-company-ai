@@ -150,5 +150,5 @@ names, numbers, or non-public company data anywhere in tracked files.
 - Web analytics (aito.ai visits pulled daily from Amplitude into `web_sessions`, one row per session, scrubbed in memory; landing → next path, onward clicks, links to posts by `utm_campaign`; `pull-web` + `ops/web-pull.sh` timer; MCP `web_traffic`/`web_paths`): `docs/35-web-analytics.md`
 - Web KPIs, acquisition and journeys (preselected KPIs from real event names + `_relate` on any event via the `events` Text field; web_visitors first touch; salted HMAC keys; Web view laid out like the e-commerce Analytics page): `docs/36-web-kpis.md` (spec, for review)
 - Web paths as a graph (post/channel → visit → pages → KPI; a rep2 `web_steps` collection with a self-link, since links can't cross rep1/rep2; what Aito's graph features answer today and the aito-core gaps): `docs/37-web-paths.md` (design note, for review)
-- Moving the tables from rep1 to rep2 (design note, for review; per-group order, branch rehearsal, backup-env rollback, no reverse migrate): `docs/38-rep2-migration.md`
+- rep1 → rep2: already done (every internal table is on the v2 engine; `create_table` sends `collection`; check `engine`, not the declared `type`): `docs/38-rep2-migration.md`
 - Extending it (add a table / view / routine — the checklist): `docs/19-extending.md`; contributor setup in `CONTRIBUTING.md`
