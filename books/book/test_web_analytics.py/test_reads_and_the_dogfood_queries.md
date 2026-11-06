@@ -1,6 +1,14 @@
 # web_traffic for the day (bots excluded)
 
 {
+ "attribution": {
+  "candidates": 1,
+  "exact": 1,
+  "inference_ready": false,
+  "inference_trigger": 30,
+  "labels": 1,
+  "matched": 0
+ },
  "bots": 1,
  "candidate_posts": [
   {
@@ -17,6 +25,7 @@
    "views": 9
   }
  ],
+ "matched_posts": [],
  "posts": [
   {
    "post_id": "<li-post>",

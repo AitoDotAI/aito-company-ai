@@ -44,6 +44,9 @@ LOOKBACK_DAYS = 3   # referrer_day: a post on the referrer's platform this many 
 # platform to its link_path is matched to it. An attribution threshold, so
 # Antti's to set: default 7, COMPANY_AI_WEB_MATCH_DAYS overrides it.
 MATCH_DAYS = int(os.environ.get("COMPANY_AI_WEB_MATCH_DAYS", "7"))
+# tier 3 (inferred) is parked until this many sessions are labelled by tiers
+# 1-2 (CPO, 6.11.2026); web_traffic reports the count against it
+INFERENCE_TRIGGER = 30
 
 # the two page-view shapes the site sends (docs/35)
 PAGE_VIEW_PREFIXES = {"Page View": "Page View: ", "Viewed": "Viewed"}
@@ -670,7 +673,8 @@ def web_traffic(client: AitoClient, since: str, until: str, path: str | None = N
     apart), the top landing pages and sources, the posts the visits link to
     exactly, and the candidate posts apart."""
     rows = _rows(client, since, until, ["day", "views", "onward_click", "signup_cta", "likely_bot",
-                                         "landing_path", "source", "post_id", "candidate_post_id"],
+                                         "landing_path", "source", "post_id", "candidate_post_id",
+                                         "matched_post_id"],
                  {"landing_path": path, "utm_campaign": campaign, "source": source})
     human = [r for r in rows if not r["likely_bot"]]
     days: dict = {}
@@ -689,7 +693,23 @@ def web_traffic(client: AitoClient, since: str, until: str, path: str | None = N
                       _top(Counter(r["post_id"] for r in human if r.get("post_id")), 50)],
             "candidate_posts": [{"post_id": p, "sessions": n} for p, n in
                                 _top(Counter(r["candidate_post_id"] for r in human
-                                             if r.get("candidate_post_id")), 50)]}
+                                             if r.get("candidate_post_id")), 50)],
+            "matched_posts": [{"post_id": p, "sessions": n} for p, n in
+                              _top(Counter(r["matched_post_id"] for r in human
+                                           if r.get("matched_post_id")), 50)],
+            # the tiers apart, never merged; tier 3 waits for enough labels
+            "attribution": _attribution(human)}
+
+
+def _attribution(human: list[dict]) -> dict:
+    """Sessions per attribution tier (docs/35), and whether tiers 1-2 have
+    labelled enough sessions for tier 3 (INFERENCE_TRIGGER)."""
+    exact = sum(bool(r.get("post_id")) for r in human)
+    matched = sum(bool(r.get("matched_post_id")) for r in human)
+    return {"exact": exact, "matched": matched,
+            "candidates": sum(bool(r.get("candidate_post_id")) for r in human),
+            "labels": exact + matched, "inference_trigger": INFERENCE_TRIGGER,
+            "inference_ready": exact + matched >= INFERENCE_TRIGGER}
 
 
 def web_paths(client: AitoClient, since: str, until: str, landing_path: str | None = None,
