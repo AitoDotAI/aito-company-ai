@@ -92,7 +92,8 @@ def excluded_fields(table: str, outcome_field: str, extra: list[str] | None = No
 
 
 def relate(client: AitoClient, table: str, outcome: dict, where: dict | None = None,
-           top_n: int = 10, exclude: list[str] | None = None, thin: int = THIN) -> dict:
+           top_n: int = 10, exclude: list[str] | None = None, thin: int = THIN,
+           keep: list[str] | None = None) -> dict:
     """The field values most related to `outcome` (one proposition, e.g.
     {"reached": True}) in `table`, optionally within the rows matching
     `where`. Ranked by Aito's mutual information; each with its lift, the
@@ -100,7 +101,9 @@ def relate(client: AitoClient, table: str, outcome: dict, where: dict | None = N
     assert isinstance(outcome, dict) and len(outcome) == 1, \
         f"outcome is one field: value, got {outcome!r}"
     field, value = next(iter(outcome.items()))
-    out = set(excluded_fields(table, field, exclude))
+    # `keep`: fields a caller deliberately relates although they would be
+    # excluded (web_kpis reads other KPIs and co_events this way, docs/36)
+    out = set(excluded_fields(table, field, exclude)) - set(keep or [])
     where = where or {}
     relate_on = outcome if not where else {"$on": [outcome, (
         where if len(where) == 1 else {"$and": [{k: v} for k, v in where.items()]})]}

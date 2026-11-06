@@ -27,6 +27,20 @@ Every company (contacts rolled up by company, joined to their deals),
     Each row carries its company_id: pass it to company_detail for the node's
     facts and links, or use graph_search to walk the knowledge graph.
 
+## web_kpis
+
+params: ['campaign', 'device', 'event', 'kpi', 'path', 'since', 'source', 'until']
+required: []
+aito.ai visits for one KPI or any event (docs/36). kpi: pricing_page,
+    contact_page, login_page, signup, sandbox, data_loaded, first_query or
+    api_keys; or event: a token like "demo_search_executed" or
+    "page:/pricing/". Window since..until (default the last 30 days) and
+    filters source/campaign/path/device. Returns the session counts, the
+    pre-visit drivers, the other KPIs and the other events that go with it,
+    all from Aito's _relate, each with its counts. A relation flagged thin
+    rests on too few sessions to claim a lift. Console-funnel steps that imply
+    each other are dropped and named in dropped_as_linked.
+
 ## company_detail
 
 params: ['company_id']

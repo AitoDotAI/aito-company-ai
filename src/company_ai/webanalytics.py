@@ -721,3 +721,78 @@ def web_view(client: AitoClient, since: str, until: str, source: str | None = No
             "thin_below": WEB_THIN,
             "drivers": drivers, "next_paths": next_paths,
             "session_total": len(rows), "sessions": ordered[offset:offset + limit]}
+
+
+# ---- MCP web_kpis: one KPI or any event, related in Aito (docs/36) ----
+
+# The console funnel: each step implies the visitor met the others, so a lift
+# between them is definitional, not a driver. Relating one drops the rest.
+CONSOLE_FUNNEL = ("login_page", "signup", "sandbox", "data_loaded", "first_query", "api_keys")
+EVENT_TOKEN = re.compile(r"[a-z0-9_]{1,64}|page:\S{1,200}")
+
+
+def _own_tokens(kpi: str) -> set[str]:
+    """The event tokens that define a KPI, so "other events" doesn't restate it."""
+    return {tok for tok in (_event_token({"event_type": name, "event_properties": {}})
+                            for name in KPI_EVENTS[kpi]) if tok}
+
+
+def web_kpis(client: AitoClient, kpi: str | None = None, event: str | None = None,
+             since: str | None = None, until: str | None = None, source: str | None = None,
+             campaign: str | None = None, path: str | None = None,
+             device: str | None = None) -> dict:
+    """For one preselected KPI (KPI_EVENTS) or any event token, over the human
+    sessions in the window and filter:
+    - how many sessions there were and how many had the target;
+    - drivers: the pre-visit context related to it;
+    - other_kpis: the other KPIs that go with it, minus the console-funnel
+      steps that are definitionally linked (named in dropped_as_linked);
+    - other_events: events that go with it, read from co_events, minus the
+      target's own events (dropped_own_events).
+    Every relation is Aito's _relate, carries its counts, and is flagged thin
+    under WEB_THIN sessions (rule 2: no lift is computed here)."""
+    assert (kpi is None) != (event is None), "give exactly one target: kpi or event"
+    if kpi is not None:
+        assert kpi in KPI_EVENTS, f"unknown kpi {kpi!r}; have {sorted(KPI_EVENTS)}"
+        outcome, own = {f"kpi_{kpi}": True}, _own_tokens(kpi)
+        match = outcome
+        linked = [f"kpi_{k}" for k in CONSOLE_FUNNEL if k != kpi] if kpi in CONSOLE_FUNNEL else []
+    else:
+        assert EVENT_TOKEN.fullmatch(event), f"not an event token: {event!r}"
+        # _relate takes the bare token (a top-level $has is rejected until
+        # aito-core's fix); in `where`, a bare value on Text is whole-field
+        # equality, so the count matches the token with $has
+        outcome, own, linked = {"events": event}, {event}, []
+        match = {"events": {"$has": event}}
+    until = until or date.today().isoformat()
+    since = since or (date.fromisoformat(until) - timedelta(days=29)).isoformat()
+    filt = {"source": source, "utm_campaign": campaign, "landing_path": path, "device_class": device}
+    clauses = [*_window(since, until), *({k: v} for k, v in filt.items() if v is not None)]
+    where = {"likely_bot": False, "$and": clauses}
+    count = lambda w: client.query({"from": "web_sessions", "where": w, "limit": 0})["total"]
+    sessions = count(where)
+    with_target = count({**where, "$and": [*clauses, match]})
+    out = {"target": {"kpi": kpi} if kpi else {"event": event}, "since": since, "until": until,
+           "filters": {k: v for k, v in filt.items() if v is not None},
+           "sessions": sessions, "with_target": with_target, "thin_below": WEB_THIN,
+           "dropped_as_linked": linked, "dropped_own_events": sorted(own),
+           "drivers": None, "other_kpis": None, "other_events": None}
+    if not with_target:
+        out["note"] = "no session in the window had the target: nothing to relate"
+        return out
+    rel = lambda **kw: relations.relate(client, "web_sessions", outcome, where=where,
+                                        thin=WEB_THIN, **kw)
+    out["drivers"] = rel(top_n=10)
+    # the relate and the count must agree on who has the target: they read
+    # Text differently, so a disagreement raises instead of returning lifts
+    assert out["drivers"]["with_outcome"] in (0, with_target), \
+        f"_relate counted {out['drivers']['with_outcome']} sessions with {outcome}, the query {with_target}"
+    kpi_fields = [f"kpi_{k}" for k in KPI_EVENTS if f"kpi_{k}" not in linked and k != kpi]
+    others = rel(top_n=50, keep=kpi_fields)
+    others["relations"] = [r for r in others["relations"] if r["field"] in kpi_fields][:10]
+    out["other_kpis"] = others
+    events = rel(top_n=50, keep=["co_events"])
+    events["relations"] = [r for r in events["relations"]
+                           if r["field"] == "co_events" and r["value"] not in own][:10]
+    out["other_events"] = events
+    return out
