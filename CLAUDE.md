@@ -152,4 +152,5 @@ names, numbers, or non-public company data anywhere in tracked files.
 - Web paths as a graph (post/channel → visit → pages → KPI; a rep2 `web_steps` collection with a self-link, since links can't cross rep1/rep2; what Aito's graph features answer today and the aito-core gaps): `docs/37-web-paths.md` (design note, for review)
 - rep1 → rep2: already done (every internal table is on the v2 engine; `create_table` sends `collection`; check `engine`, not the declared `type`): `docs/38-rep2-migration.md`
 - Account facts (a `facts` collection: short sourced statements per account, kinds role/commitment/decision/open_question/contact_info/hold, superseded never deleted; feeds `briefing`): `docs/39-facts.md` (spec, for review)
+- Recall over facts, and thin documents (facts in `search_items`, embeddings at reindex only, supersede candidates for confirmation, `used`/`flagged_wrong` marks on the impressions loop, thin = body under 500 chars): `docs/40-recall.md` (spec, for review)
 - Extending it (add a table / view / routine — the checklist): `docs/19-extending.md`; contributor setup in `CONTRIBUTING.md`
