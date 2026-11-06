@@ -1121,7 +1121,8 @@ def web_paths_to(client: AitoClient, kpi: str, since: str | None = None,
     since = since or (date.fromisoformat(until) - timedelta(days=29)).isoformat()
     clauses = [*_window(since, until), *([{"post_platform": platform}] if platform else [])]
     out = {"kpi": kpi, "since": since, "until": until, "platform": platform,
-           "thin_below": WEB_THIN, "top_paths": [], "raises_later": None, "drop_off": None}
+           "thin_below": WEB_THIN, "top_paths": [], "protective_paths": [],
+           "raises_later": None, "drop_off": None}
     reached = client.query({"from": "web_steps", "where": {"$and": [*clauses, {"kpi": kpi}]},
                             "limit": 0})["total"]
     out["kpi_steps"] = reached
@@ -1139,11 +1140,16 @@ def web_paths_to(client: AitoClient, kpi: str, since: str | None = None,
     # must not make a row look solid (CPO, 6.11.2026)
     visits = _distinct_visits(client, [[*clauses, {"kpi": kpi}, *({k: v} for k, v in sh.items())]
                                        for sh in shapes])
+    # $patterns mines over every step and scores against the KPI, so paths
+    # never seen before it come back too, with a smoothed lift below 1
+    # (documented; td-20261106110429784489): they lead nothing, but stay
     for hit, sh, n in zip(hits, shapes, visits):
         path = [sh[k] for k in reversed(PATH_DEPTH) if k in sh]
-        out["top_paths"].append({"path": path + [_kpi_token(kpi)], "visits": n,
-                                 "steps": int(hit.get("f", 0)), "lift": hit.get("lift"),
-                                 "thin": n < WEB_THIN})
+        into = (hit.get("lift") or 0) > 1
+        row = {"path": path + ([_kpi_token(kpi)] if into else []), "visits": n,
+               "support_overall": int(hit.get("f", 0)), "lift": hit.get("lift"),
+               "thin": n < WEB_THIN}
+        out["top_paths" if into else "protective_paths"].append(row)
     out["raises_later"] = _by_direction(client, relations.relate(
         client, "web_steps", {f"kpi_after_{kpi}": True},
         where={"is_kpi": False, "$and": clauses}, top_n=30, thin=WEB_THIN),
