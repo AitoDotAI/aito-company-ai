@@ -128,9 +128,11 @@ def _vector_candidates(client: AitoClient, embed, query: str, kind: str | None,
     """Retrieve by embedding similarity: embed the query, `$nearest` over
     `search_vectors` (cosine), most similar first. Returns [{item_id, $similarity}]
     or [] if the vector index isn't built yet (never reindexed with embeddings) —
-    a missing index degrades to text-match, it does not raise. `kind` is
-    post-filtered (item_id carries it) so a kind query needn't special-case the
-    `$nearest` predicate."""
+    a missing index degrades to text-match, it does not raise. `kind` sits in
+    the where BESIDE `$nearest`, so Aito pre-filters before ranking
+    (td-20261106231240519861): filtering after a whole-index `$nearest` gave a
+    doc search 0 docs on the seed, the over-fetch filled with deals and facts.
+    Not `hybrid`, which drops a where today (td-20261106212749485497)."""
     if not _vectors_ready(client):
         return []
     try:
@@ -139,13 +141,15 @@ def _vector_candidates(client: AitoClient, embed, query: str, kind: str | None,
         # a transient embeddings failure (outage, rate-limit, bad key) degrades to
         # text-match — it must not take the whole search endpoint down (docs/23).
         return []
+    nearest = {"$nearest": {"near": {"vec": qvec}, "limit": max(n * 3, 30)}}
     request = {"from": "search_vectors",
-               "where": {"$nearest": {"near": {"vec": qvec}, "limit": max(n * 3, 30)}},
+               "where": {"kind": kind, **nearest} if kind else nearest,
                "select": ["item_id", "kind", "source_id", "title", "$similarity"],
                "limit": max(n * 3, 30)}
     hits = client.query(request)["hits"]
-    if kind:
-        hits = [h for h in hits if h.get("kind") == kind]
+    wrong = [h for h in hits if kind and h.get("kind") != kind]
+    if wrong:
+        raise AssertionError(f"$nearest with where kind={kind!r} returned {wrong[:3]}")
     # over-fetched above, so leaving superseded facts out still fills n
     gone = {f"fact:{f}" for f in (_superseded(client) if superseded is None else superseded)}
     hits = [h for h in hits if h.get("item_id") not in gone]

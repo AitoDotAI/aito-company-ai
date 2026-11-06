@@ -66,6 +66,12 @@ signal:
   featurization; Aito owns the ranking (rule 2).
 - At **query** time, `_vector_candidates` embeds the query and retrieves by
   `$nearest` over `search_vectors` (cosine) — candidates text-match never found.
+  A kind search puts `kind` in the where **beside** `$nearest`, so Aito filters
+  before it ranks (td-20261106231240519861). Filtering after a whole-index
+  `$nearest` gave a doc search for 10 no docs on the seed, because deals,
+  contacts and facts filled the over-fetch. `book/test_search_kind_filter.py`
+  holds it. Not `hybrid`: a where beside it is dropped today
+  (td-20261106212749485497).
 - `ranked()` **interleaves** the text and vector orderings (round-robin, then the
   learned pass rides on top): an exact keyword hit is not demoted below a merely
   similar one, and a cross-lingual hit is not buried. Pure ordering, no Python
@@ -74,8 +80,10 @@ signal:
 Everything degrades gracefully: no embeddings ⇒ pure text-match (unchanged); no
 vector index yet ⇒ text-match until the next reindex. Two build-specific notes:
 the embedding is requested at **1000 dimensions** (Matryoshka) because this Aito
-build caps a `Vector` column at 1017; and `$vectorSimilarity` is not available on
-this build, so retrieval uses `$nearest`. The flip is proven by
+build caps a `Vector` column at 1017. `$vectorSimilarity` was refused by the
+instance probed on 15.8.2026, so retrieval uses `$nearest`. Per aito-core's
+tag history (6.11.2026), it and the self-calibrating `$vectorIdf` have shipped
+since v2.5.1. Neither has been re-probed here, so `$nearest` stays until one is. The flip is proven by
 `book/test_search_vector.py` (gated on the embeddings deployment): a French query
 goes from 0 text-match hits to the right documents.
 
