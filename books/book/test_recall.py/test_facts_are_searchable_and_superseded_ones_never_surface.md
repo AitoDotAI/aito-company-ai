@@ -4,7 +4,7 @@
 
 # A superseded fact is not
 
-  ['sfa003', 'sfa001', 'sfa010', 'sfa007', 'sfa008', 'sfa009', 'sfa005', 'sfa006', 'sfa004']
+  ['sfa003', 'sfa001', 'sfa010', 'sfa007', 'sfa008', 'sfa009', 'sfa005', 'sfa006', 'sfa013', 'sfa004']
 
 # A query whose best matches are superseded still fills the page
 

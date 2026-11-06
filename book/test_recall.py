@@ -49,9 +49,11 @@ def test_facts_are_searchable_and_superseded_ones_never_surface(t: bt.TestCaseRu
     assert F(11) not in [h["source_id"] for h in hits], "fact 11 is superseded by fact 3"
 
     t.h1("A query whose best matches are superseded still fills the page")
-    # the four oldest match every query term and the four newest only one, so
-    # unfiltered, the superseded four would take the whole page
-    words = ["quokka budget decision"] * 4 + ["quokka note"] * 4
+    # the four oldest match every query term and the four newest two of them,
+    # so unfiltered, the superseded four would take the whole page. The terms
+    # are in no seed row, so a seed fact can't outrank the active four (the
+    # seed's "Budget cycle resets in Q1", docs/42, did with "budget").
+    words = ["quokka wombat numbat"] * 4 + ["quokka wombat note"] * 4
     made = [log.add_fact(client, company=REPLICA, kind="decision", statement=f"{w} {i}",
                          source_kind="call", source_id=f"call-q{i}", valid_from=f"2026-11-0{i + 1}",
                          author="cro")["fact_id"] for i, w in enumerate(words)]
@@ -59,16 +61,16 @@ def test_facts_are_searchable_and_superseded_ones_never_surface(t: bt.TestCaseRu
         log.supersede_fact(client, old, new)
     search.refresh(client)
     unfiltered = client.query({"from": "search_items",
-                               "where": {"$and": [{"kind": "fact"}, search._match_clause("quokka budget decision")]},
-                               "orderBy": {"$similarity": {"content": "quokka budget decision"}},
+                               "where": {"$and": [{"kind": "fact"}, search._match_clause("quokka wombat numbat")]},
+                               "orderBy": {"$similarity": {"content": "quokka wombat numbat"}},
                                "select": ["source_id"], "limit": 4})["hits"]
     t.tln(f"  unfiltered, the top 4 are the superseded four: {[h['source_id'] for h in unfiltered] == made[:4]}")
     assert {h["source_id"] for h in unfiltered} == set(made[:4])
-    page = search.search(client, "quokka budget decision", kind="fact", top_n=4).derived["hits"]
+    page = search.search(client, "quokka wombat numbat", kind="fact", top_n=4).derived["hits"]
     t.tln(f"  top 4 of 8 matching (4 superseded): {len(page)} hits, all active: "
           f"{all(h['source_id'] in made[4:] for h in page)}")
     assert len(page) == 4 and {h["source_id"] for h in page} == set(made[4:])
-    served = search.serve(client, "quokka budget decision", kind="fact", top_n=4, log=False)
+    served = search.serve(client, "quokka wombat numbat", kind="fact", top_n=4, log=False)
     assert len(served["hits"]) == 4 and {h["source_id"] for h in served["hits"]} == set(made[4:])
 
 

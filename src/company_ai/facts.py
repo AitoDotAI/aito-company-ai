@@ -13,7 +13,9 @@ from .loaders import company_slug
 # are normal on a real account, and flagging them would teach people to ignore
 # the list (CPO review of #75).
 CONFLICT_SLOTS = ("decision_owner",)
-ROLE_ORDER = ("champion", "decision_owner", "sponsor", "other")
+ROLE_ORDER = ("champion", "decision_owner", "sponsor", "signer", "other")
+ATTRIBUTE_ORDER = ("pain", "budget_cycle", "procurement", "deployment", "billing_model",
+                   "tooling", "headcount", "other")
 
 
 # where a fact's source can be stored (docs/41): kind -> (table, key, node kind).
@@ -164,6 +166,9 @@ def group(every: list[dict], names: dict[str, str]) -> dict:
     return {
         "hold": {"status": hold["status"], "facts": [row(f) for f in hold["facts"]]},
         "roles": roles,
+        # newest first within a slot (active is sorted so); not conflicts (docs/42)
+        "attributes": {slot: [row(f) for f in active if f["kind"] == "attribute" and f["slot"] == slot]
+                       for slot in ATTRIBUTE_ORDER},
         "conflicts": conflicts,
         "decisions": of("decision"),
         "open_questions": of("open_question"),
@@ -171,3 +176,45 @@ def group(every: list[dict], names: dict[str, str]) -> dict:
         "contact_info": {"current": [r for r in contact if r["state"] == "current"],
                          "not_current": [r for r in contact if r["state"] != "current"]},
     }
+
+
+def harvest_queue(client: AitoClient, company: str) -> dict:
+    """What a Claude session reads to propose facts from an account's notes
+    (docs/42). For each note, newest first: its body, whether it is thin, and the
+    active facts already citing it; plus the account's other active facts, so a
+    proposal doesn't restate them. Lookups only: nothing is ranked, guessed or
+    written here (rules 1, 2). The session proposes, a person confirms, and
+    add_fact writes.
+
+    A held account isn't harvested (CRO): when the briefing's hold reads HOLD,
+    unclear included, this returns the hold and no notes. That fails closed with
+    the same reading as briefing."""
+    requests: list[dict] = []
+
+    def q(request: dict) -> list[dict]:
+        requests.append(request)
+        return client.query(request)["hits"]
+
+    cid = _company_id(client, company)
+    every = q({"from": "facts", "where": {"company_id": cid}, "limit": 10000})
+    active = [f for f in every if not f.get("superseded_by")]
+    hold = _hold(every, active)["status"]
+    out = {"company_id": cid, "hold": hold, "notes": [], "facts": [], "requests": requests}
+    if hold and hold.startswith("HOLD"):
+        return out
+    docs = q({"from": "documents", "where": {"company_id": cid},
+              "select": ["doc_id", "title", "noted_on", "updated", "body"], "limit": 10000})
+    docs.sort(key=lambda d: (d.get("noted_on") or "", d.get("updated") or "", d["doc_id"]), reverse=True)
+    listed = {d["doc_id"] for d in docs}
+    for d in docs:
+        body = d.get("body") or ""
+        out["notes"].append({
+            "doc_id": d["doc_id"], "title": d["title"], "noted_on": d.get("noted_on"), "body": body,
+            "thin": len(body) < schema.THIN_DOC_CHARS,
+            "cited_by": sorted(f["fact_id"] for f in active
+                               if f["source_kind"] == "doc" and f["source_id"] == d["doc_id"])})
+    out["facts"] = [{k: f.get(k) for k in ("fact_id", "kind", "slot", "state", "statement",
+                                           "valid_from", "source_kind", "source_id")}
+                    for f in sorted(active, key=lambda f: (f["valid_from"], f["fact_id"]), reverse=True)
+                    if not (f["source_kind"] == "doc" and f["source_id"] in listed)]
+    return out

@@ -20,7 +20,7 @@ schema_drift: False
   events       present=True rows=14 missing_cols=[]
   routines     present=True rows=7 missing_cols=[]
   documents    present=True rows=13 missing_cols=[]
-  facts        present=True rows=12 missing_cols=[]
+  facts        present=True rows=15 missing_cols=[]
   chat_messages present=True rows=0 missing_cols=[]
   changelog    present=True rows=0 missing_cols=[]
   search_contexts present=True rows=0 missing_cols=[]

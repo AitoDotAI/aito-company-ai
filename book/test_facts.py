@@ -191,7 +191,10 @@ def test_facts_are_validated_and_superseded_not_deleted(t: bt.TestCaseRun) -> No
     t.tln("  same fact_id, already_recorded")
 
     t.h1("Supersede: same company and kind only; the old fact stays, inactive")
-    for old, new in ((F(1), F(3)), (F(1), F(12)), (F(11), F(3))):
+    # the held account's fact, found by account, not by position: the seed
+    # gained attribute facts (docs/42), so ids after the replica's moved
+    other = next(r["fact_id"] for r in SEED if r["company"] == HELD)
+    for old, new in ((F(1), F(3)), (F(1), other), (F(11), F(3))):
         try:
             log.supersede_fact(client, old, new)
             raise AssertionError(f"{old}->{new} must be refused")

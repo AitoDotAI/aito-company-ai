@@ -136,10 +136,12 @@ def add_fact(company: str, kind: str, statement: str, source_kind: str, source_i
              valid_from: str, author: str, slot: str | None = None, state: str | None = None,
              due: str | None = None, stakeholder_id: str | None = None) -> dict:
     """Record one short, sourced fact about ONE account (docs/39). kind:
-    role (slot champion|decision_owner|sponsor|other), commitment (slot
+    role (slot champion|decision_owner|sponsor|signer|other), commitment (slot
     ours|theirs, state sent|drafted, optional due), decision, open_question
     (slot ours|theirs: whose move), contact_info (state current|bounced|
-    invalid), hold (state on_hold|released; source_kind must be antti).
+    invalid), hold (state on_hold|released; source_kind must be antti),
+    attribute (slot pain|budget_cycle|procurement|deployment|billing_model|
+    tooling|headcount|other: a standing property of the account, docs/42).
     source_kind mail|doc|call|touch|antti with the source's id; valid_from is
     the day it became true. Write the statement as the source says it; never
     infer one. A value outside the vocabulary raises. Retry-safe."""
@@ -157,6 +159,20 @@ def supersede_fact(old_id: str, new_id: str) -> dict:
     state released, from antti, superseding the on_hold one. Only on an
     explicit instruction: never to tidy up."""
     return logbook.supersede_fact(_client(), old_id, new_id)
+
+
+@mcp.tool()
+def harvest_queue(company: str) -> dict:
+    """An account's notes for proposing facts from (docs/42). For each note,
+    newest first: its body, `thin`, and `cited_by`, the active facts already
+    sourced to it. Also the account's other active facts, so you don't restate
+    one. Read the notes, propose facts to the person you're working with, and
+    only on their yes call add_fact(source_kind="doc", source_id=<doc_id>);
+    check its supersede_candidates and warnings. Never write a fact unconfirmed.
+    A held account (hold HOLD, unclear included) returns the hold and no notes:
+    don't harvest it."""
+    from . import facts
+    return facts.harvest_queue(_client(), company)
 
 
 @mcp.tool()

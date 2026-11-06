@@ -4,6 +4,7 @@ hold: None
   champion: [('Carol Vale', 'touch', '2026-10-20'), ('Rupert Fields', 'call', '2026-10-09')]
   decision_owner: [('Peggy Rivers', 'call', '2026-11-01'), ('Grace Lane', 'doc', '2026-10-26')]
   sponsor: []
+  signer: []
   other: []
   CONFLICT decision_owner: ['sfa002', 'sfa001']
   decisions: [('The plugin decision mail went to the commercial lead', 'Grace Lane', ['sfa011'])]

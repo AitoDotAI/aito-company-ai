@@ -1,6 +1,6 @@
 # 42 — Harvesting account facts out of meeting notes (spec for td-20261106233617731095)
 
-Status: **spec, for review.** It covers part 3 of td-20260926220007895967,
+Status: **built (7.11.2026); spec approved in #88, vocabulary confirmed by the CRO.** It covers part 3 of td-20260926220007895967,
 whose parts 1 and 2 are docs/41. **Nothing is built until the decisions below
 are settled.**
 
@@ -120,3 +120,24 @@ written. So the books test the plumbing and the vocabulary:
 - Notes not linked to an account.
 - Harvesting from mail (no mail ingest).
 - Training anything on the facts.
+
+## Built (7.11.2026)
+
+- **`facts.harvest_queue(company)`** and the MCP tool `harvest_queue`.
+  - Two reads: the account's facts and its notes, both listed in `requests`.
+  - A HOLD, unclear included, returns the hold with no notes and no facts.
+  - The tool's text tells the session to propose, wait for a yes, then
+    `add_fact` with `source_kind: doc`.
+- **Vocabulary:**
+  - `attribute` with slots pain, budget_cycle, procurement, deployment,
+    billing_model, tooling, headcount and other;
+  - the role slot `signer`.
+
+  The loader's existing per-kind checks enforce both; an unknown slot is
+  refused, naming it.
+- **`briefing` gains `attributes`,** by slot (`facts.ATTRIBUTE_ORDER`), newest
+  first. Its roles gain `signer`. Neither is a conflict.
+- **Seed:** three attribute facts from the replica's account plan, appended
+  so the earlier ids hold. The held account's hold moved from `sfa012` to
+  `sfa015`. `test_facts` now finds that cross-account fact by its account,
+  not its position, so it still tests the cross-account refusal.
