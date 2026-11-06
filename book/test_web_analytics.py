@@ -435,7 +435,7 @@ def test_a_duplicate_slug_links_nothing_and_is_reported(t: bt.TestCaseRun) -> No
     t.h1("Two posts share the slug ecom-screen")
     report = webanalytics.store_day(client, DAY, _events())
     t.tln(json.dumps(report["duplicate_campaigns"], sort_keys=True).replace(li_post, "<li-post>"))
-    assert report["duplicate_campaigns"] == {"ecom-screen": sorted([li_post, "po-twin"])}
+    assert report["duplicate_campaigns"] == {"ecom-screen|linkedin": sorted([li_post, "po-twin"])}
     li = _rows(client)["Finland"]
     assert li.get("post_id") is None and li.get("link_basis") is None, li
     client.delete_entries("posts", {"post_id": "po-twin"})
@@ -1067,3 +1067,42 @@ def test_visits_become_linked_steps(t: bt.TestCaseRun) -> None:
     for table in ("web_steps", "web_suppressed"):
         client.delete_table(table)
         client.create_table(table, getattr(schema, table.upper()))
+
+
+def test_one_tag_serves_one_post_per_platform(t: bt.TestCaseRun) -> None:
+    """docs/35 attribution, tier 1: exact links are keyed on (utm_campaign,
+    platform), so a tag can serve one post per platform. v2-ga was both
+    Antti's Reddit post and a LinkedIn ad (CRO, 6.11.2026). A visit's
+    utm_source names the platform; a tag on several platforms with no
+    recognised source links nothing rather than guessing."""
+    client, _, _ = _seeded()
+    material = client.query({"from": "materials", "limit": 1})["hits"][0]["material_id"]
+    posted = {}
+    for channel in ("sk02", "sk04"):           # reddit, linkedin
+        row = log.add_post(client, material_id=material, channel_id=channel, tone="narrate",
+                           format="link", link_placement="body", utm_campaign="v2-ga")
+        log.log_post_result(client, row["post_id"], outcome="modest", reach_or_views=100,
+                            posted_at="2026-10-01")
+        posted[row["platform"]] = row["post_id"]
+    t.h1("add_post: the same tag on the same platform is refused")
+    try:
+        log.add_post(client, material_id=material, channel_id="sk03", tone="narrate",
+                     format="link", link_placement="body", utm_campaign="v2-ga")
+        raise RuntimeError("accepted a second reddit post with v2-ga")
+    except AssertionError as e:
+        t.tln(f"  {str(e).split(' is already post')[0]}")
+    visits = [_event(f"{DAY} 1{i}:00:00", "/blog/", 1759600000000 + i, device_id=f"dev-v2-{i}",
+                     url=f"https://aito.ai/blog/?utm_campaign=v2-ga{src}")
+              for i, src in enumerate(["&utm_source=reddit", "&utm_source=linkedin", ""])]
+    webanalytics.store_day(client, DAY, visits)
+    rows = {r.get("utm_source"): r for r in client.query(
+        {"from": "web_sessions", "where": {"day": DAY}, "limit": 10})["hits"]}
+    names = {posted["reddit"]: "<reddit-post>", posted["linkedin"]: "<linkedin-post>"}
+    t.h1("Visits tagged v2-ga")
+    for src in ("reddit", "linkedin", None):
+        r = rows[src]
+        t.tln(f"  utm_source={src}: post {names.get(r.get('post_id'), r.get('post_id'))}")
+    assert rows["reddit"]["post_id"] == posted["reddit"]
+    assert rows["linkedin"]["post_id"] == posted["linkedin"]
+    assert rows[None].get("post_id") is None
+    _clean(client)

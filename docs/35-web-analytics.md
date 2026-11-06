@@ -187,7 +187,9 @@ inferred side by side.
    platform (linkedin, reddit, hackernews…) must equal the post's channel
    platform. So one tag can serve one post per platform. v2-ga is the Reddit
    post and the LinkedIn ad, logged as two posts. add_post's uniqueness
-   check moves to (utm_campaign, platform). A visit whose source maps to no
+   check moves to (utm_campaign, platform). **Built** (6.11.2026): `UTM_SOURCE_PLATFORMS` maps
+   utm_source to a platform, and duplicates are reported as `<tag>|<platform>`.
+   Internal had no duplicate (tag, platform) pairs, so no migration was needed. A visit whose source maps to no
    platform matches only a tag used on a single platform.
 2. **Matched (`matched_post_id`, `link_basis = referrer_landing`).** A new
    nullable `posts.link_path` holds the aito.ai page the post links to, set

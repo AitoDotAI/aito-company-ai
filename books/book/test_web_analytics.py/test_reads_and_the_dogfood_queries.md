@@ -102,7 +102,7 @@
 
 # A campaign slug is unique across posts
 
-'ecom-screen': utm_campaign 'ecom-screen'
+'ecom-screen': utm_campaign 'ecom-screen' on linkedin
 'Ecom Screen': utm_campaign 'Ecom Screen': expected a lowercase slug (a-z, 0-9, -)
 
 # Dogfood: the next page, predicted from how the visitor arrived
