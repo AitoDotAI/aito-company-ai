@@ -164,6 +164,60 @@ website lane, not a workaround here.
 `log_experiment_result` is not changed. `web_traffic(campaign=<id>)` returns
 the numbers to pre-fill it: sessions, onward clicks, sign-up CTAs.
 
+## Attribution in three tiers (spec, 6.11.2026)
+
+Antti, 6.11.2026: "if we have a link to a blog post from LinkedIn, and we see
+people landing on that blog post from LinkedIn at the time, attributing is
+not rocket science; and we have an inference engine for matching rows." The
+sizes over 6.10–5.11 (2,802 human sessions) were:
+- **exact:** 1 linked, and 27 more carried tags whose posts weren't on the
+  board. The CRO traced them: two are our posts (v2-ga on Reddit 7.10,
+  two-halves on LinkedIn 6.10). One is a LinkedIn ad that shares the v2-ga
+  tag. Two are not ours (a directory's own tag, old Google Ads tags);
+- **referrer + landing:** 49 social-referrer sessions landing on a blog post;
+- **inferred:** 609 "direct" sessions landing on a blog post, which LinkedIn's
+  app often produces by stripping the referrer.
+
+Each tier is its own set of columns, labelled by how it was made, and the
+tiers are **never merged into one number**. Reports show exact | matched |
+inferred side by side.
+
+1. **Exact (`post_id`, `link_basis = utm_campaign`).** As above, but the key
+   is **(utm_campaign, platform)**: the visit's utm_source mapped to a
+   platform (linkedin, reddit, hackernews…) must equal the post's channel
+   platform. So one tag can serve one post per platform. v2-ga is the Reddit
+   post and the LinkedIn ad, logged as two posts. add_post's uniqueness
+   check moves to (utm_campaign, platform). A visit whose source maps to no
+   platform matches only a tag used on a single platform.
+2. **Matched (`matched_post_id`, `link_basis = referrer_landing`).** A new
+   nullable `posts.link_path` holds the aito.ai page the post links to, set
+   by the CRO (`add_post`, and a backfill). A session is matched to a post
+   when all of these hold:
+   - its referrer's platform is the post's platform;
+   - its landing_path is the post's link_path;
+   - it falls on or after posted_at and within MATCH_DAYS (7).
+
+   Zero or several posts → nothing, and several is reported, like
+   `duplicate_campaigns`. It replaces `referrer_day`, which needs no landing
+   page, for posts that have a link_path. Posts without one keep the old rule.
+3. **Inferred (`inferred_post_id`, `inferred_p`).** For the sessions that
+   tiers 1–2 left unlinked and that land on some post's link_path, Aito
+   `_predict post_id` is trained on the tier 1–2 sessions, with landing_path,
+   referrer_domain, source, device_class, country and days since the
+   candidate posts. Its top hit is stored with its `$p`. It is never counted
+   as attributed, and every inferred figure shows the training-label count
+   beside it ("inferred from 77 labelled sessions").
+
+   **Gate (CPO):** before the column appears in any view or tool, `_evaluate`
+   runs on held-out tier 1–2 sessions, and its accuracy is reported against
+   the baseline "the most recent post on the session's referrer platform, or
+   the one linking to its landing page". If the model doesn't beat the
+   baseline, this section says so and the column stays off. With roughly 77
+   labels, that is the likely outcome for months, and it is the honest one.
+
+Privacy is unchanged: these are links to our own posts, on the same
+pseudonymous sessions.
+
 ## The pull
 
 - `company-ai pull-web [--day YYYY-MM-DD] [--days N]` calls Amplitude's
