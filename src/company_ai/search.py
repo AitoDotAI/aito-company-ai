@@ -303,8 +303,11 @@ def _log_impressions(client: AitoClient, query: str, hits: list[dict],
 
 def _require_columns(client: AitoClient, table: str, columns: list[str]) -> None:
     """Refuse, naming what's missing, when the instance predates a column.
-    Aito 2.12.0 accepts a row with an unknown field and drops it, so writing
-    anyway would lose the value silently (rule 3)."""
+    A v2 collection doesn't refuse an undeclared field: its schema grows from
+    the data, with a column typed by inference (2.12.0, checked on a local
+    engine). So writing anyway would quietly add the column with Aito's
+    guess, not schema.py's declaration; create-schema is the one place a
+    column is defined."""
     have = client.get_schema()["schema"].get(table, {}).get("columns", {})
     missing = [c for c in columns if c not in have]
     assert not missing, (f"schema not applied: {table} has no {', '.join(missing)}; "

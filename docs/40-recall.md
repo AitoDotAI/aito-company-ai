@@ -103,11 +103,13 @@ ingest, T2, and T1-live (which waits for the CRO's real facts).
 - **Every seed note is under 500 characters** (the synthetic notes are
   short), so all of them read thin in the seed. The book adds one
   real-length note for the not-thin case.
-- **The code can reach an instance before its schema.** Aito 2.12.0 accepts
-  a row with an unknown field and drops the value, so a plain search sends no
-  `company_id` at all, and a search for an account or a mark refuses with
-  "schema not applied: ... run create-schema" rather than losing what it was
-  given. A book runs this against tables without the new columns.
+- **The code can reach an instance before its schema.** A v2 collection
+  doesn't refuse an undeclared field. Its schema grows from the data, with the
+  column's type inferred, and the value is stored (2.12.0, checked on a local
+  engine; a strict `table` refuses with a 400). So a plain search sends no
+  `company_id` at all. A search for an account or a mark refuses with "schema
+  not applied: ... run create-schema" rather than letting the first write
+  define the column. A book runs this against tables without the new columns.
 - **The marks book trains the ranking first.** A click turns `_recommend` on,
   and the order after the marks is compared with the click-only order. A mark
   that appended a row instead fails it (checked by mutation).
