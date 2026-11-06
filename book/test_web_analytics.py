@@ -53,9 +53,7 @@ def _seeded() -> AitoClient:
                  loaders.load_experiments):
         load(client, SEED_DIR)
     # every web table starts empty, so no book sees another's leftovers
-    for table in ("web_sessions", "web_steps", "web_visitors", "web_suppressed"):
-        client.delete_table(table)
-    loaders.create_schema(client)
+    _clean(client)
     material = client.query({"from": "materials", "limit": 1})["hits"][0]["material_id"]
     li = log.add_post(client, material_id=material, channel_id="sk04", tone="narrate",
                       format="link", link_placement="body", utm_campaign="ecom-screen")
@@ -68,10 +66,16 @@ def _seeded() -> AitoClient:
     return client, li["post_id"], hn["post_id"]
 
 
+WEB_TABLES = ("web_sessions", "web_steps", "web_visitors", "web_suppressed")
+
+
 def _clean(client: AitoClient) -> None:
-    """Leave the shared test env without web rows, so other books' table
-    listings (test_migrate's doctor) don't depend on run order."""
-    client.delete_entries("web_sessions", {"day": DAY})
+    """Leave the shared test env with every web table empty, so other books'
+    table listings (test_migrate's doctor) don't depend on run order. All four
+    tables and every day: a book may write steps, visitors or other days."""
+    for table in WEB_TABLES:
+        client.delete_table(table)
+    loaders.create_schema(client)
 
 
 def _masked(value, names: dict) -> str:
@@ -427,6 +431,7 @@ def test_paths_and_utm_values_are_redacted(t: bt.TestCaseRun) -> None:
     for leak in found:
         t.tln(leak.split(" '")[0])      # the kind, not the value: no email in a tracked book
     assert any("email" in f for f in found) and any("token" in f for f in found), found
+    _clean(client)
 
 
 def test_a_duplicate_slug_links_nothing_and_is_reported(t: bt.TestCaseRun) -> None:
@@ -512,6 +517,7 @@ def test_a_second_pull_at_once_is_refused(t: bt.TestCaseRun) -> None:
     reports = webanalytics.pull(client, days=1, today=date(2026, 10, 6), fetch=lambda d: [])
     t.tln(f"{len([r for r in reports if r['day'] not in webanalytics.RUN_REPORTS])} day(s) pulled")
     assert len([r for r in reports if r["day"] not in webanalytics.RUN_REPORTS]) == 1
+    _clean(client)
 
 
 def test_broken_tracking_and_a_stale_table_fail_the_run(t: bt.TestCaseRun) -> None:
@@ -1308,5 +1314,4 @@ def test_the_weekly_digest_lists_signals_that_crossed_thin(t: bt.TestCaseRun) ->
     t.tln(f"  {title}")
     for line in body.splitlines():
         t.tln(f"  {line}")
-    client.delete_entries("web_sessions", {"day": last})
-    client.delete_entries("web_sessions", {"day": this})
+    _clean(client)
