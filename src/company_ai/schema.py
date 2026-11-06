@@ -615,7 +615,10 @@ TOKENS = {
 # and refreshes it (docs/24). No materialised rows to maintain, so it's not in
 # TABLES and the `_modify` write bugs never touch it. Documents are a real
 # collection now, so the view unions them directly (no staging table).
-SEARCH_KINDS = {"doc", "contact", "deal"}
+SEARCH_KINDS = {"doc", "contact", "deal", "fact"}
+# a document whose body is shorter is flagged thin (docs/40; Antti, 6.11.2026):
+# formatting only, never hidden or re-ranked
+THIN_DOC_CHARS = 500
 
 # search_contexts — one row per search served: the query, an optional anchor
 # item (the selected item, "more like this"), and where it came from. The
@@ -632,6 +635,7 @@ SEARCH_CONTEXTS = {
         "anchor_item_id": {"type": "String", "nullable": True},
         "source": {"type": "String"},                          # dashboard|assistant|mcp
         "at": {"type": "String"},                              # ISO datetime, UTC
+        "company_id": {"type": "String", "nullable": True},  # the account a call-prep search was for (docs/40); not a link
     },
 }
 
@@ -656,6 +660,9 @@ SEARCH_IMPRESSIONS = {
         "position": {"type": "Int"},                           # 0-based rank when shown
         "clicked": {"type": "Boolean"},
         "at": {"type": "String"},                              # ISO datetime, UTC
+        # marks (docs/40): logging only; the ranking still trains on clicked
+        "used": {"type": "Boolean", "nullable": True},
+        "flagged_wrong": {"type": "Boolean", "nullable": True},
     },
 }
 

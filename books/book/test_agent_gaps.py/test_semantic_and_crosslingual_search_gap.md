@@ -5,7 +5,7 @@
   [French, same intent     ] 'quels prospects contacter'
       -> 0 hits: []
   [Paraphrase (retention)  ] 'reducing churn and keeping customers'
-      -> 10 hits: ['Ideal customer profile', 'Genco account plan', 'Q3 content calendar', 'Nakatomi OÜ — account plan', 'What we learned losing ERP deals', 'Slate OÜ — discovery call', 'Mooby Ab — technical evaluation', 'Predictive database positioning', 'R&D roadmap themes', 'Pymt Oy — renewal risk']
+      -> 10 hits: ['Ideal customer profile', 'Genco account plan', 'Q3 content calendar', 'Nakatomi OÜ — account plan', 'What we learned losing ERP deals', 'Slate OÜ — discovery call', 'Predictive database positioning', 'R&D roadmap themes', 'Mooby Ab — technical evaluation', 'Pymt Oy — renewal risk']
   [Synonym (GTM)           ] 'go-to-market plan'
       -> 7 hits: ['Genco account plan', 'Nakatomi OÜ — account plan', 'Ideal customer profile', 'Daily note — Genco pilot kickoff', 'Nimbus OÜ — quarterly review', 'Pymt Oy — renewal risk', 'What we learned losing ERP deals']
 

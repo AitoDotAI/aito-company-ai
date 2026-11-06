@@ -582,6 +582,14 @@ def create_app(config: Config | None = None) -> FastAPI:
         return _guarded(lambda: search.record_click(
             client(), body["context_id"], body["item_id"]))
 
+    @app.post("/api/search/mark")
+    async def search_mark(request: Request):
+        from . import search
+        body = await request.json()
+        return _guarded(lambda: search.mark_item(
+            client(), body["context_id"], body["item_id"],
+            used=body.get("used"), flagged_wrong=body.get("flagged_wrong")))
+
     @app.post("/api/search/reindex")
     def search_reindex():
         from . import search, embed

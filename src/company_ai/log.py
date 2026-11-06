@@ -1514,12 +1514,47 @@ def add_fact(client: AitoClient, company: str, kind: str, statement: str, source
     earlier = _recent_same(client, "facts", {"company_id": company_slug(company), "kind": kind},
                            same, datetime.now())
     if earlier is not None:
-        return {**earlier, "already_recorded": True}
+        return {**earlier, "already_recorded": True,
+                "supersede_candidates": supersede_candidates(client, earlier)}
     add_company(client, company)   # the link target, so company_id never dangles
     client.upload_batch("facts", [row])
-    _after_insert("fact", row["fact_id"], lambda: changelog.record(
-        client, "fact", row["fact_id"], "created", f"{kind} fact on {company}: {statement[:80]}"))
-    return row
+
+    def follow_up():
+        changelog.record(client, "fact", row["fact_id"], "created",
+                         f"{kind} fact on {company}: {statement[:80]}")
+        search.refresh(client)
+    _after_insert("fact", row["fact_id"], follow_up)
+    return {**row, "supersede_candidates": supersede_candidates(client, row)}
+
+
+SUPERSEDE_CANDIDATES = 5
+
+
+def supersede_candidates(client: AitoClient, fact: dict) -> list[dict]:
+    """The active facts this one might replace (docs/40): same company and
+    kind, and for a role the same slot. Aito's text match of the new statement
+    orders them (matches first, by $similarity); the rest follow by valid_from.
+    For confirmation only: nothing is applied."""
+    from .search import _TOKEN
+    scope = [{"company_id": fact["company_id"]}, {"kind": fact["kind"]}]
+    if fact["kind"] == "role":
+        scope.append({"slot": fact["slot"]})
+    every = client.query({"from": "facts", "where": {"$and": scope}, "limit": 10000})["hits"]
+    pool = {f["fact_id"]: f for f in every if not f.get("superseded_by") and f["fact_id"] != fact["fact_id"]}
+    terms = _TOKEN.findall(fact["statement"].lower())[:12]
+    matched = []
+    if pool and terms:
+        request = {"from": "facts", "where": {"$and": [*scope, {"$or": [
+                       {"statement": {"$match": t}} for t in terms]}]},
+                   "orderBy": {"$similarity": {"statement": fact["statement"]}},
+                   "select": ["fact_id"], "limit": 10000}
+        matched = [h["fact_id"] for h in client.query(request)["hits"] if h["fact_id"] in pool]
+    rest = sorted((i for i in pool if i not in matched),
+                  key=lambda i: (pool[i]["valid_from"], i), reverse=True)
+    return [{"fact_id": i, "statement": pool[i]["statement"], "valid_from": pool[i]["valid_from"],
+             "source_kind": pool[i]["source_kind"], "source_id": pool[i]["source_id"],
+             "text_match": i in matched}
+            for i in (matched + rest)[:SUPERSEDE_CANDIDATES]]
 
 
 def supersede_fact(client: AitoClient, old_id: str, new_id: str) -> dict:
@@ -1546,4 +1581,5 @@ def supersede_fact(client: AitoClient, old_id: str, new_id: str) -> dict:
     row = _write_row(client, "facts", "fact_id", old_id,
                      lambda r: r.__setitem__("superseded_by", new_id))
     changelog.record(client, "fact", old_id, "superseded", f"{old['kind']} fact {old_id} -> {new_id}")
+    search.refresh(client)
     return row

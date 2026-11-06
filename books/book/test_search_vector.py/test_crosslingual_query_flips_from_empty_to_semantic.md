@@ -1,6 +1,6 @@
 # index built, with embeddings
 
-indexed 353 items; vectors 353
+indexed 365 items; vectors 365
 
 # a French query over English documents: 'quels prospects contacter au sujet des prix'
 

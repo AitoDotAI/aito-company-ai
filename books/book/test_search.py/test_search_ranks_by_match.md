@@ -1,12 +1,12 @@
 # Search 'pricing pilots procurement' — the pricing doc should lead
 
-  1. [deal   ] Sterling Oy
-  2. [deal   ] Hanso GmbH
-  3. [deal   ] Delos Ab
+  1. [doc    ] Pricing playbook
+  2. [deal   ] Sterling Oy
+  3. [deal   ] Hanso GmbH
   4. [deal   ] Delos Ab
-  5. [deal   ] Spectre Oy
+  5. [deal   ] Delos Ab
 
-top hit: [deal] Sterling Oy
+top hit: [doc] Pricing playbook
 
 ## Same query, documents only
 

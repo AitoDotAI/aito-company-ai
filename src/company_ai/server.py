@@ -211,16 +211,20 @@ def graph_questions() -> dict:
 
 
 @mcp.tool()
-def search(query: str, kind: str | None = None, top_n: int = 10) -> dict:
+def search(query: str, kind: str | None = None, top_n: int = 10,
+           company_id: str | None = None) -> dict:
     """Smart search over content — a unified index of docs, contacts, and deals,
     ranked by Aito relevance and trained by clicks. Optionally restrict to one
     kind (doc/contact/deal). Grounds RAG: find the items, then read the source.
     Returns a `context_id`; pass it to record_click when a result proves useful,
-    so the ranking learns. Builds the index if empty."""
+    so the ranking learns. Builds the index if empty. Facts are kind `fact`;
+    superseded ones never appear. A doc hit carries `thin` (a body under 500
+    characters). `company_id` records which account a call-prep search was
+    for."""
     from . import search as search_mod
     client = _client()
     return search_mod.serve(client, query, kind=kind, top_n=top_n, source="mcp",
-                            embed=_embedder())
+                            embed=_embedder(), company_id=company_id)
 
 
 @mcp.tool()
@@ -230,6 +234,17 @@ def record_click(context_id: str, item_id: str) -> dict:
     its hits. Clicks lift that item for similar queries next time (docs/23)."""
     from . import search as search_mod
     return search_mod.record_click(_client(), context_id, item_id)
+
+
+@mcp.tool()
+def mark_item(context_id: str, item_id: str, used: bool | None = None,
+              flagged_wrong: bool | None = None) -> dict:
+    """Mark a search hit you actually used (used=true), or one that was wrong
+    (flagged_wrong=true), for the context it was shown in. Logging only: the
+    ranking still learns from record_click (docs/40)."""
+    from . import search as search_mod
+    return search_mod.mark_item(_client(), context_id, item_id, used=used,
+                                flagged_wrong=flagged_wrong)
 
 
 @mcp.tool()

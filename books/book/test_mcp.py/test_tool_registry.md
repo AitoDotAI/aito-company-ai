@@ -152,13 +152,16 @@ The knowledge graph's showcase questions, each answered by one Aito
 
 ## search
 
-params: ['kind', 'query', 'top_n']
+params: ['company_id', 'kind', 'query', 'top_n']
 required: ['query']
 Smart search over content — a unified index of docs, contacts, and deals,
     ranked by Aito relevance and trained by clicks. Optionally restrict to one
     kind (doc/contact/deal). Grounds RAG: find the items, then read the source.
     Returns a `context_id`; pass it to record_click when a result proves useful,
-    so the ranking learns. Builds the index if empty.
+    so the ranking learns. Builds the index if empty. Facts are kind `fact`;
+    superseded ones never appear. A doc hit carries `thin` (a body under 500
+    characters). `company_id` records which account a call-prep search was
+    for.
 
 ## record_click
 
@@ -167,6 +170,14 @@ required: ['context_id', 'item_id']
 Record that a search result was useful — the training signal for the
     ranking. `context_id` comes from a prior `search` call, `item_id` from one of
     its hits. Clicks lift that item for similar queries next time (docs/23).
+
+## mark_item
+
+params: ['context_id', 'flagged_wrong', 'item_id', 'used']
+required: ['context_id', 'item_id']
+Mark a search hit you actually used (used=true), or one that was wrong
+    (flagged_wrong=true), for the context it was shown in. Logging only: the
+    ranking still learns from record_click (docs/40).
 
 ## reindex_search
 

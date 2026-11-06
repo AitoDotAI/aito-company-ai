@@ -86,3 +86,30 @@ no column and no schema change.
 
 Training the ranking on `used`/`flagged_wrong`, per-write embeddings, mail
 ingest, T2, and T1-live (which waits for the CRO's real facts).
+
+## Built (6.11.2026)
+
+- **Superseded facts are kept out inside the query.** On 2.12.0 a union part
+  can't filter: `where: {superseded_by: null}` on a part returned no rows,
+  and `$exists` answered 500. So `search_items` holds every fact, and
+  `search.search` adds `$not` on the superseded fact ids to its `where`.
+  Aito's top N is then N active items, so a page is never short (CPO review
+  of #78). The vector path over-fetches, and drops superseded ids before
+  truncating.
+- **Marks are written on the shown impression in place** (`_write_row`).
+  `record_click` appends a row instead, but an appended unclicked row would be
+  a new negative example for the click-trained `_recommend`, and marks must
+  not move the ranking. The book shows the next serve's order is unchanged.
+- **Every seed note is under 500 characters** (the synthetic notes are
+  short), so all of them read thin in the seed. The book adds one
+  real-length note for the not-thin case.
+- **The code can reach an instance before its schema.** Aito 2.12.0 accepts
+  a row with an unknown field and drops the value, so a plain search sends no
+  `company_id` at all, and a search for an account or a mark refuses with
+  "schema not applied: ... run create-schema" rather than losing what it was
+  given. A book runs this against tables without the new columns.
+- **The marks book trains the ranking first.** A click turns `_recommend` on,
+  and the order after the marks is compared with the click-only order. A mark
+  that appended a row instead fails it (checked by mutation).
+- MCP `mark_item`, `search(..., company_id)`, API `POST /api/search/mark`.
+  `add_fact` returns `supersede_candidates`. Fact writes refresh the index.

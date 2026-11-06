@@ -214,7 +214,7 @@ def briefing(client: AitoClient, company: str) -> Result:
     todos = sorted((x for x in todos if x["status"] not in _CLOSED_TODO),
                    key=lambda x: (x["priority"], x.get("due_date") or "9999", x["todo_id"]))
     docs = q({"from": "documents", "where": {"company_id": cid},
-              "select": ["doc_id", "title", "kind", "topics", "noted_on", "updated", "stakeholder_id"],
+              "select": ["doc_id", "title", "kind", "topics", "noted_on", "updated", "stakeholder_id", "body"],
               "limit": 10000})
     docs.sort(key=lambda d: (d.get("noted_on") or "", d.get("updated") or "", d["doc_id"]), reverse=True)
     # every fact, superseded too: a decision says what it replaced, and the
@@ -270,6 +270,7 @@ def briefing(client: AitoClient, company: str) -> Result:
         "touches_total": len(touches),
         "notes": [{"title": d["title"], "kind": d.get("kind"), "topics": d.get("topics"),
                    "stakeholder_id": d.get("stakeholder_id"),
+                   "thin": len(d.get("body") or "") < schema.THIN_DOC_CHARS,
                    "source": _source("document", d["doc_id"], d.get("noted_on"))}
                   for d in docs[:BRIEFING_NOTES]],
         "notes_total": len(docs),
