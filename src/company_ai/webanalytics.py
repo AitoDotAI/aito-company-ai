@@ -93,7 +93,7 @@ UTM_SOURCE_PLATFORMS = {"linkedin": "linkedin", "linkedin.com": "linkedin", "lnk
 PRE_VISIT = ("source", "referrer_domain", "utm_source", "utm_medium", "utm_campaign",
              "landing_path", "device_class", "country", "weekday", "hour")
 
-PROBE_PREFIXES = ("/wp-", "/wordpress", "/xmlrpc.php", "/.env", "/.git", "/admin",
+PROBE_PREFIXES = ("/wp-", "/wordpress", "/xmlrpc.php", "/sitemap", "/.env", "/.git", "/admin",
                   "/phpmyadmin", "/airdrops", "/cgi-bin", "/vendor/", "/.well-known/security.txt",
                   "/account/login", "/auth/", "/app", "/config")
 
@@ -383,7 +383,9 @@ def _build(events: list[dict], day: str) -> tuple[list[dict], dict]:
             **utm,
             "device_class": device,
             "country": first.get("country") or "unknown",
-            "likely_bot": pages[0].startswith(PROBE_PREFIXES),
+            # a probe page anywhere in the visit, not only the landing: crawlers
+            # fetch the sitemaps mid-visit (first real paths run, 6.11.2026)
+            "likely_bot": any(p.startswith(PROBE_PREFIXES) for p in pages),
             "post_id": None, "candidate_post_id": None, "matched_post_id": None,
             "experiment_id": None,
             "link_basis": None,
@@ -1128,21 +1130,53 @@ def web_paths_to(client: AitoClient, kpi: str, since: str | None = None,
         return out
     response = client.relate({"from": "web_steps", "where": {"$and": [*clauses, {"kpi": kpi}]},
                               "relate": {"$patterns": list(PATH_DEPTH)}, "limit": 10})
-    for hit in response.get("hits", []):
+    hits = response.get("hits", [])
+    shapes = []
+    for hit in hits:
         props = (hit.get("related") or {}).get("$and") or [hit.get("related") or {}]
-        steps = {k: v for p in props for k, v in p.items()}
-        path = [steps[k] for k in reversed(PATH_DEPTH) if k in steps]
-        visits = int(hit.get("f", 0))
-        out["top_paths"].append({"path": path + [_kpi_token(kpi)], "visits": visits,
-                                 "lift": hit.get("lift"), "thin": visits < WEB_THIN})
-    keep_tokens = lambda r: {**r, "relations": [x for x in r["relations"] if x["field"] == "token"]}
-    out["raises_later"] = keep_tokens(relations.relate(
+        shapes.append({k: v for p in props for k, v in p.items()})
+    # thin is judged on distinct visits, never steps: one visitor reloading
+    # must not make a row look solid (CPO, 6.11.2026)
+    visits = _distinct_visits(client, [[*clauses, {"kpi": kpi}, *({k: v} for k, v in sh.items())]
+                                       for sh in shapes])
+    for hit, sh, n in zip(hits, shapes, visits):
+        path = [sh[k] for k in reversed(PATH_DEPTH) if k in sh]
+        out["top_paths"].append({"path": path + [_kpi_token(kpi)], "visits": n,
+                                 "steps": int(hit.get("f", 0)), "lift": hit.get("lift"),
+                                 "thin": n < WEB_THIN})
+    out["raises_later"] = _by_direction(client, relations.relate(
         client, "web_steps", {f"kpi_after_{kpi}": True},
-        where={"is_kpi": False, "$and": clauses}, top_n=30, thin=WEB_THIN))
-    out["drop_off"] = keep_tokens(relations.relate(
+        where={"is_kpi": False, "$and": clauses}, top_n=30, thin=WEB_THIN),
+        [*clauses, {"is_kpi": False}])
+    out["drop_off"] = _by_direction(client, relations.relate(
         client, "web_steps", {"is_exit": True},
-        where={f"kpi_after_{kpi}": False, "is_kpi": False, "$and": clauses}, top_n=30, thin=WEB_THIN))
+        where={f"kpi_after_{kpi}": False, "is_kpi": False, "$and": clauses}, top_n=30, thin=WEB_THIN),
+        [*clauses, {f"kpi_after_{kpi}": False}, {"is_kpi": False}])
     return out
+
+
+def _distinct_visits(client: AitoClient, wheres: list[list[dict]]) -> list[int]:
+    """For each step condition, how many distinct visits have such a step:
+    the step ids are <session_key>:<n>, so the visit is the part before the
+    last colon. One _batch round trip; counting is formatting (rule 2)."""
+    if not wheres:
+        return []
+    answers = client.batch([{"from": "web_steps", "where": {"$and": w}, "select": ["step_id"],
+                             "limit": 1_000_000} for w in wheres])
+    return [len({h["step_id"].rsplit(":", 1)[0] for h in a.get("hits", [])}) for a in answers]
+
+
+def _by_direction(client: AitoClient, rel: dict, population: list[dict]) -> dict:
+    """Keep the token rows of a relate, judge thin on the distinct visits
+    behind each, and split them: `relations` (lift > 1) lead, `protective`
+    (lift <= 1) is kept apart, because the opposite direction is information
+    too. Aito's own order is kept within each."""
+    rows = [x for x in rel["relations"] if x["field"] == "token"]
+    counts = _distinct_visits(client, [[*population, {"token": x["value"]}] for x in rows])
+    for x, n in zip(rows, counts):
+        x["visits"], x["thin"] = n, n < WEB_THIN
+    return {**rel, "relations": [x for x in rows if x["lift"] > 1],
+            "protective": [x for x in rows if x["lift"] <= 1]}
 
 
 def _kpi_token(kpi: str) -> str:
