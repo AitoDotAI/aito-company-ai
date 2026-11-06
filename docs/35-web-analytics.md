@@ -202,6 +202,16 @@ inferred side by side.
    Zero or several posts → nothing, and several is reported, like
    `duplicate_campaigns`. It replaces `referrer_day`, which needs no landing
    page, for posts that have a link_path. Posts without one keep the old rule.
+   **Built** (6.11.2026):
+   - `posts.link_path` is normalized to landing_path form (an aito.ai URL
+     becomes its path; another host is written host-first) and set with
+     `add_post(link_path=…)` or `set_post_link_path`, on MCP and the
+     connector;
+   - `web_sessions.matched_post_id`;
+   - the day report's `ambiguous_matches`.
+
+   The window is `webanalytics.MATCH_DAYS`, **default 7 days and Antti's to
+   change** (`COMPANY_AI_WEB_MATCH_DAYS`).
 3. **Inferred (`inferred_post_id`, `inferred_p`).** For the sessions that
    tiers 1–2 left unlinked and that land on some post's link_path, Aito
    `_predict post_id` is trained on the tier 1–2 sessions, with landing_path,

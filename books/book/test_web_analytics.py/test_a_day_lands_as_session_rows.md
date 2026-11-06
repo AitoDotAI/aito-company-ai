@@ -1,6 +1,7 @@
 # Store one day from the fixture
 
 {
+ "ambiguous_matches": 0,
  "before_post": 0,
  "bots": 1,
  "day": "2026-10-05",

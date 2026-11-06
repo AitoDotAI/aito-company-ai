@@ -260,6 +260,9 @@ POSTS = {
         # the readable slug its links carry as ?utm_campaign= (docs/35), unique
         # when set; an experiment's drop uses the experiment_id
         "utm_campaign": {"type": "String", "nullable": True},
+        # the aito.ai page the post links to, in landing_path form (docs/35
+        # attribution tier 2: matched by referrer platform + page + days)
+        "link_path": {"type": "String", "nullable": True},
         # denormalized from channel/material for a single-query predict:
         "platform": {"type": "String"},          # from the channel
         "ai_made": {"type": "String"},            # from the material
@@ -702,6 +705,8 @@ WEB_SESSIONS = {
         "likely_bot": {"type": "Boolean"},
         "post_id": {"type": "String", "nullable": True, "link": "posts.post_id"},       # exact
         "candidate_post_id": {"type": "String", "nullable": True, "link": "posts.post_id"},  # referrer_day
+        # referrer platform + the post's link_path + MATCH_DAYS (docs/35 tier 2)
+        "matched_post_id": {"type": "String", "nullable": True, "link": "posts.post_id"},
         "experiment_id": {"type": "String", "nullable": True, "link": "experiments.experiment_id"},
         "link_basis": {"type": "String", "nullable": True},  # utm_campaign, referrer_day
         "pull_run": {"type": "String"},            # the pull that wrote the row (replace-by-run)
@@ -844,7 +849,7 @@ OUTCOMES = {
 # configurable vocabulary, and sharing the name let it shadow this one
 WEB_SESSION_SOURCES = {"organic", "social", "referral", "direct", "paid", "email", "other"}
 DEVICE_CLASSES = {"desktop", "mobile", "tablet", "unknown"}
-WEB_LINK_BASES = {"utm_campaign", "referrer_day"}
+WEB_LINK_BASES = {"utm_campaign", "referrer_day", "referrer_landing"}
 WEEKDAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 
 # The operator's week. These defaults are THIS repository's operator

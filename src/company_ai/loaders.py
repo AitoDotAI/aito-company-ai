@@ -550,7 +550,7 @@ def parse_post_row(row: dict, materials: dict, channels: dict) -> dict:
     query. `materials`/`channels` map id -> row (loaded first)."""
     # post files from before 4.11.2026 don't have the engagement columns,
     # nor from before 5.11.2026 utm_campaign
-    optional = {"utm_campaign", *schema.POST_ENGAGEMENT}
+    optional = {"utm_campaign", "link_path", *schema.POST_ENGAGEMENT}
     core = set(schema.POSTS["columns"]) - DERIVED_POST_COLUMNS - optional
     unexpected = set(row) - core - optional
     _require(core <= set(row) and not unexpected,
@@ -590,6 +590,7 @@ def parse_post_row(row: dict, materials: dict, channels: dict) -> dict:
         "trials": _parse_int(row["trials"], "trials", row) if row["trials"] else None,
         "outcome": outcome,
         "utm_campaign": row.get("utm_campaign") or None,
+        "link_path": row.get("link_path") or None,
         # a post without the engagement columns reads null
         **{k: _parse_int(row[k], k, row) if row.get(k) else None for k in schema.POST_ENGAGEMENT},
         # denormalized from material/channel + derived:
