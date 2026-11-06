@@ -569,6 +569,11 @@ def pull(client: AitoClient, days: int = LOOKBACK_DAYS, day: str | None = None,
                 reports.append(store_day(client, d, fetch(d)))
             except Exception as e:  # noqa: BLE001 — reported per day; the caller exits non-zero
                 reports.append({"day": d, "error": f"{type(e).__name__}: {e}"})
+        # the visitor view follows the sessions; a failure is reported like a day's
+        try:
+            reports.append({"day": "web_visitors", **build_visitors(client)})
+        except Exception as e:  # noqa: BLE001
+            reports.append({"day": "web_visitors", "error": f"{type(e).__name__}: {e}"})
     return reports
 
 
@@ -796,3 +801,68 @@ def web_kpis(client: AitoClient, kpi: str | None = None, event: str | None = Non
                            if r["field"] == "co_events" and r["value"] not in own][:10]
     out["other_events"] = events
     return out
+
+
+# ---- web_visitors: one row per browser (docs/36 phase 2) ----
+
+VISITOR_SOURCE_FIELDS = ["visitor_key", "session_key", "day", "hour", "source", "referrer_domain",
+                         "utm_source", "utm_medium", "utm_campaign", "landing_path",
+                         "device_class", "country", "post_id", "events",
+                         *[f"kpi_{k}" for k in KPI_EVENTS]]
+UPLOAD_CHUNK = 1000
+
+
+def _visitor_row(sessions: list[dict], run: str) -> dict:
+    """One browser's row from its human sessions, oldest first. Grouping and
+    first/any is formatting; nothing here predicts (rule 2)."""
+    first = sessions[0]
+    kpi_days = {k: next((s["day"] for s in sessions if s.get(f"kpi_{k}")), None)
+                for k in KPI_EVENTS}
+    first_kpi = next((i for i, s in enumerate(sessions)
+                      if any(s.get(f"kpi_{k}") for k in KPI_EVENTS)), len(sessions))
+    seen: list[str] = []
+    for s in sessions[:first_kpi]:
+        for tok in (s.get("events") or "").split():
+            if tok not in seen:
+                seen.append(tok)
+    return {
+        "visitor_key": first["visitor_key"], "first_day": first["day"],
+        "last_day": sessions[-1]["day"], "sessions": len(sessions),
+        **{f"first_{k}": first.get(k) for k in ("source", "referrer_domain", "utm_source",
+                                                 "utm_medium", "utm_campaign", "landing_path",
+                                                 "device_class", "country")},
+        "first_post_id": first.get("post_id"),
+        "seen_before_first_kpi": " ".join(seen) or None,
+        **{f"kpi_{k}": d is not None for k, d in kpi_days.items()},
+        **{f"first_kpi_day_{k}": d for k, d in kpi_days.items()},
+        "pull_run": run,
+    }
+
+
+def build_visitors(client: AitoClient) -> dict:
+    """Rebuild web_visitors from the human web_sessions: upload the new run,
+    check every row landed, then delete the earlier runs. A failure after the
+    upload deletes the new run, so the table never doubles (as store_day)."""
+    hits = client.query({"from": "web_sessions", "where": {"likely_bot": False},
+                         "select": VISITOR_SOURCE_FIELDS, "limit": 1_000_000})["hits"]
+    by_visitor: dict[str, list] = {}
+    for h in hits:
+        assert h.get("visitor_key"), f"a session without visitor_key: {h.get('day')} {h.get('session_key')}"
+        by_visitor.setdefault(h["visitor_key"], []).append(h)
+    run = uuid.uuid4().hex[:12]
+    rows = [_visitor_row(sorted(s, key=lambda x: (x["day"], x["hour"], x["session_key"])), run)
+            for s in by_visitor.values()]
+    old = {r["pull_run"] for r in client.query(
+        {"from": "web_visitors", "select": ["pull_run"], "limit": 1_000_000})["hits"]}
+    for i in range(0, len(rows), UPLOAD_CHUNK):
+        client.upload_batch("web_visitors", rows[i:i + UPLOAD_CHUNK])
+    try:
+        landed = client.query({"from": "web_visitors", "where": {"pull_run": run}, "limit": 0})["total"]
+        assert landed == len(rows), f"web_visitors: {landed} of {len(rows)} rows landed"
+        for previous in sorted(old - {run}):
+            client.delete_entries("web_visitors", {"pull_run": previous})
+    except Exception:
+        client.delete_entries("web_visitors", {"pull_run": run})
+        raise
+    return {"visitors": len(rows), "sessions": len(hits), "pull_run": run,
+            "replaced_runs": len(old)}

@@ -25,3 +25,4 @@ schema_drift: False
   search_contexts present=True rows=0 missing_cols=[]
   search_impressions present=True rows=0 missing_cols=[]
   web_sessions present=True rows=0 missing_cols=[]
+  web_visitors present=True rows=0 missing_cols=[]
