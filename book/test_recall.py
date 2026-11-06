@@ -31,6 +31,7 @@ def _seeded() -> AitoClient:
     loaders.load_all(client, SEED_DIR)
     for table in ("search_impressions", "search_contexts"):
         client.delete_table(table)
+        AitoClient._ensured.discard(table)
     search.build_index(client)
     return client
 
@@ -48,13 +49,21 @@ def test_facts_are_searchable_and_superseded_ones_never_surface(t: bt.TestCaseRu
     assert F(11) not in [h["source_id"] for h in hits], "fact 11 is superseded by fact 3"
 
     t.h1("A query whose best matches are superseded still fills the page")
-    made = [log.add_fact(client, company=REPLICA, kind="decision", statement=f"quokka budget decision {i}",
+    # the four oldest match every query term and the four newest only one, so
+    # unfiltered, the superseded four would take the whole page
+    words = ["quokka budget decision"] * 4 + ["quokka note"] * 4
+    made = [log.add_fact(client, company=REPLICA, kind="decision", statement=f"{w} {i}",
                          source_kind="call", source_id=f"call-q{i}", valid_from=f"2026-11-0{i + 1}",
-                         author="cro")["fact_id"] for i in range(8)]
-    # the four newest replace the four oldest: four active, four superseded, all matching
+                         author="cro")["fact_id"] for i, w in enumerate(words)]
     for old, new in zip(made[:4], made[4:]):
         log.supersede_fact(client, old, new)
     search.refresh(client)
+    unfiltered = client.query({"from": "search_items",
+                               "where": {"$and": [{"kind": "fact"}, search._match_clause("quokka budget decision")]},
+                               "orderBy": {"$similarity": {"content": "quokka budget decision"}},
+                               "select": ["source_id"], "limit": 4})["hits"]
+    t.tln(f"  unfiltered, the top 4 are the superseded four: {[h['source_id'] for h in unfiltered] == made[:4]}")
+    assert {h["source_id"] for h in unfiltered} == set(made[:4])
     page = search.search(client, "quokka budget decision", kind="fact", top_n=4).derived["hits"]
     t.tln(f"  top 4 of 8 matching (4 superseded): {len(page)} hits, all active: "
           f"{all(h['source_id'] in made[4:] for h in page)}")
@@ -92,31 +101,78 @@ def test_marks_log_on_the_shown_impression_and_move_nothing(t: bt.TestCaseRun) -
     q = "pilot scope"
     first = search.serve(client, q, top_n=5, source="mcp", company_id=loaders.company_slug(REPLICA))
     order = [h["item_id"] for h in first["hits"]]
-    t.h1("Serve, then mark the first hit used and the second wrong")
+    t.h1("Serve, click the third hit, then mark the first used and the second wrong")
     t.tln(f"  served {len(order)} hits")
-    assert len(order) >= 2
+    assert len(order) >= 3
+    # a click first, so the learned _recommend ranks the next serve: marks then
+    # have a trained ranking they could move, and the baseline is click-only
+    search.record_click(client, first["context_id"], order[2])
+    baseline = search.serve(client, q, top_n=5, log=False)
+    assert baseline["learned"], "the click must turn the learned ranking on"
+    base_order = [h["item_id"] for h in baseline["hits"]]
+    t.tln(f"  after the click the clicked hit leads: {base_order[0] == order[2]}")
     search.mark_item(client, first["context_id"], order[0], used=True)
     search.mark_item(client, first["context_id"], order[1], flagged_wrong=True)
     rows = client.query({"from": "search_impressions", "where": {"context_id": first["context_id"]},
                          "limit": 100})["hits"]
-    marked = {r["item_id"]: (r.get("used"), r.get("flagged_wrong")) for r in rows}
-    t.tln(f"  impressions for the context: {len(rows)} (one per shown hit, none appended)")
-    assert len(rows) == len(order)
+    shown = [r for r in rows if not r["clicked"]]
+    marked = {r["item_id"]: (r.get("used"), r.get("flagged_wrong")) for r in shown}
+    t.tln(f"  impressions for the context: {len(shown)} shown + 1 click (none appended by marks)")
+    assert len(shown) == len(order) and len(rows) == len(order) + 1
     assert marked[order[0]] == (True, None) and marked[order[1]] == (None, True)
     ctx = client.query({"from": "search_contexts", "where": {"context_id": first["context_id"]},
                         "limit": 1})["hits"][0]
     assert ctx["company_id"] == loaders.company_slug(REPLICA)
     t.tln("  the context records the account")
     again = search.serve(client, q, top_n=5, log=False)
-    t.tln(f"  next serve, same order: {[h['item_id'] for h in again['hits']] == order}")
-    assert [h["item_id"] for h in again["hits"]] == order, "marks are logging only"
-    try:
-        search.mark_item(client, first["context_id"], "doc:nope", used=True)
-        raise AssertionError("an item not shown must be refused")
-    except AssertionError as e:
-        if "must be refused" in str(e):
-            raise
-        t.tln(f"  an item not shown: {str(e).replace(first['context_id'], 'ctx_<new>')}")
+    t.tln(f"  next serve, same order as the click-only baseline: {[h['item_id'] for h in again['hits']] == base_order}")
+    assert again["learned"] and [h["item_id"] for h in again["hits"]] == base_order, "marks are logging only"
+
+    t.h1("Refused marks")
+    for label, call in (
+            ("an item not shown", lambda: search.mark_item(client, first["context_id"], "doc:nope", used=True)),
+            ("an unknown context", lambda: search.mark_item(client, "ctx_nope", order[0], used=True)),
+            ("a mark that isn't a bool", lambda: search.mark_item(client, first["context_id"], order[0], used="yes")),
+            ("no mark at all", lambda: search.mark_item(client, first["context_id"], order[0]))):
+        try:
+            call()
+            raise AssertionError(f"{label} must be refused")
+        except AssertionError as e:
+            if "must be refused" in str(e):
+                raise
+            t.tln(f"  {label}: {str(e).replace(first['context_id'], 'ctx_<new>')}")
+
+
+def test_code_before_schema_keeps_search_working(t: bt.TestCaseRun) -> None:
+    """The release can reach an instance before create-schema adds the docs/40
+    columns. Plain searches must keep logging; the new calls say what's missing."""
+    client = _seeded()
+    old_contexts = {**schema.SEARCH_CONTEXTS, "columns": {
+        k: v for k, v in schema.SEARCH_CONTEXTS["columns"].items() if k != "company_id"}}
+    old_impressions = {**schema.SEARCH_IMPRESSIONS, "columns": {
+        k: v for k, v in schema.SEARCH_IMPRESSIONS["columns"].items() if k not in ("used", "flagged_wrong")}}
+    client.create_table("search_contexts", old_contexts)
+    client.create_table("search_impressions", old_impressions)
+    t.h1("search_contexts and search_impressions as they are before the docs/40 columns")
+    served = search.serve(client, "pilot scope", top_n=3, source="mcp")
+    t.tln(f"  a plain search logs: {len(served['hits'])} hits, context logged: {served['context_id'].startswith('ctx_')}")
+    item = served["hits"][0]["item_id"]
+    search.record_click(client, served["context_id"], item)
+    t.tln("  a click records")
+    for label, call in (
+            ("a search for an account",
+             lambda: search.serve(client, "pilot scope", top_n=3, source="mcp", company_id="acme")),
+            ("a mark", lambda: search.mark_item(client, served["context_id"], item, used=True))):
+        try:
+            call()
+            raise AssertionError(f"{label} must be refused before the schema")
+        except AssertionError as e:
+            if "must be refused" in str(e):
+                raise
+            t.tln(f"  {label}: {e}")
+    for table in ("search_impressions", "search_contexts"):
+        client.delete_table(table)
+        AitoClient._ensured.discard(table)
 
 
 def test_a_short_document_is_flagged_thin_and_keeps_its_rank(t: bt.TestCaseRun) -> None:

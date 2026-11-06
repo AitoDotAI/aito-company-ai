@@ -103,5 +103,13 @@ ingest, T2, and T1-live (which waits for the CRO's real facts).
 - **Every seed note is under 500 characters** (the synthetic notes are
   short), so all of them read thin in the seed. The book adds one
   real-length note for the not-thin case.
+- **The code can reach an instance before its schema.** Aito 2.12.0 accepts
+  a row with an unknown field and drops the value, so a plain search sends no
+  `company_id` at all, and a search for an account or a mark refuses with
+  "schema not applied: ... run create-schema" rather than losing what it was
+  given. A book runs this against tables without the new columns.
+- **The marks book trains the ranking first.** A click turns `_recommend` on,
+  and the order after the marks is compared with the click-only order. A mark
+  that appended a row instead fails it (checked by mutation).
 - MCP `mark_item`, `search(..., company_id)`, API `POST /api/search/mark`.
   `add_fact` returns `supersede_candidates`. Fact writes refresh the index.

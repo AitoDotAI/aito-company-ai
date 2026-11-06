@@ -124,7 +124,7 @@ def build_vectors(client: AitoClient, embed) -> int:
 
 
 def _vector_candidates(client: AitoClient, embed, query: str, kind: str | None,
-                       n: int) -> list[dict]:
+                       n: int, superseded: list[str] | None = None) -> list[dict]:
     """Retrieve by embedding similarity: embed the query, `$nearest` over
     `search_vectors` (cosine), most similar first. Returns [{item_id, $similarity}]
     or [] if the vector index isn't built yet (never reindexed with embeddings) —
@@ -147,7 +147,7 @@ def _vector_candidates(client: AitoClient, embed, query: str, kind: str | None,
     if kind:
         hits = [h for h in hits if h.get("kind") == kind]
     # over-fetched above, so leaving superseded facts out still fills n
-    gone = {f"fact:{f}" for f in _superseded(client)}
+    gone = {f"fact:{f}" for f in (_superseded(client) if superseded is None else superseded)}
     hits = [h for h in hits if h.get("item_id") not in gone]
     return hits[:n]
 
@@ -188,8 +188,10 @@ def _superseded(client: AitoClient) -> list[str]:
     """The fact_ids replaced by another fact (docs/40): never served."""
     if "facts" not in client.get_schema()["schema"]:
         return []
-    rows = client.query({"from": "facts", "select": ["fact_id", "superseded_by"], "limit": 100000})["hits"]
-    return sorted(r["fact_id"] for r in rows if r.get("superseded_by"))
+    limit = 100000
+    response = client.query({"from": "facts", "select": ["fact_id", "superseded_by"], "limit": limit})
+    assert response["total"] <= limit, f"facts has {response['total']} rows, over the {limit} read here"
+    return sorted(r["fact_id"] for r in response["hits"] if r.get("superseded_by"))
 
 
 def _active_only(where: dict, superseded: list[str]) -> dict:
@@ -225,7 +227,7 @@ def _match_clause(query: str) -> dict | None:
 
 
 def search(client: AitoClient, query: str, kind: str | None = None,
-           top_n: int = 10) -> Result:
+           top_n: int = 10, superseded: list[str] | None = None) -> Result:
     """Rank view items by Aito text-`_match` over the merged `content`, most
     relevant first. `where` keeps only items that match a query term; `orderBy
     {$similarity}` ranks those by Aito's relevance of the content to the query —
@@ -246,7 +248,7 @@ def search(client: AitoClient, query: str, kind: str | None = None,
         return result
     where = {"$and": [{"kind": kind}, clause]} if kind else clause
     if kind in (None, "fact"):
-        where = _active_only(where, _superseded(client))
+        where = _active_only(where, _superseded(client) if superseded is None else superseded)
     request = {"from": "search_items", "where": where,
                "orderBy": {"$similarity": {"content": query}},
                "limit": top_n, "select": ["kind", "source_id", "title"]}
@@ -281,11 +283,14 @@ def _log_impressions(client: AitoClient, query: str, hits: list[dict],
     _impressions_ready(client)
     at = _now()
     context_id = "ctx_" + uuid.uuid4().hex[:12]
-    client.upload_batch("search_contexts", [{
-        "context_id": context_id, "query": query,
-        "anchor_item_id": anchor_item_id or None, "source": source, "at": at,
-        "company_id": company_id or None,
-    }])
+    row = {"context_id": context_id, "query": query,
+           "anchor_item_id": anchor_item_id or None, "source": source, "at": at}
+    if company_id:
+        # only sent when given, so a release that reaches an instance before
+        # create-schema keeps logging plain searches (CPO review of #79)
+        _require_columns(client, "search_contexts", ["company_id"])
+        row["company_id"] = company_id
+    client.upload_batch("search_contexts", [row])
     rows = [{
         "impression_id": "imp_" + uuid.uuid4().hex[:12],
         "context_id": context_id, "query": query, "item_id": h["item_id"],
@@ -294,6 +299,16 @@ def _log_impressions(client: AitoClient, query: str, hits: list[dict],
     if rows:
         client.upload_batch("search_impressions", rows)
     return context_id
+
+
+def _require_columns(client: AitoClient, table: str, columns: list[str]) -> None:
+    """Refuse, naming what's missing, when the instance predates a column.
+    Aito 2.12.0 accepts a row with an unknown field and drops it, so writing
+    anyway would lose the value silently (rule 3)."""
+    have = client.get_schema()["schema"].get(table, {}).get("columns", {})
+    missing = [c for c in columns if c not in have]
+    assert not missing, (f"schema not applied: {table} has no {', '.join(missing)}; "
+                         f"run create-schema on this instance (docs/40)")
 
 
 def _ctx_match(query: str) -> dict | None:
@@ -323,7 +338,8 @@ def ranked(client: AitoClient, query: str, kind: str | None = None,
     text) — it computes no score (rule 2). Every signal degrades gracefully: no
     vectors → text-match; no clicks → vector+text; neither → the old text-match."""
     result = Result()
-    base = search(client, query, kind=kind, top_n=max(top_n * 4, 50))
+    superseded = _superseded(client)   # one read per request, shared by both paths
+    base = search(client, query, kind=kind, top_n=max(top_n * 4, 50), superseded=superseded)
     result.calls.extend(base.calls)
     text_hits = base.derived["hits"]
     text_rank = {h["item_id"]: i for i, h in enumerate(text_hits)}
@@ -332,7 +348,7 @@ def ranked(client: AitoClient, query: str, kind: str | None = None,
     # semantic candidates — may include items text-match never found (the point)
     vec_rank: dict[str, int] = {}
     if embed is not None:
-        vhits = _vector_candidates(client, embed, query, kind, max(top_n * 4, 50))
+        vhits = _vector_candidates(client, embed, query, kind, max(top_n * 4, 50), superseded)
         if vhits:
             result.calls.append(("_query", {"$nearest": "search_vectors"}, {"hits": len(vhits)}))
         for i, h in enumerate(vhits):
@@ -387,6 +403,12 @@ def ranked(client: AitoClient, query: str, kind: str | None = None,
     ordered = sorted(candidates, key=lambda h: (
         learned_pos.get(h["item_id"], big), merge_rank.get(h["item_id"], big)))
     hits = ordered[:top_n]
+    # a doc found only by the vector path hasn't been through search()'s flag
+    unflagged = [h["source_id"] for h in hits if h["kind"] == "doc" and "thin" not in h]
+    thin = thin_flags(client, unflagged)
+    for h in hits:
+        if h["kind"] == "doc" and "thin" not in h:
+            h["thin"] = thin.get(h["source_id"], False)
     result.derived = {"query": query, "kind": kind, "count": len(hits), "hits": hits,
                       "learned": bool(learned_pos), "semantic": bool(vec_rank)}
     return result
@@ -435,8 +457,11 @@ def mark_item(client: AitoClient, context_id: str, item_id: str, *,
     negative example to the click-trained ranking, and marks are logging only.
     An item that wasn't shown for the context raises (rule 3)."""
     assert used is not None or flagged_wrong is not None, "mark used or flagged_wrong"
+    for name, value in (("used", used), ("flagged_wrong", flagged_wrong)):
+        assert value is None or isinstance(value, bool), f"{name} must be true or false, got {value!r}"
     from .log import _write_row
     _impressions_ready(client)
+    _require_columns(client, "search_impressions", ["used", "flagged_wrong"])
     rows = client.query({"from": "search_impressions",
                          "where": {"context_id": context_id, "item_id": item_id, "clicked": False},
                          "limit": 2})["hits"]
