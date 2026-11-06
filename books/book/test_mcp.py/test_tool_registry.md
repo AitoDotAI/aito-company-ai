@@ -262,8 +262,10 @@ Mark a planned post posted and record its KPIs (the measure step).
     outcome: flop/modest/win; the per-platform metric is reach/views, never
     upvotes. posted_at: the YYYY-MM-DD it went out (default today); pass it
     when backfilling, since the weekday derived from it is a scorer feature.
-    reactions/comments/reposts/link_clicks: the platform's engagement counts,
-    recorded as given (omit what you don't have; never a scorer feature).
+    upvotes/trials and reactions/comments/reposts/link_clicks: recorded as
+    given. Omit what you don't have: an omitted count keeps its stored value
+    (null on a first result), so a re-log never wipes it. The engagement
+    counts are never a scorer feature.
     Re-derives `won` and `weekday`.
 
 ## list_materials

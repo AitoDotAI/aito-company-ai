@@ -354,7 +354,7 @@ def add_post(material_id: str, channel_id: str, tone: str, format: str,
 
 @mcp.tool()
 def log_post_result(post_id: str, outcome: str, reach_or_views: int,
-                    upvotes: int = 0, trials: int = 0,
+                    upvotes: int | None = None, trials: int | None = None,
                     posted_at: str | None = None, reactions: int | None = None,
                     comments: int | None = None, reposts: int | None = None,
                     link_clicks: int | None = None) -> dict:
@@ -362,8 +362,10 @@ def log_post_result(post_id: str, outcome: str, reach_or_views: int,
     outcome: flop/modest/win; the per-platform metric is reach/views, never
     upvotes. posted_at: the YYYY-MM-DD it went out (default today); pass it
     when backfilling, since the weekday derived from it is a scorer feature.
-    reactions/comments/reposts/link_clicks: the platform's engagement counts,
-    recorded as given (omit what you don't have; never a scorer feature).
+    upvotes/trials and reactions/comments/reposts/link_clicks: recorded as
+    given. Omit what you don't have: an omitted count keeps its stored value
+    (null on a first result), so a re-log never wipes it. The engagement
+    counts are never a scorer feature.
     Re-derives `won` and `weekday`."""
     return logbook.log_post_result(
         _client(), post_id=post_id, outcome=outcome, reach_or_views=reach_or_views,

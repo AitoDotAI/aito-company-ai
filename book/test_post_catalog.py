@@ -152,3 +152,38 @@ def test_post_result_records_engagement(t: bt.TestCaseRun) -> None:
         t.tln(f"relate on {target}: excludes {sorted(excluded & (engagement | {'won', 'outcome'}))}")
         assert engagement | {"won", "outcome"} <= excluded, \
             f"relate on {target} reports {sorted((engagement | {'won', 'outcome'}) - excluded)}"
+
+
+def test_a_relog_keeps_upvotes_and_trials(t: bt.TestCaseRun) -> None:
+    """upvotes and trials follow the engagement counts: one not given is left
+    as it is, null on a first result (Antti, 6.11.2026), and a re-log
+    without them keeps what was logged (td-20261104091642940622: they were
+    reset to 0 on every re-log)."""
+    client = _seeded()
+    post, other = catalog.list_posts(client, status="planned")[:2]
+    t.h1("First result with upvotes and trials, then a re-log with only reach")
+    log.log_post_result(client, post["post_id"], outcome="modest", reach_or_views=900,
+                        upvotes=12, trials=3, posted_at="2026-10-14")
+    again = log.log_post_result(client, post["post_id"], outcome="win", reach_or_views=1500,
+                                posted_at="2026-10-14")
+    t.tln(json.dumps({k: again.get(k) for k in ("outcome", "reach_or_views", "upvotes", "trials")},
+                     sort_keys=True))
+    assert (again.get("upvotes"), again.get("trials")) == (12, 3), "a re-log wiped upvotes/trials"
+
+    t.h1("A first result without them stores null, not 0")
+    bare = log.log_post_result(client, other["post_id"], outcome="flop", reach_or_views=40,
+                               posted_at="2026-10-15")
+    t.tln(json.dumps({k: bare.get(k) for k in ("upvotes", "trials")}, sort_keys=True))
+    assert bare.get("upvotes") is None and bare.get("trials") is None
+
+    t.h1("Given explicitly, 0 is stored as 0, and a negative raises")
+    zero = log.log_post_result(client, other["post_id"], outcome="flop", reach_or_views=40,
+                               upvotes=0, posted_at="2026-10-15")
+    t.tln(f"upvotes={zero.get('upvotes')}")
+    assert zero.get("upvotes") == 0
+    try:
+        log.log_post_result(client, other["post_id"], outcome="flop", reach_or_views=40,
+                            trials=-2, posted_at="2026-10-15")
+        raise RuntimeError("accepted a negative count")
+    except AssertionError as e:
+        t.tln(str(e))
