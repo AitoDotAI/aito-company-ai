@@ -26,9 +26,13 @@ def test_changelog_records_creations_and_updates(t: bt.TestCaseRun) -> None:
     loaders.create_schema(client)
     loaders.load_rolodex(client, SEED_DIR)
     loaders.load_deals(client, SEED_DIR)
-    # isolate from other runs: start with an empty change log
-    client.delete_table("changelog")
-    client.create_table("changelog", schema.CHANGELOG)
+    # isolate from other runs: start with an empty change log, and empty
+    # todos, or a re-run within log.RETRY_WINDOW finds the previous run's
+    # "Renew TLS cert" and add_todo returns it as a retry, recording no
+    # "created" entry
+    for table, spec in (("changelog", schema.CHANGELOG), ("todos", schema.TODOS)):
+        client.delete_table(table)
+        client.create_table(table, spec)
 
     t.h1("acting records change-log entries")
     td = log.add_todo(client, area="operations", title="Renew TLS cert", priority=1)
