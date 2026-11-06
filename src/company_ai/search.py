@@ -57,6 +57,10 @@ _VIEW = {"type": "view", "as": {"union": [
         "content": {"$text": ["search_text"]}}},
     {"from": "documents", "select": {"kind": {"$const": "doc"}, "source_id": "doc_id",
         "title": {"$text": ["title"]}, "content": {"$text": ["title", "body"]}}},
+    # every fact, superseded too: a union part can't filter (a where on a part
+    # returned nothing on 2.12.0), so superseded ones are kept out in the query
+    {"from": "facts", "select": {"kind": {"$const": "fact"}, "source_id": "fact_id",
+        "title": {"$text": ["statement"]}, "content": {"$text": ["statement"]}}},
 ]}}
 _VIEW_SOURCES = [part["from"] for part in _VIEW["as"]["union"]]
 
@@ -85,6 +89,7 @@ def build_index(client: AitoClient, embed=None) -> dict:
     not on every write. Without `embed`, vectors are skipped and search stays pure
     text-match."""
     client.ensure_table("documents", schema.DOCUMENTS)  # a fresh instance may lack it
+    client.ensure_table("facts", schema.FACTS)
     client.delete_table("search_items")
     client.create_view("search_items", _VIEW)
     client.refresh_view("search_items")
@@ -141,6 +146,9 @@ def _vector_candidates(client: AitoClient, embed, query: str, kind: str | None,
     hits = client.query(request)["hits"]
     if kind:
         hits = [h for h in hits if h.get("kind") == kind]
+    # over-fetched above, so leaving superseded facts out still fills n
+    gone = {f"fact:{f}" for f in _superseded(client)}
+    hits = [h for h in hits if h.get("item_id") not in gone]
     return hits[:n]
 
 
@@ -174,6 +182,33 @@ def refresh(client: AitoClient) -> None:
         for source in _VIEW_SOURCES:
             client.optimize(source)
         client.refresh_view("search_items")
+
+
+def _superseded(client: AitoClient) -> list[str]:
+    """The fact_ids replaced by another fact (docs/40): never served."""
+    if "facts" not in client.get_schema()["schema"]:
+        return []
+    rows = client.query({"from": "facts", "select": ["fact_id", "superseded_by"], "limit": 100000})["hits"]
+    return sorted(r["fact_id"] for r in rows if r.get("superseded_by"))
+
+
+def _active_only(where: dict, superseded: list[str]) -> dict:
+    """`where` with the superseded facts left out INSIDE the query, so Aito's
+    top N is N active items and a page is never short (CPO review of #78)."""
+    if not superseded:
+        return where
+    gone = {"$not": {"$and": [{"kind": "fact"}, {"source_id": {"$or": superseded}}]}}
+    return {"$and": [where, gone]}
+
+
+def thin_flags(client: AitoClient, doc_ids: list[str]) -> dict[str, bool]:
+    """doc_id -> whether its body is under THIN_DOC_CHARS (docs/40). A length,
+    so formatting, not ranking."""
+    if not doc_ids:
+        return {}
+    rows = client.query({"from": "documents", "where": {"doc_id": {"$or": doc_ids}},
+                         "select": ["doc_id", "body"], "limit": len(doc_ids)})["hits"]
+    return {r["doc_id"]: len(r.get("body") or "") < schema.THIN_DOC_CHARS for r in rows}
 
 
 def _match_clause(query: str) -> dict | None:
@@ -210,6 +245,8 @@ def search(client: AitoClient, query: str, kind: str | None = None,
         result.derived = {"query": query, "kind": kind, "count": 0, "hits": []}
         return result
     where = {"$and": [{"kind": kind}, clause]} if kind else clause
+    if kind in (None, "fact"):
+        where = _active_only(where, _superseded(client))
     request = {"from": "search_items", "where": where,
                "orderBy": {"$similarity": {"content": query}},
                "limit": top_n, "select": ["kind", "source_id", "title"]}
@@ -220,6 +257,10 @@ def search(client: AitoClient, query: str, kind: str | None = None,
         "item_id": f"{h['kind']}:{h['source_id']}", "kind": h["kind"],
         "source_id": h["source_id"], "title": h["title"], "tags": None,
     } for h in response["hits"]]
+    thin = thin_flags(client, [h["source_id"] for h in hits if h["kind"] == "doc"])
+    for h in hits:
+        if h["kind"] == "doc":
+            h["thin"] = thin.get(h["source_id"], False)
     result.derived = {"query": query, "kind": kind, "count": len(hits), "hits": hits}
     return result
 
@@ -234,7 +275,8 @@ def _impressions_ready(client: AitoClient) -> None:
 
 
 def _log_impressions(client: AitoClient, query: str, hits: list[dict],
-                     source: str, anchor_item_id: str | None) -> str:
+                     source: str, anchor_item_id: str | None,
+                     company_id: str | None = None) -> str:
     """Record the context and one impression per shown hit; return context_id."""
     _impressions_ready(client)
     at = _now()
@@ -242,6 +284,7 @@ def _log_impressions(client: AitoClient, query: str, hits: list[dict],
     client.upload_batch("search_contexts", [{
         "context_id": context_id, "query": query,
         "anchor_item_id": anchor_item_id or None, "source": source, "at": at,
+        "company_id": company_id or None,
     }])
     rows = [{
         "impression_id": "imp_" + uuid.uuid4().hex[:12],
@@ -351,7 +394,7 @@ def ranked(client: AitoClient, query: str, kind: str | None = None,
 
 def serve(client: AitoClient, query: str, kind: str | None = None, top_n: int = 10,
           *, source: str = "dashboard", anchor_item_id: str | None = None,
-          log: bool = True, embed=None) -> dict:
+          log: bool = True, embed=None, company_id: str | None = None) -> dict:
     """Serve a search the way the app does: ensure the index, rank (blended:
     text + semantic + learned), and (A+C) log the impressions server-side as a
     side effect. `embed` (embed.embedder(config)) turns on the semantic signal;
@@ -361,7 +404,7 @@ def serve(client: AitoClient, query: str, kind: str | None = None, top_n: int = 
     derived = ranked(client, query, kind=kind, top_n=top_n, embed=embed).derived
     if log:
         derived["context_id"] = _log_impressions(
-            client, query, derived["hits"], source, anchor_item_id)
+            client, query, derived["hits"], source, anchor_item_id, company_id)
     return derived
 
 
@@ -383,6 +426,25 @@ def record_click(client: AitoClient, context_id: str, item_id: str) -> dict:
         "clicked": True, "at": _now(),
     }])
     return {"context_id": context_id, "item_id": item_id, "clicked": True}
+
+
+def mark_item(client: AitoClient, context_id: str, item_id: str, *,
+              used: bool | None = None, flagged_wrong: bool | None = None) -> dict:
+    """Mark a shown item used, or wrong (docs/40). Written on the shown
+    impression in place: appending a row, as record_click does, would add a
+    negative example to the click-trained ranking, and marks are logging only.
+    An item that wasn't shown for the context raises (rule 3)."""
+    assert used is not None or flagged_wrong is not None, "mark used or flagged_wrong"
+    from .log import _write_row
+    _impressions_ready(client)
+    rows = client.query({"from": "search_impressions",
+                         "where": {"context_id": context_id, "item_id": item_id, "clicked": False},
+                         "limit": 2})["hits"]
+    assert rows, f"no impression for context {context_id!r} + item {item_id!r}"
+    marks = {k: v for k, v in (("used", used), ("flagged_wrong", flagged_wrong)) if v is not None}
+    row = _write_row(client, "search_impressions", "impression_id", rows[0]["impression_id"],
+                     lambda r: r.update(marks))
+    return {"context_id": context_id, "item_id": item_id, **marks, "impression_id": row["impression_id"]}
 
 
 def quick_find(client: AitoClient, query: str, limit: int = 6) -> dict:

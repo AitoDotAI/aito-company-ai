@@ -10,7 +10,7 @@ import re
 
 import booktest as bt
 
-from company_ai import companies, facts, loaders, log
+from company_ai import companies, facts, loaders, log, schema
 from company_ai.aito import AitoClient
 from company_ai.config import SEED_DIR, Config
 
@@ -139,7 +139,7 @@ def test_the_partner_hold_fails_closed(t: bt.TestCaseRun) -> None:
     assert f["hold"]["status"].startswith("HOLD (unclear: two active holds")
     assert any(c["slot"] == "hold" for c in f["conflicts"])
     # a hold row with another source can only arrive by a direct write; it still fails closed
-    client.upload_batch("facts", [{**{k: v for k, v in stray.items() if k != "already_recorded"},
+    client.upload_batch("facts", [{**{k: v for k, v in stray.items() if k in schema.FACTS["columns"]},
                                    "fact_id": "fa-direct-1", "company": HELD,
                                    "company_id": loaders.company_slug(HELD), "source_kind": "mail"}])
     f = companies.briefing(client, HELD).derived["facts"]

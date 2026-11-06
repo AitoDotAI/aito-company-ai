@@ -97,6 +97,13 @@ def feed(client: AitoClient, limit: int = 500, kind: str | None = None,
         })
     docs.sort(key=lambda d: (d.get("updated") or "", d.get("created") or "", d["doc_id"]),
               reverse=True)
+    # thin = a body under THIN_DOC_CHARS (docs/40): from the body when it was
+    # fetched, else one lookup for the rest. A flag, never a filter or a rank.
+    from .search import thin_flags
+    missing = thin_flags(client, [d["doc_id"] for d in docs if "body" not in d])
+    for d in docs:
+        d["thin"] = (len(d["body"] or "") < schema.THIN_DOC_CHARS) if "body" in d \
+            else missing.get(d["doc_id"], False)
     result.derived = {"count": len(docs), "documents": docs}
     return result
 

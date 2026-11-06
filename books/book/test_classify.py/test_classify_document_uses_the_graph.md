@@ -7,4 +7,4 @@ topic suggestions: ['pilot', 'genco']
 # context: the company's prior notes + similar
 
 same-company notes: ['Daily note — Genco pilot kickoff', 'Genco account plan']
-similar (search): ['Daily note — Genco pilot kickoff', 'Genco account plan', 'Pymt Oy — renewal risk']
+similar (search): ['Genco account plan', 'Daily note — Genco pilot kickoff', 'Pymt Oy — renewal risk']

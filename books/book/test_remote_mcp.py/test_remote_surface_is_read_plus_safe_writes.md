@@ -1,6 +1,6 @@
 # the remote tool surface (read + safe writes)
 
-68 tools exposed over HTTP:
+69 tools exposed over HTTP:
   add_channel
   add_contact
   add_deal
@@ -42,6 +42,7 @@
   log_post_result
   log_session
   log_touch
+  mark_item
   my_work
   opener_context
   predict
