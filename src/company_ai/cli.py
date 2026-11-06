@@ -502,6 +502,14 @@ def main() -> None:
             print(f"warning: {w}")
         if problems:
             raise SystemExit("✗ pull-web: " + "; ".join(problems))
+        today = _dt.datetime.now(_dt.timezone.utc).date()
+        if today.weekday() == 0:  # Monday: the week before as a document (docs/37)
+            from . import log as _log
+            title, body = webanalytics.digest_document(webanalytics.web_digest(client, as_of=today))
+            row = _log.add_document(client, title=title, body=body, kind="internal",
+                                    area="marketing", topics="web;digest",
+                                    noted_on=today.isoformat())
+            print(f"web digest: {row['doc_id']}{' (already recorded)' if row.get('already_recorded') else ''}")
     elif args.command == "compact":
         import time
         have = client.get_schema()["schema"]

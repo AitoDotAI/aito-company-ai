@@ -139,3 +139,17 @@ the internal Journeys tab.
    among visits that never reach it). Aggregates only.
 3. File gaps 1–3 with aito-core, each with the exact request that fails or
    has to be worked around.
+
+## The weekly digest (built 6.11.2026)
+
+`web_digest(as_of)` (MCP `web_digest`) lists, for every KPI, the signals of
+the seven days before `as_of` that are **not thin**: `raises_later` and
+`drop_off` rows of `web_paths_to` with lift > 1 and at least `WEB_THIN` (5)
+distinct visits. A signal is `new` when the week before had it only thin or
+not at all. No threshold beyond thin; Aito ranks and scores.
+
+So these surface without anyone asking, `pull-web` on a Monday (UTC) saves
+the previous week's digest as an internal document (area `marketing`, topics
+`web;digest`, title `Web digest, week <since>..<until>`). A re-run the same
+Monday finds the same title and body and records nothing new. It runs with
+the daily web-pull timer, so nothing extra is scheduled.
