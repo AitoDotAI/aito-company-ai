@@ -22,9 +22,15 @@ book (`GraphCapabilityMatrixTest/graph-capability-matrix.md`),
 - **rep2 collections only.** Multi-hop forward paths (`prev.prev.page`),
   self-links (`prev: "this.step_id"`), and reverse `$refs.<table>.<fk>` with
   `$exists`/`$length` work on rep2 collections. rep1 tables allow one forward
-  hop and no `$refs`. **A link can't cross the two engines.** All of this
+  hop and no `$refs`. **A link can't cross the two engines.** ~~All of this
   repo's tables are rep1 (`"type": "table"`), so the path data has to be a
-  self-contained rep2 collection.
+  self-contained rep2 collection.~~ **Corrected 6.11.2026 (docs/38):** that
+  premise was wrong. `create_table` sends `"collection"` whatever `schema.py`
+  says, and every table on internal is on the v2 engine (`web_sessions` and
+  `web_visitors` are collections; `posts` is `table`/v2). So `web_steps`
+  could likely have linked to `web_sessions`, `web_visitors` and `posts`.
+  That's still to verify for a collection → `table`/v2 link (aito-core
+  td-20261106175554336673). The design below stands as built; no rework now.
 - **Works today on rep2:**
   - 2- and 3-hop forward paths, and self-links two hops deep;
   - `$refs … $exists: false` (no row points back here);
@@ -64,8 +70,9 @@ visit, in order:
 | post_platform, post_id | the exact post link's platform (linkedin, reddit, hackernews…) and id, copied on |
 | visitor_key, day | as on web_sessions; never relation drivers |
 
-The arrival and post fields are copied onto each step because a link can't
-reach the rep1 `web_sessions` or `posts`. The `kpi_after_*` flags and
+The arrival and post fields are copied onto each step because we believed a
+link couldn't reach `web_sessions` or `posts` (wrongly: see the correction
+above; a link is likely possible, to verify). The `kpi_after_*` flags and
 `is_exit` are facts about the visit, worked out at ingest. They aren't
 predictions: they're what lets Aito answer "later in the visit" today,
 without M4.
