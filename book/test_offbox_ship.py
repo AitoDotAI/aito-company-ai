@@ -19,7 +19,7 @@ SHIP = REPO_ROOT / "ops" / "offbox-ship.sh"
 SAS = "sv=2026-01-01&sp=cw&sig=STUBSECRETSTUBSECRET"
 
 
-def _run(dest: str | None, sas: str | None) -> tuple[int, str, list[str]]:
+def _run(dest: str | None, sas: str | None, env_file: str | None = None) -> tuple[int, str, list[str]]:
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
         staging = tmp / "offbox-2026-11-05T035000Z"
@@ -41,6 +41,10 @@ def _run(dest: str | None, sas: str | None) -> tuple[int, str, list[str]]:
             env["COMPANY_AI_OFFBOX_DEST"] = dest
         if sas is not None:
             env["COMPANY_AI_OFFBOX_SAS"] = sas
+        if env_file is not None:
+            vars_path = tmp / "instance.vars"
+            vars_path.write_text(env_file)
+            env["COMPANY_AI_ENV"] = str(vars_path)
         done = subprocess.run([str(SHIP), str(staging), staging.name], env=env,
                               capture_output=True, text=True)
         recorded = calls.read_text().splitlines() if calls.exists() else []
@@ -84,3 +88,24 @@ def test_offbox_ship_picks_the_tool_and_keeps_the_sas_out_of_the_output(t: bt.Te
         "a local path": (0, ["rsync"]),
         "no destination": (2, []),
     }, got
+
+
+def test_offbox_ship_reads_its_keys_from_the_instance_env_file(t: bt.TestCaseRun) -> None:
+    """The destination and SAS can live in the instance's env file (the one
+    COMPANY_AI_ENV names), placed there by the operator, so no service drop-in
+    is needed. Only those two keys are read; an environment value wins."""
+    blob = "https://aitobackup.blob.core.windows.net/company-ai"
+    lines = (f"AITO_API_KEY=not-for-this-script\nCOMPANY_AI_OFFBOX_DEST={blob}\n"
+             f"COMPANY_AI_OFFBOX_SAS={SAS}\n")
+    t.h1("Keys only in the env file")
+    code, out, calls = _run(None, None, env_file=lines)
+    t.tln(f"exit {code}")
+    for c in calls:
+        t.tln(f"  called: {c.replace(SAS, '<SAS>')}")
+    assert code == 0 and calls and calls[0].startswith("azcopy copy"), (code, calls, out)
+    assert "STUBSECRET" not in out and "not-for-this-script" not in out
+
+    t.h1("An environment value wins over the file")
+    code, out, calls = _run("/mnt/backups/company-ai", None, env_file=lines)
+    t.tln(f"exit {code}, tool {calls[0].split()[0] if calls else None}")
+    assert code == 0 and calls[0].startswith("rsync"), calls
