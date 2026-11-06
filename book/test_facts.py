@@ -146,6 +146,19 @@ def test_the_partner_hold_fails_closed(t: bt.TestCaseRun) -> None:
     t.tln(f"  a hold row from mail: {_masked(f['hold']['status'])}")
     assert f["hold"]["status"].startswith("HOLD (unclear:") and "source mail" in f["hold"]["status"]
 
+    t.h1("Antti resolves the stray row: his fact supersedes it, and the state is recomputed")
+    try:
+        log.supersede_fact(client, release["fact_id"], "fa-direct-1")
+        raise AssertionError("a foreign-source hold must not supersede Antti's")
+    except AssertionError as e:
+        if "must not supersede" in str(e):
+            raise
+        t.tln(f"  the stray row as the new side: refused: {str(e).split(';')[0]}")
+    log.supersede_fact(client, "fa-direct-1", release["fact_id"])
+    f = companies.briefing(client, HELD).derived["facts"]
+    t.tln(f"  after superseding the stray row with Antti's release: {f['hold']['status']}")
+    assert f["hold"]["status"] == "released", f["hold"]
+
 
 def b_first(b: dict) -> bool:
     """The hold is the briefing's first key, so it reads first."""

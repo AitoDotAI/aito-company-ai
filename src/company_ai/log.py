@@ -1537,6 +1537,12 @@ def supersede_fact(client: AitoClient, old_id: str, new_id: str) -> dict:
     assert old["kind"] == new["kind"], f"{old_id} is a {old['kind']}, {new_id} a {new['kind']}; same kind only"
     assert not old.get("superseded_by"), f"{old_id} is already superseded by {old['superseded_by']}"
     assert not new.get("superseded_by"), f"{new_id} is itself superseded by {new['superseded_by']}"
+    # a hold is resolved only on Antti's word: his hold or release may replace
+    # any hold row, even one that arrived from another source by a direct
+    # load; such a row may never replace his (docs/39, CPO review of #77)
+    if old["kind"] == "hold":
+        assert new["source_kind"] == schema.HOLD_SOURCE, \
+            f"{new_id} has source_kind {new['source_kind']!r}; a hold is superseded only by one from {schema.HOLD_SOURCE!r}"
     row = _write_row(client, "facts", "fact_id", old_id,
                      lambda r: r.__setitem__("superseded_by", new_id))
     changelog.record(client, "fact", old_id, "superseded", f"{old['kind']} fact {old_id} -> {new_id}")

@@ -163,6 +163,9 @@ Two notes on how it was built:
   people and no deal. It draws no randomness, so every other seed file is
   unchanged, and a roster change moves the facts with it. The book reads
   the accounts and fact ids from `data/seed/facts.csv`.
-- **Superseded hold rows still count** toward "a hold fact with another
-  source". Failing closed means a foreign-source hold anywhere in the
-  account's history shows `HOLD (unclear: ...)` until it is dealt with.
+- **A foreign-source hold row is resolved by Antti** (CPO review of #77).
+  Writes refuse one, so it can only arrive by a direct load. While active,
+  it keeps the account at `HOLD (unclear: ...)`. `supersede_fact(that row,
+  Antti's hold or release)` resolves it, and the hold state is recomputed
+  from what remains active. A foreign-source row can never supersede a
+  hold.

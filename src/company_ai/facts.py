@@ -46,8 +46,10 @@ def _hold(every: list[dict], active: list[dict]) -> dict:
         reasons.append(f"two active holds ({', '.join(f['fact_id'] for f in holds)})")
     if any(f.get("state") == "released" and f["fact_id"] not in replaced_by for f in holds):
         reasons.append("a release that supersedes no hold")
+    # an active foreign-source hold can only have come by a direct load; it
+    # keeps the account unclear until Antti's hold or release supersedes it
     reasons += [f"a hold fact with source {f['source_kind']} ({f['fact_id']})"
-                for f in every if f["kind"] == "hold" and f["source_kind"] != schema.HOLD_SOURCE]
+                for f in holds if f["source_kind"] != schema.HOLD_SOURCE]
     if reasons:
         status = f"HOLD (unclear: {'; '.join(reasons)})"
     elif any(f.get("state") == "on_hold" for f in holds):
