@@ -35,7 +35,10 @@ should be testable and reviewable, including this repo's.
    summary shows at least one test ran (`scripts/booktest_ran.py`):
    booktest itself exits 0 on "0/0", and an aborted run has printed a clean
    count. Runs are not concurrent: two at once share `books/.out` and corrupt
-   each other, so run the suite one invocation at a time.
+   each other. `./do test` holds a lock (`books/.out/.run-lock`) for its whole
+   run and refuses a second one in the same checkout. A bare `uv run booktest`
+   skips the lock, so use `./do test`. Separate worktrees have their own
+   `books/.out` and don't collide locally, but they share the test env.
 
 ## Conventions
 

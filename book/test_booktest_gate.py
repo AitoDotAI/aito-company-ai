@@ -39,3 +39,28 @@ def test_a_run_of_zero_tests_fails(t: bt.TestCaseRun) -> None:
         got[name] = ran
         t.tln(f"{name}: ran={ran} ({why})")
     assert got == {name: want for name, (_, want) in cases.items()}, got
+
+
+def test_a_second_run_in_the_same_checkout_is_refused(t: bt.TestCaseRun) -> None:
+    """td-20260926220026663014 (a): `./do test` holds a lock on books/.out
+    for its whole run, and a second run in the same checkout is refused
+    before booktest starts. Under `./do test` the parent already holds the
+    lock; under a bare `booktest`, this test takes it itself."""
+    import fcntl
+    import subprocess
+    import time
+    lock = REPO_ROOT / "books" / ".out" / ".run-lock"
+    lock.parent.mkdir(parents=True, exist_ok=True)
+    with open(lock, "w") as handle:
+        try:                          # under a bare booktest: take it ourselves
+            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:       # under ./do test: the parent run holds it
+            pass
+        started = time.monotonic()
+        done = subprocess.run([str(REPO_ROOT / "do"), "test", "skip:book"], cwd=REPO_ROOT,
+                              capture_output=True, text=True, timeout=60)
+        took = time.monotonic() - started
+    t.h1("A second ./do test while the lock is held")
+    t.tln(f"  exit {done.returncode}, refused at once: {took < 10}")
+    t.tln(f"  {done.stderr.strip().splitlines()[-1] if done.stderr.strip() else '(no message)'}")
+    assert done.returncode != 0 and "another ./do test is running" in done.stderr, done.stderr
