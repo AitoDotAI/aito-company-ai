@@ -1,7 +1,7 @@
 # network(focus=<replica>)
 
-  nodes: {'company': 1, 'contact': 5, 'deal': 1, 'document': 1, 'touch': 16, 'fact': 10}
-  edges: {'about': 1, 'concerns': 8, 'deal_with': 1, 'fact_of': 10, 'mentions': 1, 'said_in': 3, 'touched': 16, 'works_at': 5}
+  nodes: {'company': 1, 'contact': 5, 'deal': 1, 'document': 1, 'touch': 16, 'fact': 13}
+  edges: {'about': 1, 'concerns': 8, 'deal_with': 1, 'fact_of': 13, 'mentions': 1, 'said_in': 6, 'touched': 16, 'works_at': 5}
 
 ## The requests
 

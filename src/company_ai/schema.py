@@ -951,12 +951,17 @@ DOC_KINDS = {"docs", "internal"}
 # account facts (docs/39): the per-kind vocabulary for slot and state. A kind
 # missing from FACT_SLOTS / FACT_STATES takes no value there; a kind present
 # requires one.
-FACT_KINDS = {"role", "commitment", "decision", "open_question", "contact_info", "hold"}
+FACT_KINDS = {"role", "commitment", "decision", "open_question", "contact_info", "hold", "attribute"}
 FACT_SOURCES = {"mail", "doc", "call", "touch", "antti"}
 FACT_SLOTS = {
-    "role": {"champion", "decision_owner", "sponsor", "other"},
+    # signer: who signs; not a conflict slot, an account can need two (CRO, docs/42)
+    "role": {"champion", "decision_owner", "sponsor", "signer", "other"},
     "commitment": {"ours", "theirs"},
     "open_question": {"ours", "theirs"},     # whose move
+    # a standing property of the account, harvested from notes (docs/42; the
+    # vocabulary is the CRO's, 6.11.2026). Several per slot are not a conflict.
+    "attribute": {"budget_cycle", "procurement", "billing_model", "tooling", "headcount",
+                  "deployment", "pain", "other"},
 }
 FACT_STATES = {
     "commitment": {"sent", "drafted"},

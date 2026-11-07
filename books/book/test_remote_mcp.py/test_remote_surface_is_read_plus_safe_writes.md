@@ -1,6 +1,6 @@
 # the remote tool surface (read + safe writes)
 
-69 tools exposed over HTTP:
+70 tools exposed over HTTP:
   add_channel
   add_contact
   add_deal
@@ -31,6 +31,7 @@
   funnel
   graph_questions
   graph_search
+  harvest_queue
   list_channels
   list_facts
   list_materials

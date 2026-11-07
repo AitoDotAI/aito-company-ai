@@ -1104,6 +1104,10 @@ REPLICA_FACTS = [
     (3, "contact_info", "", "bounced", "The partner's work address bounced", "", "mail", "mail-seed-0303", "2026-11-03", ""),
     (3, "contact_info", "", "current", "Reach the partner through the office line", "", "call", "call-seed-0304", "2026-11-04", ""),
     (1, "decision", "", "", "Decision expected from the founder", "", "call", "call-seed-1001", "2026-10-01", 2),
+    # standing properties, as the account plan states them (docs/42)
+    (None, "attribute", "budget_cycle", "", "Budget cycle resets in Q1", "", "doc", "doc-seed-plan", "2026-10-26", ""),
+    (None, "attribute", "procurement", "", "Procurement starts once the evaluation convinces them", "", "doc", "doc-seed-plan", "2026-10-26", ""),
+    (None, "attribute", "billing_model", "", "They bill on milestones, not seats", "", "doc", "doc-seed-plan", "2026-10-26", ""),
 ]
 
 

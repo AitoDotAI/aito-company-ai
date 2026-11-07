@@ -88,10 +88,12 @@ One company node of the knowledge graph: its harvested facts (industry,
 params: ['author', 'company', 'due', 'kind', 'slot', 'source_id', 'source_kind', 'stakeholder_id', 'state', 'statement', 'valid_from']
 required: ['author', 'company', 'kind', 'source_id', 'source_kind', 'statement', 'valid_from']
 Record one short, sourced fact about ONE account (docs/39). kind:
-    role (slot champion|decision_owner|sponsor|other), commitment (slot
+    role (slot champion|decision_owner|sponsor|signer|other), commitment (slot
     ours|theirs, state sent|drafted, optional due), decision, open_question
     (slot ours|theirs: whose move), contact_info (state current|bounced|
-    invalid), hold (state on_hold|released; source_kind must be antti).
+    invalid), hold (state on_hold|released; source_kind must be antti),
+    attribute (slot pain|budget_cycle|procurement|deployment|billing_model|
+    tooling|headcount|other: a standing property of the account, docs/42).
     source_kind mail|doc|call|touch|antti with the source's id; valid_from is
     the day it became true. Write the statement as the source says it; never
     infer one. A value outside the vocabulary raises. Retry-safe.
@@ -105,6 +107,19 @@ Mark fact old_id as replaced by new_id: same account, same kind, old
     briefing shows only the new one. Releasing a hold is a hold fact with
     state released, from antti, superseding the on_hold one. Only on an
     explicit instruction: never to tidy up.
+
+## harvest_queue
+
+params: ['company']
+required: ['company']
+An account's notes for proposing facts from (docs/42). For each note,
+    newest first: its body, `thin`, and `cited_by`, the active facts already
+    sourced to it. Also the account's other active facts, so you don't restate
+    one. Read the notes, propose facts to the person you're working with, and
+    only on their yes call add_fact(source_kind="doc", source_id=<doc_id>);
+    check its supersede_candidates and warnings. Never write a fact unconfirmed.
+    A held account (hold HOLD, unclear included) returns the hold and no notes:
+    don't harvest it.
 
 ## list_facts
 
