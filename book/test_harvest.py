@@ -111,3 +111,23 @@ def test_a_held_account_is_not_harvested(t: bt.TestCaseRun) -> None:
     q = facts.harvest_queue(client, REPLICA)
     t.tln(f"  hold: {re.sub(r'fa-[0-9]+', 'fa-<new>', q['hold'])}, notes: {len(q['notes'])}")
     assert q["hold"].startswith("HOLD (unclear") and q["notes"] == [] and q["facts"] == []
+
+
+def test_a_read_past_its_limit_raises_not_truncates(t: bt.TestCaseRun) -> None:
+    class Big:
+        """An instance whose facts table holds more rows than one read returns."""
+        def query(self, request):
+            if request["from"] == "companies":
+                return {"total": 1, "hits": [{"company_id": "acme"}]}
+            return {"total": request["limit"] + 1, "hits": []}
+
+    t.h1("More rows than the read's limit")
+    for name, call in (("harvest_queue", lambda: facts.harvest_queue(Big(), "acme")),
+                       ("list_facts", lambda: facts.list_facts(Big(), "acme"))):
+        try:
+            call()
+            raise AssertionError(f"{name} must refuse a truncated read")
+        except AssertionError as e:
+            if "must refuse" in str(e):
+                raise
+            t.tln(f"  {name}: {e}")
