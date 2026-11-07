@@ -144,3 +144,29 @@ def test_recent_changes_bounded_on_a_large_changelog(t: bt.TestCaseRun) -> None:
     assert out["count"] == len(want)
     assert [c["entity_id"] for c in out["changes"]] == [r["entity_id"] for r in want[:20]]
     assert set(out["changes"][0]) == {"at", "entity", "entity_id", "action", "summary"}
+
+
+def test_recent_orders_and_windows_on_the_real_engine(t: bt.TestCaseRun) -> None:
+    """The bounded recent() leans on Aito for two things the in-memory book
+    above only assumes: `orderBy {$desc: "at"}` on a String column, and
+    `at: {$gte: since}` on one. Rows go in out of order, so a store-order
+    answer can't pass."""
+    client = _client()
+    client.delete_table("changelog")
+    client.create_table("changelog", schema.CHANGELOG)
+    ats = ["2026-11-03T09:00:00+00:00", "2026-11-01T12:00:00+00:00", "2026-11-05T08:30:00+00:00",
+           "2026-11-02T23:59:59+00:00", "2026-11-04T00:00:00+00:00"]
+    client.upload_batch("changelog", [
+        {"change_id": f"chg_{i}", "at": at, "entity": "deal" if i % 2 else "todo", "entity_id": f"x{i}",
+         "action": "updated", "summary": f"change {i}", "detail": None} for i, at in enumerate(ats)])
+    t.h1("Five changes written out of order")
+    got = [c["at"] for c in changelog.recent(client, limit=5)["changes"]]
+    t.tln(f"  newest first: {got}")
+    assert got == sorted(ats, reverse=True), got
+    out = changelog.recent(client, limit=2, since="2026-11-03T00:00:00+00:00")
+    t.tln(f"  since 3.11, limit 2: {[c['at'] for c in out['changes']]}, count {out['count']}")
+    assert [c["at"] for c in out["changes"]] == ["2026-11-05T08:30:00+00:00", "2026-11-04T00:00:00+00:00"]
+    assert out["count"] == 3, "count is the whole window, not the page"
+    deals = changelog.recent(client, entity="deal")
+    t.tln(f"  entity=deal: {[c['at'] for c in deals['changes']]}")
+    assert [c["at"] for c in deals["changes"]] == sorted((a for i, a in enumerate(ats) if i % 2), reverse=True)
