@@ -84,6 +84,16 @@ def source_warnings(client: AitoClient, fact: dict) -> list[str]:
     return [f"source {src['kind']}:{src['id']} not found"] if src["status"] == "dangling" else []
 
 
+READ_LIMIT = 10000
+
+
+def _whole(response: dict, table: str, limit: int) -> None:
+    """A read must return every row it matched: past its limit it raises
+    rather than answering from a truncated page (rule 3)."""
+    if response["total"] > limit:
+        raise AssertionError(f"{table}: {response['total']} rows match, over the {limit} read here")
+
+
 def _company_id(client: AitoClient, company: str) -> str:
     """A company_id, or the slug of an exact name. Unknown raises."""
     for cid in (company, company_slug(company)):
@@ -96,7 +106,9 @@ def list_facts(client: AitoClient, company: str, active_only: bool = True) -> li
     """One account's facts, newest valid_from first (then fact_id, for a stable
     order). `active_only` leaves out the superseded ones."""
     where = {"company_id": _company_id(client, company)}
-    rows = client.query({"from": "facts", "where": where, "limit": 10000})["hits"]
+    response = client.query({"from": "facts", "where": where, "limit": READ_LIMIT})
+    _whole(response, "facts", READ_LIMIT)
+    rows = response["hits"]
     if active_only:
         rows = [r for r in rows if not r.get("superseded_by")]
     return sorted(rows, key=lambda r: (r["valid_from"], r["fact_id"]), reverse=True)
@@ -193,17 +205,19 @@ def harvest_queue(client: AitoClient, company: str) -> dict:
 
     def q(request: dict) -> list[dict]:
         requests.append(request)
-        return client.query(request)["hits"]
+        response = client.query(request)
+        _whole(response, request["from"], request["limit"])
+        return response["hits"]
 
     cid = _company_id(client, company)
-    every = q({"from": "facts", "where": {"company_id": cid}, "limit": 10000})
+    every = q({"from": "facts", "where": {"company_id": cid}, "limit": READ_LIMIT})
     active = [f for f in every if not f.get("superseded_by")]
     hold = _hold(every, active)["status"]
     out = {"company_id": cid, "hold": hold, "notes": [], "facts": [], "requests": requests}
     if hold and hold.startswith("HOLD"):
         return out
     docs = q({"from": "documents", "where": {"company_id": cid},
-              "select": ["doc_id", "title", "noted_on", "updated", "body"], "limit": 10000})
+              "select": ["doc_id", "title", "noted_on", "updated", "body"], "limit": READ_LIMIT})
     docs.sort(key=lambda d: (d.get("noted_on") or "", d.get("updated") or "", d["doc_id"]), reverse=True)
     listed = {d["doc_id"] for d in docs}
     for d in docs:
