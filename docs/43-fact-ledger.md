@@ -55,12 +55,26 @@ carry a value that can be compared:
 
 `statement` stays as the human sentence ("pays 990 € a month on the
 annual plan"); `value` is what an agent looks up. New `attribute` slots,
-in the same vocabulary file: `price` (value + unit), `contract_end`
-(a date). Every new slot needs the CRO's word, as in docs/42.
+in the same vocabulary file (the CRO's word, 8.11.2026):
+
+- **`price`: agreed and paying only.**
+- **`price_offered`: a price in a sent proposal.** Keeping the two apart
+  stops the briefing stating a proposal as revenue.
+- **`contract_end`: an ISO date.** (`notice_period`, a renewal trigger,
+  comes later, not in this slice.)
+
+**Units are a closed set**, written into the vocabulary file so agents
+don't invent spellings: `EUR/month`, `EUR/year`, `EUR/day`, and per-unit
+as a suffix (`EUR/month/shop`). Money values exclude VAT. `date` is for
+`contract_end`.
 
 **Cardinality.** Each slot gets a cardinality in the vocabulary file:
-`one` (a price, a contract end, a decision owner) or `many` (signers,
-billing contacts, tooling). §4's conflict check reads it.
+`one` (a contract end, a decision owner) or `many` (signers, billing
+contacts, tooling). §4's conflict check reads it. **Prices are keyed by
+unit.** One account can pay several price lines: a per-shop monthly fee,
+and a licence plus a day rate. So `price` and `price_offered` are `one`
+per (company, slot, unit), not per account. Two `EUR/month` prices
+conflict; an `EUR/month` and an `EUR/day` don't.
 
 **"Is a customer" is derived, never written** (decision 3, settled by the
 CPO 8.11.2026). A hand-written "is a customer" fact is refused: it would
@@ -72,13 +86,19 @@ sources. An account is a **customer** when either:
   deal (`deal_events`, docs/34), and no active `contract_end` fact in the
   past. A won deal whose contract has ended makes a **former customer**.
 - **Indirect.** It buys through a partner and has no deal of ours. That
-  is one written fact, `relationship/indirect_customer`, whose `value` is
-  the channel account's `company_id`. The derivation reads it, so the
-  ledger doesn't call an indirect customer "not a customer" (one such
-  account is a published case).
+  is one written fact, `relationship/customer_via`, whose `value` is the
+  partner account's `company_id`. The derivation reads it and lists
+  "indirect customer via <partner>" (one such account is a published
+  case). The same shape covers a partner's own end customers.
 
-The new `relationship` kind has one slot, `indirect_customer`. It joins the
-CRO's vocabulary decision (4).
+The new `relationship` kind has one slot, `customer_via` (cardinality
+`many`).
+
+**No negative from absence** (the CRO's standing rule). An account with
+no won deal and no `customer_via` fact is listed as **"no won deal on
+record"**, never "not a customer". Older customers may predate the deals
+table, so their won deals are backfilled before the derived status is
+shown on internal.
 
 ## 2. Several sources: a `fact_sources` collection
 
@@ -183,8 +203,9 @@ exact matches, no ranking. Writes stay in the tools (§2, §3).
 3. **"Is a customer" is derived, never written** (§1). *Settled by the
    CPO, 8.11.2026:* direct (a won deal not since lost, churned or ended)
    or indirect (one `relationship/indirect_customer` fact).
-4. **The new vocabulary**: slots `price` and `contract_end`, the
-   `relationship` kind, and each slot's cardinality. *CRO.*
+4. **The new vocabulary**: slots `price`, `price_offered` and
+   `contract_end`, the unit set, the `relationship/customer_via` kind and
+   slot, and each slot's cardinality. *Settled by the CRO, 8.11.2026.*
 5. **The order of the build** (below). *Settled by the CPO, 8.11.2026:*
    1 → 2 → 3 → 4, and slice 4 waits for decision 1.
 
@@ -208,12 +229,15 @@ exact matches, no ranking. Writes stay in the tools (§2, §3).
 - **Source changed.** Editing a source doc after a fact was attached
   moves that fact to "review: source changed". A fact attached after the
   edit stays active.
-- **Conflict.** Two prices on one account conflict; two signers don't.
+- **Conflict.** Two `EUR/month` prices on one account conflict. An
+  `EUR/month` price and an `EUR/day` price don't, a `price_offered`
+  never conflicts with a `price`, and two signers don't conflict.
+- **Units.** A unit outside the closed set (`€/kk`) raises, with the row.
 - **Derived customer status.** A won deal lists "customer", citing the
   deal id. A later churn, or a past `contract_end`, lists "former
-  customer". A `relationship/indirect_customer` fact lists "customer
-  (indirect, via <channel>)". A written "is a customer" fact raises, with
-  the row.
+  customer". A `relationship/customer_via` fact lists "indirect customer via
+  <partner>". An account with neither lists "no won deal on record". A
+  written "is a customer" fact raises, with the row.
 - **Lookup by id.** The ledger, filtered by a doc id, equals the
   document's "Facts from this note" list.
 - **Unconfirmed.** An agent-written fact shows "unconfirmed" until
