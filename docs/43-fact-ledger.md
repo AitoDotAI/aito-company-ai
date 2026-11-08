@@ -70,10 +70,10 @@ as a suffix (`EUR/month/shop`). Money values exclude VAT. `date` is for
 
 **Cardinality.** Each slot gets a cardinality in the vocabulary file:
 `one` (a contract end, a decision owner) or `many` (signers, billing
-contacts, tooling). §4's conflict check reads it. **Prices are keyed by
-unit.** One account can pay several price lines: a per-shop monthly fee,
-and a licence plus a day rate. So `price` and `price_offered` are `one`
-per (company, slot, unit), not per account. Two `EUR/month` prices
+contacts, tooling). §4's conflict check reads it. **`price` and
+`price_offered` are one per (company, unit), not one per account.** One
+account can pay several price lines: a per-shop monthly fee, or a licence
+plus a day rate. Two `EUR/month` prices
 conflict; an `EUR/month` and an `EUR/day` don't.
 
 **"Is a customer" is derived, never written** (decision 3, settled by the
