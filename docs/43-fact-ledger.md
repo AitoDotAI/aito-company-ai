@@ -1,7 +1,7 @@
 # 43 — One fact ledger: structured, multi-source facts, listed (spec for review)
 
-Status: **spec, for review.** Nothing here is built until the decisions
-below are settled. It extends docs/39 (the `facts` collection), docs/41
+Status: **spec, approved with fixes by the CPO (8.11.2026); slice 1 approved
+to build.** Slices 2–4 wait for the decisions below. It extends docs/39 (the `facts` collection), docs/41
 (sources that resolve) and docs/42 (harvesting from notes).
 
 ## The ask (Antti, 8.11.2026)
@@ -58,12 +58,27 @@ annual plan"); `value` is what an agent looks up. New `attribute` slots,
 in the same vocabulary file: `price` (value + unit), `contract_end`
 (a date). Every new slot needs the CRO's word, as in docs/42.
 
-**"Is a customer" is not written; it's derived.** A won deal already says
-so. The ledger lists it as a derived fact, from the same rows the graph's
-node facts use (`loaders.harvest`), with the deal as its source. A
-hand-written `is customer` fact would drift from the deals. Rule 3 then
-applies: a won deal and a fact saying "not a customer" is a conflict,
-raised with both rows.
+**Cardinality.** Each slot gets a cardinality in the vocabulary file:
+`one` (a price, a contract end, a decision owner) or `many` (signers,
+billing contacts, tooling). §4's conflict check reads it.
+
+**"Is a customer" is derived, never written** (decision 3, settled by the
+CPO 8.11.2026). A hand-written "is a customer" fact is refused: it would
+drift from the deals. The ledger lists customer status as a derived fact,
+from the same rows the graph's node facts use (`loaders.harvest`), with its
+sources. An account is a **customer** when either:
+
+- **Direct.** It has a won deal with no later lost or churn event on that
+  deal (`deal_events`, docs/34), and no active `contract_end` fact in the
+  past. A won deal whose contract has ended makes a **former customer**.
+- **Indirect.** It buys through a partner and has no deal of ours. That
+  is one written fact, `relationship/indirect_customer`, whose `value` is
+  the channel account's `company_id`. The derivation reads it, so the
+  ledger doesn't call an indirect customer "not a customer" (one such
+  account is a published case).
+
+The new `relationship` kind has one slot, `indirect_customer`. It joins the
+CRO's vocabulary decision (4).
 
 ## 2. Several sources: a `fact_sources` collection
 
@@ -79,10 +94,17 @@ raised with both rows.
 - A new tool, `add_fact_source(fact_id, source_kind, source_id)`, adds
   another. It's validated like `add_fact`'s source: a doc or touch must
   resolve, or it warns.
-- **`add_fact` finds its twin.** When an active fact with the same
-  company, kind, slot and value exists, `add_fact` writes nothing new. It
-  returns that fact, and `add_fact_source` is the call to make. This is an
-  exact lookup, not a similarity, so it stays out of rule 2's way.
+- **`add_fact` finds its twin**, but only when `value` is set. When an
+  active fact with the same company, kind, slot and normalised value
+  exists, `add_fact` writes nothing new. It returns that fact, and
+  `add_fact_source` is the call to make. **A null value never twins.**
+  Most facts today have no value, and a twin rule over (company, kind,
+  slot) alone would swallow a different statement in the same slot. This
+  is an exact lookup, not a similarity, so it stays out of rule 2's way.
+- **Values are normalised by unit before they're compared or stored.** A
+  money unit's value is a decimal with two places ("990" → "990.00"). A
+  `date` value is YYYY-MM-DD. A value that doesn't parse for its unit
+  raises, with the row (rule 3). The statement keeps the words as written.
 
 ## 3. Agents writing facts
 
@@ -105,11 +127,16 @@ A fact's `status` in the ledger is one of:
 - **active**;
 - **unconfirmed** (§3);
 - **superseded** (it has `superseded_by`);
-- **review: source changed.** A source row has a change-log entry after
-  the fact's `created_at`.
+- **review: source changed.** A source row has a change-log `updated`
+  entry after **that source was attached**: `fact_sources.added_at`, or
+  the fact's `created_at` for its first source. It's not the fact's own
+  date, because then fixing a typo in a note would flag every fact
+  harvested from it earlier, all at once. An edit made in the same harvest
+  pass, before the fact was attached, doesn't count.
 - **review: source missing.** A source is dangling (docs/41).
-- **review: conflict.** Another active fact has the same conflict slot
-  and a different value.
+- **review: conflict.** Another active fact has the same **single-valued**
+  slot (cardinality `one`, §1) and a different normalised value.
+  Multi-valued slots, such as two signers, never conflict.
 
 **Prerequisite, its own small fix.** Editing a document writes no
 change-log row today: `update_document` records nothing, and only
@@ -153,10 +180,13 @@ exact matches, no ranking. Writes stay in the tools (§2, §3).
 2. **The schema additions**: `value`, `unit` and `confirmed_by` on
    `facts`; the new `fact_sources` collection. These are internal schema
    changes, made with a backup first. *Antti.*
-3. **"Is a customer" is derived from won deals, never written** (§1).
-   *CPO / CRO.*
-4. **The new slots** `price` and `contract_end`. *CRO.*
-5. **The order of the build** (below). *CPO.*
+3. **"Is a customer" is derived, never written** (§1). *Settled by the
+   CPO, 8.11.2026:* direct (a won deal not since lost, churned or ended)
+   or indirect (one `relationship/indirect_customer` fact).
+4. **The new vocabulary**: slots `price` and `contract_end`, the
+   `relationship` kind, and each slot's cardinality. *CRO.*
+5. **The order of the build** (below). *Settled by the CPO, 8.11.2026:*
+   1 → 2 → 3 → 4, and slice 4 waits for decision 1.
 
 ## Build order (each slice fail-first, on the synthetic seed)
 
@@ -171,13 +201,19 @@ exact matches, no ranking. Writes stay in the tools (§2, §3).
 
 ## Acceptance (fail-first, synthetic seed)
 
-- **Twin lookup.** `add_fact` on a twin writes no row and returns the
-  existing fact. `add_fact_source` then lists two sources in the ledger.
-- **Source changed.** Editing a source doc moves its facts to "review:
-  source changed".
-- **Derived customer status.** A won deal lists "is a customer" as a
-  derived fact citing the deal id. A conflicting written fact raises,
-  with both rows.
+- **Twin lookup.** `add_fact` on a twin with a value writes no row and
+  returns the existing fact; "990" twins "990.00". `add_fact_source` then
+  lists two sources in the ledger. Two null-valued facts in one slot stay
+  two facts.
+- **Source changed.** Editing a source doc after a fact was attached
+  moves that fact to "review: source changed". A fact attached after the
+  edit stays active.
+- **Conflict.** Two prices on one account conflict; two signers don't.
+- **Derived customer status.** A won deal lists "customer", citing the
+  deal id. A later churn, or a past `contract_end`, lists "former
+  customer". A `relationship/indirect_customer` fact lists "customer
+  (indirect, via <channel>)". A written "is a customer" fact raises, with
+  the row.
 - **Lookup by id.** The ledger, filtered by a doc id, equals the
   document's "Facts from this note" list.
 - **Unconfirmed.** An agent-written fact shows "unconfirmed" until
