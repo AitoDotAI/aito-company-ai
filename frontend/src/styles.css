@@ -980,3 +980,19 @@ select:focus { outline:none; border-color:var(--purple); }
 .web-journeys { display: flex; flex-direction: column; gap: 8px; font-size: 12px; }
 .web-journey { padding: 6px 8px; background: var(--tint); border-radius: 6px; }
 .web-paths h4 { font-size: 12px; margin: 10px 0 6px; color: var(--ink-dim); }
+
+/* the fact ledger (docs/43): facts listed, not drawn */
+.fact-ledger { margin-bottom: 18px; overflow-x: auto; }
+.fact-ledger-filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin-bottom: 10px; }
+.fact-ledger-filters .field { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: var(--ink-dim); }
+.fact-ledger-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.fact-ledger-table th, .fact-ledger-table td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.fact-ledger-table th { color: var(--ink-dim); font-weight: 600; }
+.linklike { background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; text-decoration: underline; font: inherit; }
+.fact-status { white-space: nowrap; font-size: 12px; }
+.fact-status-ok { color: var(--ok); }
+.fact-status-warn { color: var(--warn); font-weight: 600; }
+.fact-status-muted { color: var(--ink-faint); }
+.note-facts { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 10px; }
+.note-facts h3 { font-size: 14px; margin: 0 0 6px; }
+.note-facts ul { margin: 0; padding-left: 18px; }

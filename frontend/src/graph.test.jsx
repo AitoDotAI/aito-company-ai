@@ -6,7 +6,7 @@ import { api } from "./api.js";
 
 // Each card shows the request as it was sent: the endpoint and the body,
 // nested `from` included. The base rate the headline quotes is a card too.
-vi.mock("./api.js", () => ({ api: { graph: vi.fn(), graphNetwork: vi.fn() } }));
+vi.mock("./api.js", () => ({ api: { graph: vi.fn(), graphNetwork: vi.fn(), factLedger: vi.fn(() => Promise.resolve({ count: 0, requests: [], facts: [] })), } }));
 
 afterEach(() => vi.clearAllMocks());
 

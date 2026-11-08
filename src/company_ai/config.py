@@ -73,6 +73,21 @@ def _public_demo_posture(config: "Config") -> "Config":
     )
 
 
+def is_test_instance(instance_url: str) -> bool:
+    """True only for an instance explicitly marked as a disposable test env,
+    parsed, never a substring: the URL path has the segments `env` then exactly
+    `booktest` or `test`, or the host's first DNS label is `test` or starts
+    with `test-`. The query and fragment are ignored. The booktest suite drops
+    and reseeds tables, so it refuses anything else (book/__booktest__.py,
+    book/_target.py): latest.aito.ai, /env/test-prod and ?x=/env/test are all
+    False, as are production and every unmarked instance."""
+    parsed = urlparse(instance_url)
+    segments = [s for s in parsed.path.split("/") if s]
+    marked_path = any(a == "env" and b in ("booktest", "test") for a, b in zip(segments, segments[1:]))
+    label = (parsed.hostname or "").split(".")[0]
+    return marked_path or label == "test" or label.startswith("test-")
+
+
 def instance_host(instance_url: str) -> str:
     """A short, legible label for an instance — host[/db] — to echo before
     any write so the target is never silent."""

@@ -1900,6 +1900,7 @@ function DocumentPane({ doc, onEdit }) {
         <button className="doc-edit" title="edit this document" onClick={onEdit}>✎ Edit</button>
       </div>
       <Markdown text={doc.body} />
+      <NoteFacts docId={doc.doc_id} />
     </div>
   );
 }
@@ -2266,6 +2267,108 @@ function GraphExplorer() {
   );
 }
 
+// ---- The fact ledger (docs/43): every fact as a row, listed, not drawn ----
+const FACT_KINDS = ["attribute", "commitment", "contact_info", "decision", "hold", "open_question", "role"];
+const LEDGER_STATUSES = ["active", "superseded", "review: source missing", "review: source changed"];
+
+function factPredicate(f) { return f.slot ? `${f.kind}/${f.slot}` : f.kind; }
+
+function FactStatus({ status }) {
+  const tone = status === "active" ? "ok" : status === "superseded" ? "muted" : "warn";
+  return <span className={`fact-status fact-status-${tone}`}>{status}</span>;
+}
+
+// A text filter that applies on Enter or when it loses focus, so typing an
+// account name doesn't query (and fail) on every keystroke.
+function LedgerText({ label, value, onCommit }) {
+  const [draft, setDraft] = useState(value);
+  useEffect(() => setDraft(value), [value]);
+  const commit = () => { if (draft.trim() !== value) onCommit(draft.trim()); };
+  return (
+    <label className="field">
+      <span>{label}</span>
+      <input aria-label={label} value={draft} onChange={(ev) => setDraft(ev.target.value)}
+             onBlur={commit} onKeyDown={(ev) => { if (ev.key === "Enter") commit(); }} />
+    </label>
+  );
+}
+
+function LedgerSelect({ label, value, options, onChange }) {
+  return (
+    <label className="field">
+      <span>{label}</span>
+      <select aria-label={label} value={value} onChange={(ev) => onChange(ev.target.value)}>
+        <option value="">All</option>
+        {options.map((o) => <option key={o} value={o}>{o}</option>)}
+      </select>
+    </label>
+  );
+}
+
+export function FactLedger() {
+  const [company, setCompany] = useState("");
+  const [kind, setKind] = useState("");
+  const [status, setStatus] = useState("");
+  const [sourceId, setSourceId] = useState("");
+  const r = useAsync(() => api.factLedger({ company, kind, status, source_id: sourceId }),
+                     [company, kind, status, sourceId]);
+  const rows = r.data ? r.data.facts : [];
+  return (
+    <div className="fact-ledger panel">
+      <div className="fact-ledger-filters">
+        <LedgerText label="account" value={company} onCommit={setCompany} />
+        <LedgerSelect label="kind" value={kind} options={FACT_KINDS} onChange={setKind} />
+        <LedgerSelect label="status" value={status} options={LEDGER_STATUSES} onChange={setStatus} />
+        <LedgerText label="record id" value={sourceId} onCommit={setSourceId} />
+        {r.data && <span className="muted">{r.data.count} facts</span>}
+      </div>
+      {r.err ? <ErrorBox msg={r.err} /> : r.loading && !r.data ? <Loading /> : (
+        <table className="fact-ledger-table">
+          <thead><tr><th>Account</th><th>Fact</th><th>Statement</th><th>Source</th><th>Status</th><th>By</th></tr></thead>
+          <tbody>
+            {rows.map((f) => (
+              <tr key={f.fact_id}>
+                <td>{f.company}</td>
+                <td className="mono">{factPredicate(f)}</td>
+                <td>{f.statement}</td>
+                <td>
+                  <button className="linklike mono" title="list the facts that cite this record"
+                          onClick={() => setSourceId(f.source.id)}>{`${f.source.kind}:${f.source.id}`}</button>
+                  {f.source.status !== "linked" && <span className="muted"> ({f.source.status})</span>}
+                </td>
+                <td><FactStatus status={f.status} /></td>
+                <td className="muted">{f.author}, {f.valid_from}</td>
+              </tr>
+            ))}
+            {!rows.length && <tr><td colSpan={6} className="muted">No facts match.</td></tr>}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
+// The facts taken from one document, under the note itself.
+export function NoteFacts({ docId }) {
+  const r = useAsync(() => api.factLedger({ source_id: docId }), [docId]);
+  return (
+    <div className="note-facts">
+      <h3>Facts from this note</h3>
+      {r.err ? <ErrorBox msg={r.err} /> : r.loading && !r.data ? <Loading /> :
+        !r.data.facts.length ? <div className="muted">No facts cite this note yet.</div> : (
+          <ul>
+            {r.data.facts.map((f) => (
+              <li key={f.fact_id}>
+                <span className="mono">{factPredicate(f)}</span> {f.statement}{" "}
+                <FactStatus status={f.status} />
+              </li>
+            ))}
+          </ul>
+        )}
+    </div>
+  );
+}
+
 // a harvested fact with the rows it came from (docs/41); a value the rows no
 // longer give (a live write since the load) is said, not hidden
 function Basis({ b }) {
@@ -2337,6 +2440,8 @@ export function GraphView() {
   const r = useAsync(() => api.graph(), []);
   return (
     <>
+      <h2 className="gq-heading">Facts</h2>
+      <FactLedger />
       <GraphExplorer />
       <h2 className="gq-heading">Questions the graph answers</h2>
       <div className="gq-intro">

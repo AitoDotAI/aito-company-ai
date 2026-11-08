@@ -114,6 +114,79 @@ def list_facts(client: AitoClient, company: str, active_only: bool = True) -> li
     return sorted(rows, key=lambda r: (r["valid_from"], r["fact_id"]), reverse=True)
 
 
+# a ledger row's status (docs/43 §4), computed at read, never stored. The
+# conflict and unconfirmed statuses arrive with slices 3 and 4.
+LEDGER_STATUSES = ("active", "superseded", "review: source missing", "review: source changed")
+EDITABLE_SOURCES = {"doc": "documents"}   # a source kind whose edits reach the change log
+
+
+def ledger(client: AitoClient, company: str | None = None, kind: str | None = None,
+           slot: str | None = None, source_id: str | None = None,
+           status: str | None = None) -> dict:
+    """Every fact matching the filters, each with its source resolved and its
+    status (docs/43): superseded; review: source missing (a doc or touch that
+    names nothing); review: source changed (the source document was edited
+    after the fact was attached, by the change log); else active. Exact
+    lookups and dates only, nothing ranked (rule 2); an unknown filter value
+    raises (rule 3). Returns {facts, count, requests}."""
+    if kind is not None and kind not in schema.FACT_KINDS:
+        raise AssertionError(f"unknown kind {kind!r}; known {sorted(schema.FACT_KINDS)}")
+    slots = set().union(*schema.FACT_SLOTS.values())
+    if slot is not None and slot not in slots:
+        raise AssertionError(f"unknown slot {slot!r}; known {sorted(slots)}")
+    if status is not None and status not in LEDGER_STATUSES:
+        raise AssertionError(f"unknown status {status!r}; known {list(LEDGER_STATUSES)}")
+    requests: list[dict] = []
+
+    def query(request: dict) -> dict:
+        requests.append(request)
+        return client.query(request)
+
+    where = {k: v for k, v in (("company_id", company and _company_id(client, company)),
+                               ("kind", kind), ("slot", slot), ("source_id", source_id)) if v}
+    request = {"from": "facts", "limit": READ_LIMIT}
+    if where:
+        request["where"] = where
+    response = query(request)
+    _whole(response, "facts", READ_LIMIT)
+    rows = response["hits"]
+    found = find_sources(client, rows, query=query)
+    edited = _last_edits(query, rows)
+    out = []
+    for f in rows:
+        src = source_of(f, found)
+        if f.get("superseded_by"):
+            st = "superseded"
+        elif src["status"] == "dangling":
+            st = "review: source missing"
+        elif edited.get((f["source_kind"], f["source_id"]), "") > f["created_at"]:
+            st = "review: source changed"
+        else:
+            st = "active"
+        if status is None or st == status:
+            out.append({**f, "source": src, "status": st})
+    out.sort(key=lambda r: (r["company_id"], r["valid_from"], r["fact_id"]), reverse=True)
+    return {"facts": out, "count": len(out), "requests": requests}
+
+
+def _last_edits(query, rows: list[dict]) -> dict[tuple[str, str], str]:
+    """(source_kind, source_id) -> when that source was last edited, from the
+    change log's `updated` rows, for the sources whose edits are logged."""
+    last: dict[tuple[str, str], str] = {}
+    for kind, entity in EDITABLE_SOURCES.items():
+        ids = sorted({f["source_id"] for f in rows if f["source_kind"] == kind})
+        if not ids:
+            continue
+        response = query({"from": "changelog", "limit": READ_LIMIT, "select": ["entity_id", "at"],
+                          "where": {"entity": entity, "action": "updated",
+                                    "entity_id": {"$or": ids}}})
+        _whole(response, "changelog", READ_LIMIT)
+        for h in response["hits"]:
+            key = (kind, h["entity_id"])
+            last[key] = max(last.get(key, ""), h["at"])
+    return last
+
+
 def _hold(every: list[dict], active: list[dict]) -> dict:
     """The account's hold status, failing closed (docs/39, CRO 6.11.2026): one
     active on_hold from antti is HOLD; any anomaly is HOLD (unclear: reason);
