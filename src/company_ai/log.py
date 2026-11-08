@@ -1271,6 +1271,9 @@ def update_document(client: AitoClient, doc_id: str, changes: dict) -> dict:
             row["company_id"] = company_slug(row["company"]) if row["company"] else None
         row["updated"] = date.today().isoformat()
     edited = _write_row(client, "documents", "doc_id", doc_id, mutate)
+    # facts cite documents, so an edit is a reason to review them (docs/43)
+    changelog.record(client, "documents", doc_id, "updated", f"document: {edited.get('title')}",
+                     detail={"fields": sorted(changes)})
     search.refresh(client)
     return edited
 

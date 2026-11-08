@@ -188,7 +188,8 @@ exact matches, no ranking. Writes stay in the tools (§2, §3).
 
 ## 6. Tools (MCP, the remote surface too)
 
-- `list_facts(company=, kind=, slot=, source_id=, status=)`: the ledger read.
+- `fact_ledger(company=, kind=, slot=, source_id=, status=)`: the ledger read
+  (MCP; `GET /api/facts/ledger`). `list_facts` stays as it is.
 - `add_fact_source(fact_id, source_kind, source_id)`.
 - `confirm_fact(fact_id)`: a person's yes (remote: the operator's token only).
 - `add_fact` as today, plus `value` and `unit`, and the twin lookup (§2).
@@ -253,3 +254,22 @@ exact matches, no ranking. Writes stay in the tools (§2, §3).
   the change only flags them for review.
 - **Contact edits.** Facts on contacts' own fields wait until contact
   edits reach the change log.
+
+## Built: slice 1 (8.11.2026, td-20261108214053518773)
+
+- **The ledger read.** `facts.ledger(company, kind, slot, source_id,
+  status)`, exact filters, served as `GET /api/facts/ledger` and the MCP
+  tool `fact_ledger`. Statuses so far: active, superseded, review: source
+  missing, review: source changed. Conflict waits for slice 3's
+  cardinality, unconfirmed for slice 4.
+- **Source changed.** Measured against the fact's `created_at`, which is
+  when its only source was attached. Slice 2 moves it to
+  `fact_sources.added_at`.
+- **Document edits are logged.** `update_document` writes a change-log
+  `updated` row naming the changed fields.
+- **The views.** The Knowledge graph view opens with the Facts list.
+  Clicking a source id narrows it to the facts citing that record, and
+  the record id filter does the same for any id. The document pane lists
+  "Facts from this note".
+- **Tests.** `book/test_fact_ledger.py` (5 cases) and
+  `frontend/src/factledger.test.jsx` (6).

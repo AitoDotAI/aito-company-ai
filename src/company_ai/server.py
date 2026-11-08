@@ -184,6 +184,21 @@ def list_facts(company: str, active_only: bool = True) -> list:
 
 
 @mcp.tool()
+def fact_ledger(company: str = "", kind: str = "", slot: str = "", source_id: str = "",
+                status: str = "") -> dict:
+    """Every fact matching the filters, across accounts, each with its source
+    resolved (linked / external / dangling) and its status computed now:
+    active, superseded, "review: source missing" or "review: source changed"
+    (the cited note was edited after the fact was attached). source_id finds
+    the facts that cite one record, e.g. a doc_id. All filters are optional
+    and exact; an unknown kind, slot or status raises. Returns
+    {facts, count, requests}."""
+    from . import facts
+    return facts.ledger(_client(), company=company or None, kind=kind or None,
+                        slot=slot or None, source_id=source_id or None, status=status or None)
+
+
+@mcp.tool()
 def briefing(company: str) -> dict:
     """The current state of one account in one read, for call prep: the
     company row; its open deals with stage, value, blocker, the recorded next

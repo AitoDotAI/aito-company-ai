@@ -252,6 +252,15 @@ def create_app(config: Config | None = None) -> FastAPI:
         from . import facts
         return _guarded(lambda: facts.list_facts(client(), company, active_only=active_only))
 
+    @app.get("/api/facts/ledger")
+    def facts_ledger(company: str = "", kind: str = "", slot: str = "", source_id: str = "",
+                     status: str = ""):
+        """Every fact matching the filters, with its source and status (docs/43)."""
+        from . import facts
+        return _guarded(lambda: facts.ledger(
+            client(), company=company or None, kind=kind or None, slot=slot or None,
+            source_id=source_id or None, status=status or None))
+
     @app.post("/api/facts")
     async def facts_create(request: Request):
         body = await request.json()

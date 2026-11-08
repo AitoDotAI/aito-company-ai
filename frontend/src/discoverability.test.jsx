@@ -6,7 +6,7 @@ import { api } from "./api.js";
 vi.mock("./api.js", () => ({
   api: {
     documents: vi.fn(), createDocument: vi.fn(), updateDocument: vi.fn(),
-    deleteDocument: vi.fn(), todoOptions: vi.fn(),
+    deleteDocument: vi.fn(), todoOptions: vi.fn(), factLedger: vi.fn(() => Promise.resolve({ count: 0, requests: [], facts: [] })),
     companyDetail: vi.fn(), search: vi.fn(), searchClick: vi.fn(), quickFind: vi.fn(),
   },
   pct: (x) => (x == null ? "–" : Math.round(x * 100) + "%"),
