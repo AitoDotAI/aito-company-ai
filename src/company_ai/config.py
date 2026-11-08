@@ -73,6 +73,15 @@ def _public_demo_posture(config: "Config") -> "Config":
     )
 
 
+def is_test_instance(instance_url: str) -> bool:
+    """True only for an instance explicitly marked as a disposable test env:
+    an env path of booktest/test, or "test" in the host. The booktest suite
+    drops and reseeds tables, so it refuses anything else (book/__booktest__.py,
+    book/_target.py). Production and every unmarked instance are False."""
+    host = urlparse(instance_url).hostname or ""
+    return "/env/booktest" in instance_url or "/env/test" in instance_url or "test" in host
+
+
 def instance_host(instance_url: str) -> str:
     """A short, legible label for an instance — host[/db] — to echo before
     any write so the target is never silent."""

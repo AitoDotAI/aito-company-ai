@@ -265,6 +265,10 @@ exact matches, no ranking. Writes stay in the tools (§2, §3).
 - **Source changed.** Measured against the fact's `created_at`, which is
   when its only source was attached. Slice 2 moves it to
   `fact_sources.added_at`.
+- **Read limits.** One ledger read takes at most 10,000 facts
+  (`facts.READ_LIMIT`), and the change-log lookup for their cited
+  documents at most 10,000 `updated` rows. Past either it raises, rather
+  than answering from a truncated page (rule 3); a filter narrows it.
 - **Document edits are logged.** `update_document` writes a change-log
   `updated` row naming the changed fields.
 - **The views.** The Knowledge graph view opens with the Facts list.

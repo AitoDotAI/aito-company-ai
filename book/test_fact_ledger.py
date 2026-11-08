@@ -9,9 +9,10 @@ import re
 
 import booktest as bt
 
+from book._target import guarded_client
 from company_ai import changelog, facts, loaders, log
 from company_ai.aito import AitoClient
-from company_ai.config import SEED_DIR, Config
+from company_ai.config import SEED_DIR
 
 SEED = loaders._read_csv(SEED_DIR / "facts.csv")
 REPLICA = SEED[0]["company"]
@@ -19,8 +20,7 @@ RID = loaders.company_slug(REPLICA)
 
 
 def _seeded() -> AitoClient:
-    config = Config.from_env()
-    client = AitoClient(config.instance_url, config.api_key)
+    client = guarded_client()   # refuses anything but a test env, before any call
     # the seed carries no change log, and edits from earlier runs would read as
     # edits to the freshly seeded notes; start it empty, as the changelog book does
     client.delete_table("changelog")

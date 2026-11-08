@@ -15,7 +15,7 @@ CONTRIBUTING.md). There is deliberately no override flag: the guard is the point
 """
 import os
 
-from company_ai.config import REPO_ROOT, Config, instance_host
+from company_ai.config import REPO_ROOT, Config, instance_host, is_test_instance
 
 
 def process_setup_teardown():
@@ -39,8 +39,8 @@ def process_setup_teardown():
 
     # The target must be an explicitly-marked test env. "booktest"/"test" in the
     # path is the marker; production and any unmarked instance are refused.
-    is_test_env = "/env/booktest" in url or "/env/test" in url or "test" in host
-    assert is_test_env, (
+    # the same rule book/_target.py applies where a book makes its client
+    assert is_test_instance(url), (
         f"REFUSING to run the reseeding booktest suite against {host!r} ({url}). "
         "The suite drops tables; .env.test must point at a dedicated test env whose "
         "path contains 'booktest' or 'test'. This guard has no override — fix "
