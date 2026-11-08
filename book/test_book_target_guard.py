@@ -25,12 +25,18 @@ class Recording:
 
 def test_an_instance_not_marked_as_a_test_env_is_refused_before_any_call(t: bt.TestCaseRun) -> None:
     t.h1("is_test_instance")
-    for url in ("https://internal.aito.ai/db/aito", "https://aito-company-ai.aito.app",
-                "http://localhost:9005", "https://shared.aito.ai/db/x/env/booktest",
-                "https://aito-test.aito.app"):
+    accepted = ("https://shared.aito.ai/db/x/env/booktest", "https://shared.aito.ai/db/x/env/test",
+                "https://test.aito.app", "https://test-company-ai.aito.app")
+    # the near-misses a substring match let through (CPO review of #93)
+    refused = ("https://internal.aito.ai/db/aito", "https://aito-company-ai.aito.app",
+               "http://localhost:9005", "https://latest.aito.ai/db/aito",
+               "https://contest-db.aito.app", "https://aito-test.aito.app",
+               "https://shared.aito.ai/db/x/env/test-prod", "https://shared.aito.ai/db/x/env/testdrive",
+               "https://internal.aito.ai/db/aito?x=/env/test", "https://internal.aito.ai/db/aito#/env/booktest")
+    for url in accepted + refused:
         t.tln(f"  {url}: {is_test_instance(url)}")
-    assert not is_test_instance("https://internal.aito.ai/db/aito")
-    assert is_test_instance("https://shared.aito.ai/db/x/env/booktest")
+    assert all(is_test_instance(u) for u in accepted), [u for u in accepted if not is_test_instance(u)]
+    assert not any(is_test_instance(u) for u in refused), [u for u in refused if is_test_instance(u)]
 
     t.h1("guarded_client() pointed at the ops instance")
     Recording.calls = []
