@@ -238,13 +238,17 @@ read through the ledger, so every row carries its status (§4). It shows:
   status, newest first within its slot.
 - **Superseded facts collapsed, not hidden**: "2 earlier" opens them.
 - **"Touched since"**: a fact older than the account's latest touch is
-  marked with that touch's date. This is a pointer, not a review status:
-  most facts outlive many touches, so it never moves a fact to review.
+  marked "touched since <date>", that touch's date. This is a pointer,
+  not a review status: most facts outlive many touches, so it never moves
+  a fact to review and is never labelled "stale".
 - **The touch line at the top**: the latest touch with its date, channel
   and direction, and the unanswered streak (7c).
 - **Derived customer status** (§1): direct only in this slice ("customer"
   from a won deal not since lost, citing the deal id; otherwise "no won
-  deal on record"). Indirect waits for `relationship/customer_via`.
+  deal on record"). Indirect waits for `relationship/customer_via`, so
+  the line always carries the qualifier **"direct deals only; indirect
+  relationships are not shown yet"**: without it, an account we serve
+  through a partner would read as not a customer.
 
 The same read is the MCP tool `account_sheet(company)`, so the CRO gets
 one call instead of 4–6. `briefing` stays as it is.
@@ -252,7 +256,9 @@ one call instead of 4–6. `briefing` stays as it is.
 ### 7b. Two lists across accounts (built next, no schema change)
 
 - **We owe it, and it's overdue.** Active `commitment/ours` facts whose
-  `due` is before today, oldest first.
+  `due` is before today **in Europe/Helsinki** (`clock.today()` taken in
+  that zone, or the configured as-of date), oldest first. At 01:00 Helsinki
+  a commitment due that day isn't yet overdue, whatever UTC says.
 - **Stop chasing.** Accounts whose unanswered streak (7c) is 3 or more,
   longest first, for the Sunday board review.
 
@@ -265,7 +271,14 @@ Facts list in the Knowledge graph view and are MCP tools
 Over the account's touches, newest first, across all its contacts:
 count the `out` touches until the first touch that is either `in`, or
 has outcome `conversation`, `meeting_booked`, `reply`, `callback_requested`
-or `declined`. A decline is an answer: it ends the chase by another route.
+or `declined`, **whatever its recorded direction**. A meeting we hosted may
+be logged `out`; it is still an answer. A decline is an answer too: it ends
+the chase by another route.
+
+- **An auto-reply, out-of-office or bounce is not an answer.** It is
+  recorded as the out touch's outcome (`bounced`, `no_reply`), never as an
+  `in` touch, so it can't reset the streak. `log_touch` says so in its
+  description.
 
 - **A touch with no recorded direction** (docs/34: null means not
   recorded) stops the count, and the sheet says "streak unknown before
@@ -353,11 +366,16 @@ or `declined`. A decline is an answer: it ends the chase by another route.
 - **The account sheet.** On the seed, one account's sheet groups its
   facts by slot with a superseded fact collapsed under its successor, the
   derived status cites the won deal, and a fact older than the latest
-  touch carries "touched since <date>" while its status stays active.
+  touch carries exactly "touched since <date>" while its status stays
+  active (the test pins the wording, so it can't become a staleness
+  signal). An account with no won deal shows "no won deal on record" with
+  the qualifier "direct deals only; indirect relationships are not shown
+  yet".
 - **The streak.** Three `out` touches after an `in` one count 3; an `out`
-  with outcome `declined` ends the count; a touch with no direction stops
-  it and the sheet says so. A commitment due yesterday is on the overdue
-  list, and one due today is not.
+  with outcome `declined` ends the count, and so does an `out` meeting
+  with outcome `meeting_booked` or `conversation`; a touch with no
+  direction stops it and the sheet says so. A commitment due yesterday
+  (Helsinki) is on the overdue list, and one due today is not.
 - **The two views.** Booktests print the ledger request, the response and
   the rendered list. The frontend tests cover both views.
 
