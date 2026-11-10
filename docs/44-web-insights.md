@@ -46,8 +46,12 @@ only tens of sessions. At such counts most lifts are noise.
 - Every relation shows **n** (sessions with the value, and of those how
   many reached the KPI) next to its lift. Under 5 it's listed greyed as
   "thin, no claim" (docs/36's existing `thin_below`, raised to 5).
-- **Highlights rank by count × lift, n ≥ 5**, never by lift alone, so a
-  2-of-2 doesn't top the list.
+- **Highlights rank by excess, n ≥ 5**: the KPI sessions observed with
+  the value, minus those expected at the base rate (n with the value ×
+  the base rate), positive only. Plain arithmetic on counts. Neither lift
+  alone (a 2-of-2 tops it) nor count × lift works: a page seen in 500
+  sessions at lift 1.0 scores 500 and tops the list with no effect at
+  all, while its excess is 0.
 - Each lift carries Aito's own probability interval where the query
   returns one. No interval is computed in Python (rule 2).
 
@@ -61,7 +65,8 @@ only tens of sessions. At such counts most lifts are noise.
   count in the totals. Each session gets a `site` value, read from the
   events' `host` property (sent on every event since the website's
   33de0a28, not shipped yet) and else from Amplitude's page domain. The
-  view defaults to `site = aito.ai`.
+  view defaults to `site = aito.ai`. A session with neither is site
+  `unknown`, shown as such, never folded into the aito.ai default.
 - **Bots** stay out, as now, and are counted in a footnote.
 
 ## The view (laid out like the e-commerce Analytics page)
@@ -89,17 +94,31 @@ only tens of sessions. At such counts most lifts are noise.
   - **Content.** The second direction, described next.
   - **Journeys.** Internal only, as now.
 
-## Content → effect (the second direction)
+## Content and what goes with it (the second direction)
 
 Choose a content item: a post, a page, a demo, a consultative stage, or a
 CTA variant. Then compare sessions that saw it with those that didn't,
 for every KPI at once:
 
-| KPI | saw it | didn't | lift | n |
+| KPI | saw it | didn't | lift (vs didn't) | n |
 |---|---|---|---|---|
 
-This is one `_relate` per item with the item as the condition and each
-KPI as the target. Python only lays out the rows. Plus:
+This is one `_relate` per item, with the item as the condition and each
+KPI as the target.
+
+- **"Didn't" is subtracted, not modelled.** A `_relate` lift is measured
+  against *all* sessions, not against those that didn't see the item. For
+  a page most sessions see (the home page), the two differ a lot. "Didn't"
+  is the response's own 2×2 counts minus the "saw it" row; that's
+  lookups, not statistics. Each lift says which baseline it's against.
+- **It's association, not effect.** Sessions that see more pages see more
+  items *and* reach more KPIs, so nearly every item shows lift above 1.
+  The view says "goes with", never "effect" or "drives". Each item gets one
+  comparison row, **any page at the same depth**: sessions that saw the
+  same number of pages, whichever pages they were. An item only stands
+  out if it beats that row.
+
+Plus:
 
 - **The exit after it.** The share of sessions whose last page was this
   one. This answers "does it make people drop out?", from web_steps.
@@ -145,9 +164,12 @@ to read; it waits for direct mode.
 
 ## Build order (each slice fail-first)
 
-1. **Bugs.** The KPI tiles each switch the right side; the website funnel
-   returns real counts; the `site` value with the aito.ai default.
-2. **Honest counts.** n ≥ 5, count × lift ranking, consent-break marks.
+1. **Bugs, each with a failing test first.** The KPI tiles each switch
+   the right side (a frontend test: choosing Sign-up click shows its own
+   relations, not the onward ones). The website funnel returns real counts
+   (a booktest on the seed that fails on today's zeros). The `site` value
+   with the aito.ai default and `unknown`.
+2. **Honest counts.** n ≥ 5, ranking by excess, consent-break marks.
 3. **Content → effect.** The Content tab: posts, pages, demos, variants.
 4. **The layout.** The Segment checkboxes and the comparison trend.
 5. **The consultative stage**, once prod has it.
@@ -158,7 +180,9 @@ to read; it waits for direct mode.
 
 ## Decisions for review
 
-1. **The `site` default (aito.ai) and the n ≥ 5 threshold** are defaults,
-   so they're Antti's.
+1. **The defaults**, which are Antti's: the `site` default (aito.ai); the
+   n ≥ 5 floor; and ranking Highlights by excess (example: a page seen in
+   500 sessions at lift 1.0 has excess 0, so it doesn't top the list the
+   way it would under count × lift). *The CPO recommends all three.*
 2. **Pulling `stage`** from the consultative event. *Antti.*
 3. **Known signed-in visitors in `who_to_call`** stays parked. *Antti.*
