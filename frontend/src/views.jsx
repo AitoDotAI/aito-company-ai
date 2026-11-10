@@ -530,6 +530,13 @@ function FunnelBody({ name, slice }) {
     <div className="cols">
       <Block title="The funnel" ptype="chart">
         <FunnelChart stages={d.stages} leak={d.leak} />
+        {d.ordered === false && (
+          <div className="muted">Each stage is its reach among sessions, not a step: a visitor
+            can reach a later one without an earlier one.</div>
+        )}
+        {d.overlap && (
+          <div className="muted">Overlap: {d.overlap.also} of {d.overlap.of} · {d.overlap.label}</div>
+        )}
       </Block>
       <Block title="Aito read" ptype="predict">
         {/* With no rows at the top of the funnel there is nothing to learn from,
@@ -548,7 +555,8 @@ function FunnelBody({ name, slice }) {
             <div className="lbl">Aito's P({d.deepest_label}) for this slice</div>
           </div>
         )}
-        <div className="section-title">Why it leaks</div>
+        <div className="section-title">
+          {d.ordered === false ? `What goes with a ${d.deepest_label.toLowerCase()}` : "Why it leaks"}</div>
         <WhyList items={d.causes} />
         {d.lever && (<>
           <div className="section-title">Lever: {d.lever.field}</div>

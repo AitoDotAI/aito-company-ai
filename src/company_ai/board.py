@@ -31,7 +31,16 @@ BRIEFS = REPO_ROOT / ".briefs"
 
 
 def _funnels(client, as_of):
-    return {key: funnels.funnel(client, key).derived for key in funnels.FUNNELS}
+    """Every funnel with data. One whose table is empty on this instance (the
+    demo's `sessions` on internal, `web_sessions` before a pull) is listed as
+    {"no_data": why}, never dropped and never read as zero conversions."""
+    out = {}
+    for key in funnels.FUNNELS:
+        try:
+            out[key] = funnels.funnel(client, key).derived
+        except funnels.EmptyFunnel as e:
+            out[key] = {"no_data": str(e)}
+    return out
 
 
 def _who(client, as_of):

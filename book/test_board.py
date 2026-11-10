@@ -13,7 +13,7 @@ from datetime import date
 
 import booktest as bt
 
-from company_ai import board, loaders
+from company_ai import funnels, board, loaders
 from company_ai.aito import AitoClient
 from company_ai.config import SEED_DIR, Config
 from dataclasses import replace
@@ -76,6 +76,12 @@ def test_week_prep_uses_planning_reads(t: bt.TestCaseRun) -> None:
     t.tln(f"  validated_learning_rate = "
           f"{round(facts['experiment_board']['validated_learning_rate'], 4)}")
     t.tln(f"week's todos present: {'todos_now' in facts and 'todos_area' in facts}")
+    # a funnel with an empty table is listed as no data, not dropped and not
+    # read as zero conversions; the others still read
+    fun = facts["funnel"]
+    t.tln(f"funnels: {{{', '.join(f'{k}: ' + ('no data' if 'no_data' in v else 'read') for k, v in sorted(fun.items()))}}}")
+    assert set(fun) == set(funnels.FUNNELS)
+    assert "no_data" in fun["web"] and "stages" in fun["website"], fun.get("web")
 
 
 def test_unknown_composer_and_read_raise(t: bt.TestCaseRun) -> None:

@@ -661,9 +661,13 @@ The 360 analysis for a segment slice: per KPI (conversion, reach,
 
 params: ['name', 'slice']
 required: ['name']
-A predictive funnel. name is 'website' (acquisition: visitor → signup
-    → trial → paid, over sessions) or 'sales' (contact → touched → reached →
-    conversation → meeting). `slice` filters by the funnel's dimensions
+A predictive funnel. name is 'web' (aito.ai's REAL traffic: human
+    sessions → onward click / pricing page / sign-up click, each its reach,
+    unordered, with no step conversion; over web_sessions), 'website' (the
+    DEMO's synthetic acquisition funnel: visitor → signup → trial → paid, over
+    sessions; never our numbers) or 'sales' (contact → touched → reached →
+    conversation → meeting). web slices: source/utm_campaign/device_class/
+    country/landing_path. `slice` filters by the funnel's dimensions
     (website: source/campaign/device/country/landing_page; sales: segment/
     tier/ai_lifecycle/source). Returns stage counts and step conversion, the
     biggest-drop leak, Aito's outlook for the deepest stage, the

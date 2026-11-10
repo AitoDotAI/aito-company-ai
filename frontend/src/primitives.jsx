@@ -102,7 +102,7 @@ export function FunnelChart({ stages, leak }) {
     <div>
       {stages.map((s, i) => (
         <div key={s.key}>
-          {i > 0 && (
+          {i > 0 && s.conversion_from_prev != null && (
             <div className={"conv" + (leak && leak.into === s.label ? " leak" : "")}>
               ↓ {pct(s.conversion_from_prev)} continue
               {leak && leak.into === s.label && <span className="tag">biggest drop</span>}
