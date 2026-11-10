@@ -156,21 +156,27 @@ to read; it waits for direct mode.
 
 ## Known gaps this fixes
 
-- **`funnel(name="website")` returns all zeros** (the CRO). Fixed with a
-  failing booktest first.
+- **Which funnel is ours.** `funnel("website")` is the demo's synthetic data;
+  the CRO's "all zeros" came from calling it on internal, where its table is
+  empty (the CRO's own correction, 11.11.2026). Not a bug in the real funnel.
+  Use `funnel("web")`, aito.ai's real traffic as reach per stage (#99). An
+  empty funnel table now says so (#97), and week prep lists it as no data.
 - **No onward rate per campaign.** The CRO rebuilt it from steps by hand.
 - **The visit-KPI tiles** (Sessions, Onward, Sign-up CTA) don't switch the
   relations (today's bug).
 
 ## Build order (each slice fail-first)
 
-1. **Bugs, each with a failing test first.** *Built 10.11.2026, apart from
-   `site`:* the visit tiles relate their own outcome, the website funnel
-   says when its table is empty, and the pricing KPI is matched by URL. The KPI tiles each switch
-   the right side (a frontend test: choosing Sign-up click shows its own
-   relations, not the onward ones). The website funnel returns real counts
-   (a booktest on the seed that fails on today's zeros). The `site` value
-   with the aito.ai default and `unknown`.
+1. **Bugs, each with a failing test first.** *Built 10–11.11.2026 (#97,
+   #99), apart from `site`:*
+   - **The KPI tiles.** Each relates its own outcome. A frontend test checks
+     that choosing Sign-up click shows its own relations, not the onward ones.
+   - **The pricing KPI** is matched by URL.
+   - **An empty funnel table** says so.
+   - **`funnel("web")`** reads the real visits as reach per stage. A truly
+     ordered funnel from `web_steps`' order is a later option.
+   - **Still to build:** the `site` value, with the aito.ai default and
+     `unknown`.
 2. **Honest counts.** n ≥ 5, ranking by excess, consent-break marks.
 3. **Content → effect.** The Content tab: posts, pages, demos, variants.
 4. **The layout.** The Segment checkboxes and the comparison trend.
