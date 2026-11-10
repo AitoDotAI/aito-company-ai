@@ -1,6 +1,6 @@
 # Top paths into pricing_page
 
-  page:/ → page:/blog/ → kpi:pricing_page: 5 visits, lift 3.38, thin False
+  page:/ → page:/blog/ → page:/pricing/: 5 visits, lift 3.38, thin False
 
 # Pages that raise it later in the visit
 

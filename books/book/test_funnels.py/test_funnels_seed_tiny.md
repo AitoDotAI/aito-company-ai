@@ -4,6 +4,7 @@
 ## Aito calls
 
 _query: {"from": "sessions", "limit": 0, "where": {}}
+_query: {"from": "sessions", "limit": 0, "where": {}}
 _query: {"from": "sessions", "limit": 0, "where": {"signed_up": true}}
 _query: {"from": "sessions", "limit": 0, "where": {"started_trial": true}}
 _query: {"from": "sessions", "limit": 0, "where": {"converted_paid": true}}
@@ -29,6 +30,7 @@ _recommend: {"from": "sessions", "goal": {"converted_paid": true}, "limit": 8, "
 
 ## Aito calls
 
+_query: {"from": "contacts", "limit": 0, "where": {}}
 _query: {"from": "contacts", "limit": 0, "where": {}}
 _query: {"from": "contacts", "limit": 0, "where": {"ever_touched": true}}
 _query: {"from": "contacts", "limit": 0, "where": {"ever_reached": true}}

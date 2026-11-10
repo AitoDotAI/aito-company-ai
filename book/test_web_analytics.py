@@ -289,6 +289,52 @@ def _event(when: str, path: str, session_id, device_id="dev-midnight", **props) 
             "user_properties": {}}
 
 
+def test_the_pricing_kpi_is_aito_ai_pricing_page_by_its_url(t: bt.TestCaseRun) -> None:
+    """The pricing KPI is a view of aito.ai's own /pricing/ page, matched by
+    host and path. A demo's pricing estimator ("Page View: Demo - Pricing", on
+    the demo's host) and beta.aito.ai's /pricing/ are not it (Antti, 10.11.2026)."""
+    client, _, _ = _seeded()
+    site = _event(f"{DAY} 10:00:00", "/pricing/", 1759658100001, device_id="dev-p1")
+    demo = _event(f"{DAY} 10:00:00", "/pricing", 1759658100002, device_id="dev-p2",
+                  url="https://ecommerce.aito.ai/pricing")
+    demo["event_type"] = "Page View: Demo - Pricing"
+    demo["event_properties"]["[Amplitude] Page Domain"] = "ecommerce.aito.ai"
+    beta = _event(f"{DAY} 10:00:00", "/pricing/", 1759658100003, device_id="dev-p3",
+                  url="https://beta.aito.ai/pricing/")
+    beta["event_properties"]["[Amplitude] Page Domain"] = "beta.aito.ai"
+    webanalytics.store_day(client, DAY, [site, demo, beta])
+    rows = client.query({"from": "web_sessions", "where": {"day": DAY}, "limit": 10,
+                         "select": ["landing_path", "kpi_pricing_page"]})["hits"]
+    t.h1("kpi_pricing_page by the page's host and path")
+    for r in sorted(rows, key=lambda r: r["landing_path"]):
+        t.tln(f"  {r['landing_path']}: {r['kpi_pricing_page']}")
+    got = {r["landing_path"]: r["kpi_pricing_page"] for r in rows}
+    assert got == {"/pricing/": True, "ecommerce.aito.ai/pricing": False,
+                   "beta.aito.ai/pricing/": False}, got
+    _clean(client)
+
+
+def test_each_visit_kpi_relates_its_own_outcome(t: bt.TestCaseRun) -> None:
+    """The Web view's Sign-up CTA tile shows what goes with a sign-up click,
+    not the onward-click relations (docs/44 slice 1, the bug Antti found)."""
+    client, _, _ = _seeded()
+    webanalytics.store_day(client, DAY, _events())
+    for outcome in ("onward_click", "signup_cta"):
+        v = webanalytics.web_view(client, DAY, DAY, outcome=outcome)
+        t.h1(f"web_view(outcome={outcome})")
+        t.tln(f"  drivers relate: {json.dumps(v['drivers']['request']['relate'], sort_keys=True)}")
+        t.tln(f"  outcome: {v['outcome']}")
+        assert v["drivers"]["request"]["relate"]["$on"][0] == {outcome: True}
+        assert v["outcome"] == outcome
+    try:
+        webanalytics.web_view(client, DAY, DAY, outcome="views")
+    except AssertionError as e:
+        t.tln(f"  an unknown outcome raises: {e}")
+    else:
+        raise AssertionError("an unknown outcome must raise")
+    _clean(client)
+
+
 def test_onward_drivers_use_only_pre_visit_context(t: bt.TestCaseRun) -> None:
     client, _, _ = _seeded()
     webanalytics.store_day(client, DAY, _events())
@@ -1206,7 +1252,7 @@ def test_paths_to_a_kpi_come_from_the_graph(t: bt.TestCaseRun) -> None:
     t.h1("Top paths into pricing_page")
     for p in r["top_paths"]:
         t.tln(f"  {' → '.join(p['path'])}: {p['visits']} visits, lift {p['lift']:.2f}, thin {p['thin']}")
-    assert r["top_paths"][0]["path"] == ["page:/", "page:/blog/", "kpi:pricing_page"]
+    assert r["top_paths"][0]["path"] == ["page:/", "page:/blog/", "page:/pricing/"]  # one page: the path ends at it
     assert r["top_paths"][0]["visits"] == 5
     t.h1("Pages that raise it later in the visit")
     for x in r["raises_later"]["relations"]:

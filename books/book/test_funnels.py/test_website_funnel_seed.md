@@ -4,6 +4,7 @@
 ## Aito calls
 
 _query: {"from": "sessions", "limit": 0, "where": {}}
+_query: {"from": "sessions", "limit": 0, "where": {}}
 _query: {"from": "sessions", "limit": 0, "where": {"signed_up": true}}
 _query: {"from": "sessions", "limit": 0, "where": {"started_trial": true}}
 _query: {"from": "sessions", "limit": 0, "where": {"converted_paid": true}}
@@ -29,6 +30,7 @@ _recommend: {"from": "sessions", "goal": {"converted_paid": true}, "limit": 8, "
 
 ## Aito calls
 
+_query: {"from": "sessions", "limit": 0, "where": {}}
 _query: {"from": "sessions", "limit": 0, "where": {"source": "referral"}}
 _query: {"from": "sessions", "limit": 0, "where": {"signed_up": true, "source": "referral"}}
 _query: {"from": "sessions", "limit": 0, "where": {"source": "referral", "started_trial": true}}
@@ -54,6 +56,7 @@ _relate: {"from": "sessions", "limit": 150, "relate": {"$on": [{"converted_paid"
 
 ## Aito calls
 
+_query: {"from": "sessions", "limit": 0, "where": {}}
 _query: {"from": "sessions", "limit": 0, "where": {"device": "mobile"}}
 _query: {"from": "sessions", "limit": 0, "where": {"device": "mobile", "signed_up": true}}
 _query: {"from": "sessions", "limit": 0, "where": {"device": "mobile", "started_trial": true}}

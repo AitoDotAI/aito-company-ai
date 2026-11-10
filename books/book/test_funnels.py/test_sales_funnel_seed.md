@@ -4,6 +4,7 @@
 ## Aito calls
 
 _query: {"from": "contacts", "limit": 0, "where": {}}
+_query: {"from": "contacts", "limit": 0, "where": {}}
 _query: {"from": "contacts", "limit": 0, "where": {"ever_touched": true}}
 _query: {"from": "contacts", "limit": 0, "where": {"ever_reached": true}}
 _query: {"from": "contacts", "limit": 0, "where": {"ever_conversation": true}}
@@ -31,6 +32,7 @@ _recommend: {"from": "contacts", "goal": {"ever_meeting": true}, "limit": 8, "re
 
 ## Aito calls
 
+_query: {"from": "contacts", "limit": 0, "where": {}}
 _query: {"from": "contacts", "limit": 0, "where": {"segment": "accounting"}}
 _query: {"from": "contacts", "limit": 0, "where": {"ever_touched": true, "segment": "accounting"}}
 _query: {"from": "contacts", "limit": 0, "where": {"ever_reached": true, "segment": "accounting"}}

@@ -19,6 +19,7 @@ const BUNDLE = {
     { field: "country", value: "Finland", lift: 3.1, rate_with: 0.5, rate_without: 0.14, rows_with: 4, thin: true },
   ], request: { from: "web_sessions" } },
   next_paths: null,
+  outcome: "onward_click",
   thin_below: 5,
   kpis: { pricing_page: 9, contact_page: 2, login_page: 14, signup: 3, sandbox: 2,
           data_loaded: 0, first_query: 1, api_keys: 0 },
@@ -30,6 +31,20 @@ const BUNDLE = {
 };
 
 describe("web view", () => {
+  it("relates each visit tile's own outcome, and Sessions relates nothing", async () => {
+    api.web.mockImplementation((p) => Promise.resolve({ ...BUNDLE, outcome: p.outcome }));
+    render(<WebView />);
+    expect(await screen.findByText(/What goes with an onward click/)).toBeInTheDocument();
+    expect(api.web).toHaveBeenLastCalledWith(expect.objectContaining({ outcome: "onward_click" }));
+    fireEvent.click(within(screen.getByTestId("web-kpis")).getByText("Sign-up click"));
+    await waitFor(() => expect(api.web).toHaveBeenLastCalledWith(expect.objectContaining({ outcome: "signup_cta" })));
+    expect(await screen.findByText(/What goes with a sign-up click/)).toBeInTheDocument();
+    expect(screen.queryByText(/What goes with an onward click/)).toBeNull();
+    fireEvent.click(within(screen.getByTestId("web-kpis")).getByText("Sessions"));
+    expect(await screen.findByText(/Pick a KPI to see what goes with it/)).toBeInTheDocument();
+    expect(screen.queryByTestId("web-drivers")).toBeNull();
+  });
+
   it("shows the KPIs, Aito's drivers with their counts, and the sessions", async () => {
     api.web.mockResolvedValue(BUNDLE);
     render(<WebView />);

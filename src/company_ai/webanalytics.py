@@ -59,7 +59,9 @@ NO_SESSION = (-1, None)   # Amplitude's "no session": each such event stands alo
 # its events has one of these names. A new name is not guessed into a KPI:
 # the pull reports names it has never seen (new_event_types).
 KPI_EVENTS = {
-    "pricing_page": {"Page View: /pricing/", "Page View: Demo - Pricing"},
+    # by its page, not its event name (KPI_PAGES): a demo's pricing estimator
+    # and beta's /pricing/ are not aito.ai's pricing page (Antti, 10.11.2026)
+    "pricing_page": set(),
     "contact_page": {"Page View: /contact-us/"},
     "login_page": {"Page View: Sign In"},
     "signup": {"Page View: Sign Up", "Page View: /sign-up/", "signup_clicked", "signup_completed"},
@@ -68,6 +70,14 @@ KPI_EVENTS = {
     "first_query": {"Workbook query executed", "playground_query_executed"},
     "api_keys": {"Get API keys"},
 }
+# KPIs reached by viewing a page, matched by its host and path as `_page`
+# writes it: aito.ai's own pages bare ("/pricing/"), other hosts host-first
+# ("beta.aito.ai/pricing/"), so another site's page of the same name never
+# counts. A session has the KPI when it viewed one of these pages.
+KPI_PAGES = {
+    "pricing_page": {"/pricing/"},
+}
+assert set(KPI_PAGES) <= set(KPI_EVENTS)
 # Amplitude's own session bookkeeping: not something the visitor did
 LIFECYCLE_EVENTS = {"session_start", "session_end"}
 # The product events seen in the export 6.10-5.11.2026 that are not KPI
@@ -77,6 +87,9 @@ KNOWN_EVENT_TYPES = {
     "signin_clicked", "tour_started", "tour_step", "tour_skipped",
     "demo_recommendations_fetched", "demo_autocomplete_fetched", "demo_persona_selected",
     "demo_product_added_to_cart", "demo_search_executed", "demo_price_estimated",
+    # the pricing estimator demo: once in the pricing KPI by name, it isn't
+    # aito.ai's pricing page (KPI_PAGES)
+    "Page View: Demo - Pricing",
     "Instance delete", "Instance delete now",
 }
 _KPI_EVENT_NAMES = set().union(*KPI_EVENTS.values())
@@ -246,6 +259,14 @@ def _page(event: dict) -> str | None:
     return path if host == SITE_HOST else f"{host}{path}"
 
 
+def _event_kpis(event: dict) -> list[str]:
+    """The KPIs one event reaches: by its name (KPI_EVENTS), or for a page
+    view by its host and path (KPI_PAGES)."""
+    page = _page(event) if _page_kind(event) is not None else None
+    return [k for k in KPI_EVENTS
+            if event["event_type"] in KPI_EVENTS[k] or (page is not None and page in KPI_PAGES.get(k, ()))]
+
+
 def _event_token(event: dict) -> str | None:
     """One event as a token for the `events` field: a page view is
     `page:<page>` (redacted like `pages`), anything else its event NAME
@@ -353,11 +374,11 @@ def _build(events: list[dict], day: str) -> tuple[list[dict], dict]:
             stats["unknown_os"][str(first.get("device_family"))] += 1
         medium = utm["utm_medium"] if utm["utm_medium"] != "<invalid>" else None
         # each event of the visit as (token, the KPIs its NAME belongs to)
-        steps = [(tok, [k for k, kpi_names in KPI_EVENTS.items() if e["event_type"] in kpi_names])
+        steps = [(tok, _event_kpis(e))
                  for e in group if e["event_type"] not in LIFECYCLE_EVENTS
                  for tok in [_event_token(e)] if tok]
+        reached = {k for e in group for k in _event_kpis(e)}
         tokens = [tok for tok, _ in steps]
-        names = {e["event_type"] for e in group}
         rows.append({
             "session_key": _session_key(*key[:2]) if key[0] not in NO_SESSION
             else _session_key(key[0], f"{key[1]}:{key[2]}"),
@@ -367,7 +388,7 @@ def _build(events: list[dict], day: str) -> tuple[list[dict], dict]:
             "events": " ".join(tokens) or None,
             "co_events": " ".join(tokens) or None,
             "_steps": steps,           # popped by store_day into web_steps (docs/37)
-            **{f"kpi_{kpi}": bool(names & kpi_names) for kpi, kpi_names in KPI_EVENTS.items()},
+            **{f"kpi_{kpi}": kpi in reached for kpi in KPI_EVENTS},
             "day": day, "hour": start.hour,
             "weekday": schema.WEEKDAYS[start.weekday()],
             "week": f"{start.isocalendar().year}-W{start.isocalendar().week:02d}",
@@ -761,6 +782,9 @@ def onward_drivers(client: AitoClient, since: str, until: str, path: str | None 
 # relate tool's 10 would hide nearly every sign-up insight.
 WEB_THIN = 5
 
+# the visit-level outcomes a Web view tile relates (docs/44 slice 1)
+VIEW_OUTCOMES = ("onward_click", "signup_cta")
+
 WEB_VIEW_FIELDS = ["day", "hour", "landing_path", "next_path", "source", "referrer_domain",
                    "utm_campaign", "post_id", "device_class", "country", "views",
                    "engaged_seconds", "onward_click", "signup_cta", "likely_bot"]
@@ -768,17 +792,20 @@ WEB_VIEW_FIELDS = ["day", "hour", "landing_path", "next_path", "source", "referr
 
 def web_view(client: AitoClient, since: str, until: str, source: str | None = None,
              campaign: str | None = None, path: str | None = None, device: str | None = None,
-             limit: int = 25, offset: int = 0) -> dict:
+             limit: int = 25, offset: int = 0, outcome: str = "onward_click") -> dict:
     """What the Web view shows for one filter.
     - totals and the per-day series: counts over the matching human sessions;
     - facets: the filter choices, from the whole window, so a chosen filter
       doesn't hide the alternatives;
-    - drivers: Aito's _relate of onward_click over the same population;
+    - drivers: Aito's _relate of the chosen visit outcome (VIEW_OUTCOMES:
+      onward_click or signup_cta) over the same population;
     - next_paths: Aito's _predict next_path when a landing page is chosen;
     - sessions: a page of the matching rows, newest first, bots included and
       flagged.
     Counting and paging are formatting; every relation and prediction is Aito's
     (rule 2)."""
+    if outcome not in VIEW_OUTCOMES:
+        raise AssertionError(f"unknown outcome {outcome!r}; the Web view relates {VIEW_OUTCOMES}")
     filt = {"source": source, "utm_campaign": campaign, "landing_path": path,
             "device_class": device}
     kpi_fields = [f"kpi_{k}" for k in KPI_EVENTS]
@@ -808,7 +835,7 @@ def web_view(client: AitoClient, since: str, until: str, source: str | None = No
     }
     where = {"likely_bot": False, "$and": [*_window(since, until), *(
         {k: v} for k, v in filt.items() if v is not None)]}
-    drivers = relations.relate(client, "web_sessions", {"onward_click": True},
+    drivers = relations.relate(client, "web_sessions", {outcome: True},
                                where=where, top_n=10, thin=WEB_THIN) if n else None
     next_paths = None
     if path:
@@ -822,7 +849,7 @@ def web_view(client: AitoClient, since: str, until: str, source: str | None = No
             "thin_below": WEB_THIN,
             # human sessions that reached each KPI in the filter (docs/36)
             "kpis": {k: sum(bool(r.get(f"kpi_{k}")) for r in human) for k in KPI_EVENTS},
-            "drivers": drivers, "next_paths": next_paths,
+            "outcome": outcome, "drivers": drivers, "next_paths": next_paths,
             "session_total": len(rows), "sessions": ordered[offset:offset + limit]}
 
 
@@ -837,7 +864,8 @@ EVENT_TOKEN = re.compile(r"[a-z0-9_]{1,64}|page:\S{1,200}")
 def _own_tokens(kpi: str) -> set[str]:
     """The event tokens that define a KPI, so "other events" doesn't restate it."""
     return {tok for tok in (_event_token({"event_type": name, "event_properties": {}})
-                            for name in KPI_EVENTS[kpi]) if tok}
+                            for name in KPI_EVENTS[kpi]) if tok} \
+        | {f"page:{page}" for page in KPI_PAGES.get(kpi, ())}
 
 
 def web_kpis(client: AitoClient, kpi: str | None = None, event: str | None = None,

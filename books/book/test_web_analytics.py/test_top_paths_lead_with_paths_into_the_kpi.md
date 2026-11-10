@@ -1,6 +1,6 @@
 # Paths into pricing
 
-  page:/ → page:/blog/ → kpi:pricing_page: 5 visits, overall 5, lift 4.80
+  page:/ → page:/blog/ → page:/pricing/: 5 visits, overall 5, lift 4.80
 
 # Paths that go elsewhere
 
