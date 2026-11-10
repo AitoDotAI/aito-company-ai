@@ -29,7 +29,8 @@ Two directions over the same data:
 | Demo opened vs not: sign-up and contact rate; the exit right after a demo | keep investing in demos; which demo to link in follow-ups |
 | High-intent exits: reached pricing, trust or sign-up, then left. From where, after what | a page fix, not a call |
 | Which vertical's landing is pulling, week over week | the next outreach vertical |
-| The consultative stage: which stages go with contact or sign-up | the next guide or post |
+| The consultative needs: which interests, domain and stage go with contact or a sign-up click | the next guide or post |
+| The questions the guide could not answer (`answer_source = none`, labels only) | the next post or guide answer. **Parked:** it lives in the beta's own table, not Amplitude, and waits for direct mode or a read path |
 | A post's 7-day result: sessions, onward, sign-ups by utm | `log_post_result` without hand-work |
 
 **Not built: per-person or per-company tracking** (the CRO's line, and
@@ -66,7 +67,9 @@ only tens of sessions. At such counts most lifts are noise.
 ## The view (laid out like the e-commerce Analytics page)
 
 - **Left: Compare by.** KPI tiles: sessions, onward, pricing, contact,
-  sign-in, sign-up, sandbox, first query. **Every tile switches the whole
+  sign-in, **sign-up click**, sandbox, first query. A click on a sign-up
+  CTA is not an account; an **account created** tile appears only once the
+  console reports one. **Every tile switches the whole
   right side**, including the onward and sign-up tiles. That fixes
   today's bug, where Sessions and Sign-up CTA still show the onward-click
   relations.
@@ -101,7 +104,9 @@ KPI as the target. Python only lays out the rows. Plus:
 - **The exit after it.** The share of sessions whose last page was this
   one. This answers "does it make people drop out?", from web_steps.
 - **Posts.** Attributed by `utm_campaign` (docs/36). A post with untagged
-  links shows "untagged: unattributed", never zero.
+  links shows "untagged: unattributed", never zero. The cause gets fixed
+  too: `add_post` and `set_post_link_path` warn when a link to aito.ai has
+  no `utm_campaign` (its own small fix).
 - **Demos.** Opened vs not, for every KPI, plus the exit after the demo.
 - **CTA variants.** `Signup CTA clicked.variant`, each arm against the
   others.
@@ -115,11 +120,13 @@ reaches Amplitude, after consent:
   `where`, `previous`, `change`, `dismissed`. Fixed sets, no free text.
 - `Signup CTA clicked`: `variant`, `button`, `position`, `path`.
 
-Coming with the website's 33de0a28 (approved by Antti, not shipped yet):
+Coming with the website's next release (approved by Antti, not shipped
+yet; the commit is still being amended after the CRO's review):
 user properties set with consent only, all fixed categories: `interests`
 (a sorted, space-joined subset of tech, usecases and ai), `domain`
 (accounting, erp, ecommerce, service, agents or other) and `stage`.
-Amplitude no longer stores IP addresses.
+Amplitude is set not to store IP addresses (verify on one beta event
+after it deploys).
 
 **Pulled:** `stage`, `domain` and `interests` as session attributes, so
 they become segments and content items. A value outside its fixed set
@@ -144,6 +151,10 @@ to read; it waits for direct mode.
 3. **Content → effect.** The Content tab: posts, pages, demos, variants.
 4. **The layout.** The Segment checkboxes and the comparison trend.
 5. **The consultative stage**, once prod has it.
+6. **Account created, joined to the landing** (later). The sign-up link
+   carries `from=landing&interests=&domain=&stage=`; if the console ever
+   logs those on account creation, a click joins to an account. That needs
+   an owner on the console side.
 
 ## Decisions for review
 
