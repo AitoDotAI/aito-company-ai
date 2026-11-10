@@ -255,8 +255,8 @@ one call instead of 4–6. `briefing` stays as it is.
 
 ### 7b. Two lists across accounts (built next, no schema change)
 
-- **We owe it, and it's overdue.** Active `commitment/ours` facts whose
-  `due` is before today **in Europe/Helsinki** (`clock.today()` taken in
+- **We owe it, and it's overdue.** Active `commitment/ours` facts not yet
+  `sent` (a sent one is delivered) whose `due` is before today **in Europe/Helsinki** (`clock.today()` taken in
   that zone, or the configured as-of date), oldest first. At 01:00 Helsinki
   a commitment due that day isn't yet overdue, whatever UTC says.
 - **Stop chasing.** Accounts whose unanswered streak (7c) is 3 or more,
@@ -421,7 +421,9 @@ the chase by another route.
 - **`sheet.overdue_commitments()`** (MCP, `GET /api/facts/overdue`) and
   **`sheet.unanswered_accounts(min_streak=3)`** (MCP, `GET
   /api/facts/unanswered`). Both are in the Knowledge graph view under the
-  Facts list. Touches that name no account are counted, not dropped.
+  Facts list. A touch belongs to its company_id, else to its contact's
+  company, the same as on the sheet. Touches with neither are counted, not
+  dropped.
 - **`log_touch`'s description** says that calls and texts must be logged
   too, and that an auto-reply or bounce is the out touch's outcome.
 - **On real data (10.11.2026):** 47 of 314 touches record no direction, so

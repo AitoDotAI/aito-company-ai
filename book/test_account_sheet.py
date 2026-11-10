@@ -34,7 +34,7 @@ def _seeded() -> AitoClient:
 
 def _touch(client, contact, day, direction, outcome, channel="email"):
     kwargs = {"direction": direction} if direction else {}
-    log.log_touch(client, contact, channel, None, outcome,
+    return log.log_touch(client, contact, channel, None, outcome,
                   ts=datetime.fromisoformat(f"{day}T10:00:00"), **kwargs)
 
 
@@ -130,16 +130,21 @@ def test_a_won_deal_makes_a_customer(t: bt.TestCaseRun) -> None:
 
 def test_overdue_commitments_by_the_helsinki_day(t: bt.TestCaseRun) -> None:
     client = _seeded()
-    out = sheet.overdue_commitments(client, today=date(2026, 11, 12))
-    t.h1("overdue_commitments(today=2026-11-12)")
+    out = sheet.overdue_commitments(client, today=date(2026, 11, 13))
+    t.h1("overdue_commitments(today=2026-11-13)")
     for r in out["commitments"]:
         t.tln(f"  {r['fact_id']} {r['company_id']} due {r['due']} ({r['days_overdue']} days): "
               f"{r['statement']!r}")
     dues = {r["fact_id"]: r["due"] for r in out["commitments"]}
     ours = {f["fact_id"]: f["due"] for f in SEED
             if f["kind"] == "commitment" and f["slot"] == "ours" and not f["superseded_by"] and f["due"]}
-    assert dues == {k: v for k, v in ours.items() if v < "2026-11-12"}, (dues, ours)
-    assert any(v == "2026-11-12" for v in ours.values()), "the seed has one due that day: not overdue"
+    sent = {f["fact_id"] for f in SEED if f["kind"] == "commitment" and f["state"] == "sent"}
+    assert sent & {k for k, v in ours.items() if v < "2026-11-13"}, "the seed has a sent one past due"
+    assert dues == {k: v for k, v in ours.items() if v < "2026-11-13" and k not in sent}, (dues, ours)
+    assert dues, "a drafted one past due is listed"
+    t.tln("  (a commitment already sent is delivered: past its due, it is not overdue)")
+    assert sheet.overdue_commitments(client, today=date(2026, 11, 12))["commitments"] == [], \
+        "on its due day (Helsinki) a drafted commitment isn't overdue yet"
 
 
 def test_the_stop_chasing_list(t: bt.TestCaseRun) -> None:
@@ -155,5 +160,15 @@ def test_the_stop_chasing_list(t: bt.TestCaseRun) -> None:
     t.tln(f"  touches naming no account: {out['touches_without_account']}")
     t.tln(f"  requests: {out['requests']}")
     assert [r["company_id"] for r in out["accounts"]] == [loaders.company_slug(QUIET)]
-    _touch(client, QUIET_CONTACT, "2026-11-08", "out", "meeting_booked")
-    assert sheet.unanswered_accounts(client)["accounts"] == [], "a booked meeting is an answer"
+    reply = _touch(client, QUIET_CONTACT, "2026-11-08", "in", "reply")
+    # the touch row names only its contact, as some real rows do: the account
+    # is resolved through the contact, in the list as on the sheet
+    client.update_entries("touches", {"touch_id": reply["touch_id"]},
+                          {"company_id": None})
+    after = sheet.unanswered_accounts(client)
+    t.tln(f"  after an in touch on 2026-11-08 whose row names only the contact: "
+          f"{[r['company_id'] for r in after['accounts']]}, "
+          f"touches naming no account: {after['touches_without_account']}")
+    assert after["accounts"] == [], "the reply ends the streak on the list"
+    assert after["touches_without_account"] == 0, "resolved through its contact, not an orphan"
+    assert sheet.account_sheet(client, QUIET)["unanswered"]["streak"] == 0, "and on the sheet"

@@ -147,13 +147,14 @@ def _row(r: dict, touched: str | None) -> dict:
 
 def overdue_commitments(client: AitoClient, today: date | None = None) -> dict:
     """The commitments we owe that are past due (§7b): current `commitment/ours`
-    facts whose `due` is before today in Helsinki, oldest due first. A due date
+    facts not yet sent whose `due` is before today in Helsinki, oldest due first. A due date
     that isn't one raises with its row."""
     today = today or helsinki_today()
     led = facts.ledger(client, kind="commitment", slot="ours")
     out = []
     for r in led["facts"]:
-        if r["status"] == "superseded" or not r.get("due"):
+        # a sent commitment is delivered: past its due it isn't owed any more
+        if r["status"] == "superseded" or r.get("state") == "sent" or not r.get("due"):
             continue
         try:
             due = date.fromisoformat(r["due"])
@@ -169,17 +170,22 @@ def overdue_commitments(client: AitoClient, today: date | None = None) -> dict:
 
 def unanswered_accounts(client: AitoClient, min_streak: int = DEFAULT_STREAK) -> dict:
     """The stop-chasing list (§7b): accounts whose unanswered streak is at least
-    `min_streak`, longest first. Touches that name no account are counted and
-    reported, not dropped."""
+    `min_streak`, longest first. A touch belongs to its own company_id, else
+    to its contact's company, as on the sheet; touches with neither are
+    counted and reported, not dropped."""
     if min_streak < 1:
         raise AssertionError(f"min_streak must be at least 1, got {min_streak}")
-    requests = [{"from": "touches", "limit": READ_LIMIT}]
+    requests = [{"from": "touches", "limit": READ_LIMIT},
+                {"from": "contacts", "select": ["contact_id", "company_id"], "limit": READ_LIMIT}]
     touches = _whole(client.query(requests[0]), "touches")
+    company_of = {c["contact_id"]: c.get("company_id")
+                  for c in _whole(client.query(requests[1]), "contacts")}
     by_account: dict[str, list[dict]] = {}
     orphans = 0
     for x in touches:
-        if x.get("company_id"):
-            by_account.setdefault(x["company_id"], []).append(x)
+        cid = x.get("company_id") or company_of.get(x["contact_id"])
+        if cid:
+            by_account.setdefault(cid, []).append(x)
         else:
             orphans += 1
     out = []
