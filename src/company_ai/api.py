@@ -261,6 +261,24 @@ def create_app(config: Config | None = None) -> FastAPI:
             client(), company=company or None, kind=kind or None, slot=slot or None,
             source_id=source_id or None, status=status or None))
 
+    @app.get("/api/facts/sheet")
+    def facts_sheet(company: str):
+        """One account's sheet: facts by slot, the streak, derived status (docs/43 §7a)."""
+        from . import sheet
+        return _guarded(lambda: sheet.account_sheet(client(), company))
+
+    @app.get("/api/facts/overdue")
+    def facts_overdue():
+        """The commitments we owe that are past due, by the Helsinki day (docs/43 §7b)."""
+        from . import sheet
+        return _guarded(lambda: sheet.overdue_commitments(client()))
+
+    @app.get("/api/facts/unanswered")
+    def facts_unanswered(min_streak: int = 3):
+        """The stop-chasing list: accounts with an unanswered streak (docs/43 §7b)."""
+        from . import sheet
+        return _guarded(lambda: sheet.unanswered_accounts(client(), min_streak=min_streak))
+
     @app.post("/api/facts")
     async def facts_create(request: Request):
         body = await request.json()

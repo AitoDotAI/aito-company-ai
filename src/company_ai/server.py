@@ -199,6 +199,40 @@ def fact_ledger(company: str = "", kind: str = "", slot: str = "", source_id: st
 
 
 @mcp.tool()
+def account_sheet(company: str) -> dict:
+    """One account's sheet in one read (docs/43 §7a): its facts grouped by kind
+    and slot, each with its status and source, superseded ones under
+    `earlier`; "touched since <date>" on a fact older than the latest touch (a
+    pointer, never a review status); the latest touch and the unanswered
+    streak; and the derived customer status, direct deals only (its
+    `qualifier` says so: "no won deal on record" is never "not a customer").
+    `company` is a company_id or the exact name."""
+    from . import sheet
+    return sheet.account_sheet(_client(), company)
+
+
+@mcp.tool()
+def overdue_commitments() -> dict:
+    """The commitments we owe that are past due (docs/43 §7b): current
+    commitment/ours facts whose due date is before today in Europe/Helsinki,
+    oldest first, each with its account, source and days overdue."""
+    from . import sheet
+    return sheet.overdue_commitments(_client())
+
+
+@mcp.tool()
+def unanswered_accounts(min_streak: int = 3) -> dict:
+    """The stop-chasing list (docs/43 §7b-c): accounts whose latest touches are
+    at least `min_streak` outbound touches with no answer, longest first. An
+    inbound touch, or an outcome of conversation, meeting_booked, reply,
+    callback_requested or declined, ends a streak whatever its direction; a
+    touch with no recorded direction stops the count (`unknown_before`). Log
+    an auto-reply or bounce as the out touch's outcome, never as an in touch."""
+    from . import sheet
+    return sheet.unanswered_accounts(_client(), min_streak=min_streak)
+
+
+@mcp.tool()
 def briefing(company: str) -> dict:
     """The current state of one account in one read, for call prep: the
     company row; its open deals with stage, value, blocker, the recorded next
@@ -628,7 +662,12 @@ def log_touch(
     calendar_event_id. A detail on the wrong channel is refused.
 
     The touch moves the contact's funnel flags and step numbers at once, and a
-    touch with a deal_id refreshes that deal's last-touch date."""
+    touch with a deal_id refreshes that deal's last-touch date.
+
+    Log calls and texts too: the unanswered streak (unanswered_accounts) only
+    sees logged touches. An auto-reply, out-of-office or bounce is NOT an
+    answer: record it as the out touch's outcome (bounced / no_reply), never
+    as an `in` touch, or it resets the streak."""
     from datetime import datetime
     return logbook.log_touch(
         _client(), contact_id, channel, window, outcome,

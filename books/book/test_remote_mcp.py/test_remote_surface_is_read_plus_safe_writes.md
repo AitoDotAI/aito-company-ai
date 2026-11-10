@@ -1,6 +1,7 @@
 # the remote tool surface (read + safe writes)
 
-71 tools exposed over HTTP:
+74 tools exposed over HTTP:
+  account_sheet
   add_channel
   add_contact
   add_deal
@@ -47,6 +48,7 @@
   mark_item
   my_work
   opener_context
+  overdue_commitments
   predict
   prepare_routine
   recent_changes
@@ -62,6 +64,7 @@
   tick_routine
   todos_area
   todos_now
+  unanswered_accounts
   update_document
   update_todo
   web_digest
