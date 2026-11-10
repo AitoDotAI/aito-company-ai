@@ -26,4 +26,4 @@
   role/decision_owner:
     sfa002 'Sponsor says she decides what is sold' 2026-11-01 [active] touched since 2026-11-02
     sfa001 'Commercial lead owns the commercial track from the 26.10 split' 2026-10-26 [active] touched since 2026-11-02
-  requests: [('facts', ['company_id']), ('documents', ['doc_id']), ('touches', ['touch_id']), ('changelog', ['action', 'entity', 'entity_id']), ('contacts', ['company_id']), ('touches', ['$or']), ('deals', ['company_id'])]
+  requests: [('facts', ['company_id']), ('documents', ['doc_id']), ('touches', ['touch_id']), ('changelog', ['action', 'entity', 'entity_id']), ('deals', ['company_id', 'stage']), ('companies', ['company_id']), ('contacts', ['company_id']), ('touches', ['$or']), ('deals', ['company_id'])]

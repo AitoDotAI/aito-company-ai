@@ -116,7 +116,12 @@ def list_facts(client: AitoClient, company: str, active_only: bool = True) -> li
 
 # a ledger row's status (docs/43 §4), computed at read, never stored. The
 # conflict and unconfirmed statuses arrive with slices 3 and 4.
-LEDGER_STATUSES = ("active", "superseded", "review: source missing", "review: source changed")
+LEDGER_STATUSES = ("active", "superseded", "review: source missing", "review: source changed",
+                   "derived")
+# Customer status is derived from the deals, never written (docs/43 §1, CPO
+# 8.11.2026): the ledger lists it as a read-only row of this kind and slot.
+DERIVED_KIND, DERIVED_SLOT = "derived", "customer_status"
+DIRECT_ONLY = "direct deals only; indirect relationships are not shown yet"
 EDITABLE_SOURCES = {"doc": "documents"}   # a source kind whose edits reach the change log
 
 
@@ -129,9 +134,9 @@ def ledger(client: AitoClient, company: str | None = None, kind: str | None = No
     after the fact was attached, by the change log); else active. Exact
     lookups and dates only, nothing ranked (rule 2); an unknown filter value
     raises (rule 3). Returns {facts, count, requests}."""
-    if kind is not None and kind not in schema.FACT_KINDS:
-        raise AssertionError(f"unknown kind {kind!r}; known {sorted(schema.FACT_KINDS)}")
-    slots = set().union(*schema.FACT_SLOTS.values())
+    if kind is not None and kind not in schema.FACT_KINDS | {DERIVED_KIND}:
+        raise AssertionError(f"unknown kind {kind!r}; known {sorted(schema.FACT_KINDS | {DERIVED_KIND})}")
+    slots = set().union(*schema.FACT_SLOTS.values()) | {DERIVED_SLOT}
     if slot is not None and slot not in slots:
         raise AssertionError(f"unknown slot {slot!r}; known {sorted(slots)}")
     if status is not None and status not in LEDGER_STATUSES:
@@ -142,14 +147,18 @@ def ledger(client: AitoClient, company: str | None = None, kind: str | None = No
         requests.append(request)
         return client.query(request)
 
-    where = {k: v for k, v in (("company_id", company and _company_id(client, company)),
-                               ("kind", kind), ("slot", slot), ("source_id", source_id)) if v}
-    request = {"from": "facts", "limit": READ_LIMIT}
-    if where:
-        request["where"] = where
-    response = query(request)
-    _whole(response, "facts", READ_LIMIT)
-    rows = response["hits"]
+    cid = company and _company_id(client, company)
+    written = kind != DERIVED_KIND and slot != DERIVED_SLOT and status != "derived"
+    where = {k: v for k, v in (("company_id", cid), ("kind", kind), ("slot", slot),
+                               ("source_id", source_id)) if v}
+    rows = []
+    if written:
+        request = {"from": "facts", "limit": READ_LIMIT}
+        if where:
+            request["where"] = where
+        response = query(request)
+        _whole(response, "facts", READ_LIMIT)
+        rows = response["hits"]
     found = find_sources(client, rows, query=query)
     edited = _last_edits(query, rows)
     out = []
@@ -165,8 +174,49 @@ def ledger(client: AitoClient, company: str | None = None, kind: str | None = No
             st = "active"
         if status is None or st == status:
             out.append({**f, "source": src, "status": st})
+    if kind in (None, DERIVED_KIND) and slot in (None, DERIVED_SLOT) and status in (None, "derived"):
+        out += _derived_status(query, cid, source_id)
     out.sort(key=lambda r: (r["company_id"], r["valid_from"], r["fact_id"]), reverse=True)
     return {"facts": out, "count": len(out), "requests": requests}
+
+
+def _derived_status(query, cid: str | None, source_id: str | None) -> list[dict]:
+    """Customer status as read-only ledger rows (docs/43 §1): one per account
+    with a closed_won deal, citing every won deal. For one account with none,
+    "No won deal on record", never "not a customer". Direct deals only, and
+    each row says so. Lookups only (rule 2)."""
+    where = {"stage": "closed_won", **({"company_id": cid} if cid else {})}
+    response = query({"from": "deals", "where": where, "limit": READ_LIMIT,
+                      "select": ["deal_id", "company", "company_id", "last_touch_date", "created"]})
+    _whole(response, "deals", READ_LIMIT)
+    won: dict[str, list[dict]] = {}
+    for d in response["hits"]:
+        won.setdefault(d["company_id"], []).append(d)
+    out = []
+    for account, deals in won.items():
+        deals.sort(key=lambda d: d["deal_id"])
+        sources = [{"kind": "deal", "id": d["deal_id"], "status": "linked"} for d in deals]
+        if source_id and source_id not in {s["id"] for s in sources}:
+            continue
+        out.append(_derived_row(account, deals[0]["company"],
+                                f"Customer: {len(deals)} won deal{'s' if len(deals) > 1 else ''} "
+                                f"on record ({DIRECT_ONLY})",
+                                max(d.get("last_touch_date") or d["created"] for d in deals), sources))
+    if cid and not won and not source_id:
+        name = query({"from": "companies", "where": {"company_id": cid}, "limit": 1,
+                      "select": ["name"]})["hits"][0]["name"]
+        out.append(_derived_row(cid, name, f"No won deal on record ({DIRECT_ONLY})", "", []))
+    return out
+
+
+def _derived_row(cid: str, name: str, statement: str, valid_from: str, sources: list[dict]) -> dict:
+    return {"fact_id": f"derived-customer-{cid}", "company": name, "company_id": cid,
+            "stakeholder_id": None, "kind": DERIVED_KIND, "slot": DERIVED_SLOT, "state": None,
+            "statement": statement, "due": None,
+            "source_kind": "deal" if sources else "derived", "source_id": sources[0]["id"] if sources else "",
+            "valid_from": valid_from, "superseded_by": None, "author": "derived", "created_at": None,
+            "source": sources[0] if sources else {"kind": "derived", "id": "", "status": "derived"},
+            "sources": sources, "status": "derived"}
 
 
 def _last_edits(query, rows: list[dict]) -> dict[tuple[str, str], str]:

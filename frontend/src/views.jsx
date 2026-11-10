@@ -2272,13 +2272,14 @@ function GraphExplorer() {
 }
 
 // ---- The fact ledger (docs/43): every fact as a row, listed, not drawn ----
-const FACT_KINDS = ["attribute", "commitment", "contact_info", "decision", "hold", "open_question", "role"];
-const LEDGER_STATUSES = ["active", "superseded", "review: source missing", "review: source changed"];
+// `derived` is customer status read from the deals, never written (docs/43 §1)
+const FACT_KINDS = ["attribute", "commitment", "contact_info", "decision", "derived", "hold", "open_question", "role"];
+const LEDGER_STATUSES = ["active", "superseded", "review: source missing", "review: source changed", "derived"];
 
 function factPredicate(f) { return f.slot ? `${f.kind}/${f.slot}` : f.kind; }
 
 function FactStatus({ status }) {
-  const tone = status === "active" ? "ok" : status === "superseded" ? "muted" : "warn";
+  const tone = status === "active" || status === "derived" ? "ok" : status === "superseded" ? "muted" : "warn";
   return <span className={`fact-status fact-status-${tone}`}>{status}</span>;
 }
 
@@ -2336,8 +2337,10 @@ export function FactLedger() {
                 <td className="mono">{factPredicate(f)}</td>
                 <td>{f.statement}</td>
                 <td>
-                  <button className="linklike mono" title="list the facts that cite this record"
-                          onClick={() => setSourceId(f.source.id)}>{`${f.source.kind}:${f.source.id}`}</button>
+                  {(f.sources || [f.source]).filter((s) => s.id).map((s) => (
+                    <button key={s.id} className="linklike mono" title="list the facts that cite this record"
+                            onClick={() => setSourceId(s.id)}>{`${s.kind}:${s.id}`}</button>
+                  ))}
                   {f.source.status !== "linked" && <span className="muted"> ({f.source.status})</span>}
                 </td>
                 <td><FactStatus status={f.status} /></td>

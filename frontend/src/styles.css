@@ -985,6 +985,9 @@ select:focus { outline:none; border-color:var(--purple); }
 .fact-ledger { margin-bottom: 18px; overflow-x: auto; }
 .fact-ledger-filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin-bottom: 10px; }
 .fact-ledger-filters .field { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: var(--ink-dim); }
+/* text filters and selects the same height, so their labels line up */
+.fact-ledger-filters input, .fact-ledger-filters select { box-sizing: border-box; height: 34px; margin: 0; }
+.fact-ledger-table td .linklike + .linklike { margin-left: 6px; }
 .fact-ledger-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .fact-ledger-table th, .fact-ledger-table td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
 .fact-ledger-table th { color: var(--ink-dim); font-weight: 600; }

@@ -192,7 +192,13 @@ def fact_ledger(company: str = "", kind: str = "", slot: str = "", source_id: st
     (the cited note was edited after the fact was attached). source_id finds
     the facts that cite one record, e.g. a doc_id. All filters are optional
     and exact; an unknown kind, slot or status raises. Returns
-    {facts, count, requests}."""
+    {facts, count, requests}.
+
+    Customer status is listed too, as read-only rows of kind "derived", slot
+    "customer_status", status "derived": one per account with a won deal,
+    citing every won deal in `sources`; filtered to an account with none,
+    "No won deal on record" (never "not a customer"). Direct deals only.
+    These rows are read from the deals, never written; add_fact can't make one."""
     from . import facts
     return facts.ledger(_client(), company=company or None, kind=kind or None,
                         slot=slot or None, source_id=source_id or None, status=status or None)

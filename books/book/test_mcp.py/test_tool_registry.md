@@ -140,6 +140,12 @@ Every fact matching the filters, across accounts, each with its source
     and exact; an unknown kind, slot or status raises. Returns
     {facts, count, requests}.
 
+    Customer status is listed too, as read-only rows of kind "derived", slot
+    "customer_status", status "derived": one per account with a won deal,
+    citing every won deal in `sources`; filtered to an account with none,
+    "No won deal on record" (never "not a customer"). Direct deals only.
+    These rows are read from the deals, never written; add_fact can't make one.
+
 ## account_sheet
 
 params: ['company']

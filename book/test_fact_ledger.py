@@ -49,7 +49,9 @@ def test_one_account_lists_every_fact_with_its_status(t: bt.TestCaseRun) -> None
     t.h1("ledger(company=<replica>)")
     _show(t, ledger)
     every = {f["fact_id"] for f in SEED if f["company"] == REPLICA}
-    assert {r["fact_id"] for r in ledger["facts"]} == every, "superseded facts are listed too"
+    assert {r["fact_id"] for r in ledger["facts"] if r["kind"] != "derived"} == every, \
+        "superseded facts are listed too"
+    assert [r["kind"] for r in ledger["facts"]].count("derived") == 1, "beside one derived status row"
     by_id = {r["fact_id"]: r for r in ledger["facts"]}
     for f in SEED:
         if f["company"] == REPLICA:
@@ -124,3 +126,44 @@ def test_a_source_that_names_nothing_is_up_for_review(t: bt.TestCaseRun) -> None
     t.h1("a doc source that isn't stored")
     t.tln(f"  {_id(row['fact_id'])}: source {row['source']['status']}, status: {row['status']}")
     assert (row["source"]["status"], row["status"]) == ("dangling", "review: source missing")
+
+
+def test_customer_status_is_listed_as_a_derived_row(t: bt.TestCaseRun) -> None:
+    """docs/43 §1: customer status is derived from the deals, never written.
+    The ledger lists it as a read-only row per account with a won deal,
+    citing every won deal; filtered to an account with none it says "no won
+    deal on record", never "not a customer"; a deal id finds the row citing it."""
+    client = _seeded()
+    deals = loaders._read_csv(SEED_DIR / "deals.csv")
+    won: dict[str, list[str]] = {}
+    for d in deals:
+        if d["stage"] == "closed_won":
+            won.setdefault(loaders.company_slug(d["company"]), []).append(d["deal_id"])
+    derived = facts.ledger(client, kind="derived")
+    t.h1("ledger(kind=derived): one row per account with a won deal")
+    for r in derived["facts"][:5]:
+        t.tln(f"  {r['company_id']}: {r['statement']!r} sources {[s['id'] for s in r['sources']]} [{r['status']}]")
+    t.tln(f"  ... {derived['count']} rows")
+    assert {r["company_id"]: sorted(s["id"] for s in r["sources"]) for r in derived["facts"]} == \
+        {k: sorted(v) for k, v in won.items()}
+    assert all(r["status"] == "derived" and r["slot"] == "customer_status" for r in derived["facts"])
+
+    mine = facts.ledger(client, company=REPLICA, kind="derived")
+    t.h1("ledger(company=<replica>, kind=derived): it has no won deal")
+    for r in mine["facts"]:
+        t.tln(f"  {r['statement']!r} [{r['status']}]")
+    assert RID not in won
+    assert [r["statement"] for r in mine["facts"]] == [
+        "No won deal on record (direct deals only; indirect relationships are not shown yet)"]
+
+    deal = sorted(won[next(iter(sorted(won)))])[0]
+    by_deal = facts.ledger(client, source_id=deal)
+    t.h1("ledger(source_id=<a won deal>)")
+    for r in by_deal["facts"]:
+        t.tln(f"  {r['company_id']}: {r['statement']!r}")
+    assert [r["kind"] for r in by_deal["facts"]] == ["derived"]
+
+    every = facts.ledger(client)
+    assert {r["kind"] for r in every["facts"]} >= {"derived", "attribute"}, "listed beside written facts"
+    assert facts.ledger(client, status="active")["facts"] and all(
+        r["kind"] != "derived" for r in facts.ledger(client, status="active")["facts"])
