@@ -996,3 +996,12 @@ select:focus { outline:none; border-color:var(--purple); }
 .note-facts { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 10px; }
 .note-facts h3 { font-size: 14px; margin: 0 0 6px; }
 .note-facts ul { margin: 0; padding-left: 18px; }
+
+/* the account sheet and the two lists (docs/43 §7) */
+.account-sheet .sheet-status { margin-bottom: 4px; }
+.account-sheet .sheet-touches { color: var(--ink-dim); margin-bottom: 10px; }
+.account-sheet .sheet-group h4 { margin: 10px 0 4px; color: var(--ink-dim); font-weight: 500; }
+.account-sheet ul { margin: 0; padding-left: 18px; }
+.account-sheet .sheet-earlier { border-left: 2px solid var(--line); margin: 4px 0; }
+.fact-lists { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; margin: 16px 0; }
+.fact-list h3 { margin-top: 0; }

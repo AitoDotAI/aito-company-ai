@@ -140,6 +140,37 @@ Every fact matching the filters, across accounts, each with its source
     and exact; an unknown kind, slot or status raises. Returns
     {facts, count, requests}.
 
+## account_sheet
+
+params: ['company']
+required: ['company']
+One account's sheet in one read (docs/43 §7a): its facts grouped by kind
+    and slot, each with its status and source, superseded ones under
+    `earlier`; "touched since <date>" on a fact older than the latest touch (a
+    pointer, never a review status); the latest touch and the unanswered
+    streak; and the derived customer status, direct deals only (its
+    `qualifier` says so: "no won deal on record" is never "not a customer").
+    `company` is a company_id or the exact name.
+
+## overdue_commitments
+
+params: []
+required: []
+The commitments we owe that are past due (docs/43 §7b): current
+    commitment/ours facts whose due date is before today in Europe/Helsinki,
+    oldest first, each with its account, source and days overdue.
+
+## unanswered_accounts
+
+params: ['min_streak']
+required: []
+The stop-chasing list (docs/43 §7b-c): accounts whose latest touches are
+    at least `min_streak` outbound touches with no answer, longest first. An
+    inbound touch, or an outcome of conversation, meeting_booked, reply,
+    callback_requested or declined, ends a streak whatever its direction; a
+    touch with no recorded direction stops the count (`unknown_before`). Log
+    an auto-reply or bounce as the out touch's outcome, never as an in touch.
+
 ## briefing
 
 params: ['company']
@@ -465,6 +496,11 @@ Log one engagement (docs/34). channel: call, email, linkedin, meeting,
 
     The touch moves the contact's funnel flags and step numbers at once, and a
     touch with a deal_id refreshes that deal's last-touch date.
+
+    Log calls and texts too: the unanswered streak (unanswered_accounts) only
+    sees logged touches. An auto-reply, out-of-office or bounce is NOT an
+    answer: record it as the out touch's outcome (bounced / no_reply), never
+    as an `in` touch, or it resets the streak.
 
 ## engagement_kpis
 

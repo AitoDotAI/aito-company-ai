@@ -6,7 +6,7 @@ import { api } from "./api.js";
 
 // Each card shows the request as it was sent: the endpoint and the body,
 // nested `from` included. The base rate the headline quotes is a card too.
-vi.mock("./api.js", () => ({ api: { graph: vi.fn(), graphNetwork: vi.fn(), factLedger: vi.fn(() => Promise.resolve({ count: 0, requests: [], facts: [] })), } }));
+vi.mock("./api.js", () => ({ api: { graph: vi.fn(), graphNetwork: vi.fn(), factLedger: vi.fn(() => Promise.resolve({ count: 0, requests: [], facts: [] })), accountSheet: vi.fn(() => Promise.resolve({ company_id: "x", customer: { status: "no won deal on record", sources: [], qualifier: "direct deals only; indirect relationships are not shown yet" }, latest_touch: null, unanswered: { streak: 0, ended_by: null, unknown_before: null }, groups: [], requests: [] })), overdueCommitments: vi.fn(() => Promise.resolve({ today: "2026-11-10", count: 0, requests: [], commitments: [] })), unansweredAccounts: vi.fn(() => Promise.resolve({ min_streak: 3, count: 0, touches_without_account: 0, requests: [], accounts: [] })), } }));
 
 afterEach(() => vi.clearAllMocks());
 

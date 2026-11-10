@@ -6,7 +6,7 @@ import { api } from "./api.js";
 vi.mock("./api.js", () => ({
   api: {
     documents: vi.fn(), createDocument: vi.fn(), updateDocument: vi.fn(),
-    deleteDocument: vi.fn(), todoOptions: vi.fn(), factLedger: vi.fn(() => Promise.resolve({ count: 0, requests: [], facts: [] })),
+    deleteDocument: vi.fn(), todoOptions: vi.fn(), factLedger: vi.fn(() => Promise.resolve({ count: 0, requests: [], facts: [] })), accountSheet: vi.fn(() => Promise.resolve({ company_id: "x", customer: { status: "no won deal on record", sources: [], qualifier: "direct deals only; indirect relationships are not shown yet" }, latest_touch: null, unanswered: { streak: 0, ended_by: null, unknown_before: null }, groups: [], requests: [] })), overdueCommitments: vi.fn(() => Promise.resolve({ today: "2026-11-10", count: 0, requests: [], commitments: [] })), unansweredAccounts: vi.fn(() => Promise.resolve({ min_streak: 3, count: 0, touches_without_account: 0, requests: [], accounts: [] })),
     companyDetail: vi.fn(), search: vi.fn(), searchClick: vi.fn(), quickFind: vi.fn(),
   },
   pct: (x) => (x == null ? "–" : Math.round(x * 100) + "%"),

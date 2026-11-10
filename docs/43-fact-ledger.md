@@ -255,8 +255,8 @@ one call instead of 4–6. `briefing` stays as it is.
 
 ### 7b. Two lists across accounts (built next, no schema change)
 
-- **We owe it, and it's overdue.** Active `commitment/ours` facts whose
-  `due` is before today **in Europe/Helsinki** (`clock.today()` taken in
+- **We owe it, and it's overdue.** Active `commitment/ours` facts not yet
+  `sent` (a sent one is delivered) whose `due` is before today **in Europe/Helsinki** (`clock.today()` taken in
   that zone, or the configured as-of date), oldest first. At 01:00 Helsinki
   a commitment due that day isn't yet overdue, whatever UTC says.
 - **Stop chasing.** Accounts whose unanswered streak (7c) is 3 or more,
@@ -410,3 +410,24 @@ the chase by another route.
   "Facts from this note".
 - **Tests.** `book/test_fact_ledger.py` (5 cases) and
   `frontend/src/factledger.test.jsx` (6).
+
+## Built: slice 1b (10.11.2026, td-20261110230516558720)
+
+- **`sheet.account_sheet(company)`** (MCP `account_sheet`, `GET
+  /api/facts/sheet`): the ledger's rows for one account grouped by kind and
+  slot, superseded ones under `earlier`, "touched since <date>" as a
+  pointer, the latest touch and the streak, and direct customer status with
+  its qualifier. The company page shows it as **Facts**.
+- **`sheet.overdue_commitments()`** (MCP, `GET /api/facts/overdue`) and
+  **`sheet.unanswered_accounts(min_streak=3)`** (MCP, `GET
+  /api/facts/unanswered`). Both are in the Knowledge graph view under the
+  Facts list. A touch belongs to its company_id, else to its contact's
+  company, the same as on the sheet. Touches with neither are counted, not
+  dropped.
+- **`log_touch`'s description** says that calls and texts must be logged
+  too, and that an auto-reply or bounce is the out touch's outcome.
+- **On real data (10.11.2026):** 47 of 314 touches record no direction, so
+  some accounts' streaks read "unknown before <date>".
+- **Tests.** `book/test_account_sheet.py` (5 cases; the streak test goes
+  red with `meeting_booked` taken out of the answers) and
+  `frontend/src/accountsheet.test.jsx` (8).

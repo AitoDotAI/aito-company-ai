@@ -770,6 +770,10 @@ export function CompanyDetail({ companyId }) {
     <div className="company-detail">
       <button className="doc-back" onClick={() => { window.location.hash = "/sales"; }}>← Companies</button>
       <h2 className="cd-name">{d.name}</h2>
+      <section className="cd-block cd-facts">
+        <h3>Facts</h3>
+        <AccountSheet companyId={companyId} />
+      </section>
       <div className="cd-cols">
         <section className="cd-block">
           <h3>Notes ({d.documents.length})</h3>
@@ -2369,6 +2373,112 @@ export function NoteFacts({ docId }) {
   );
 }
 
+// ---- One account's sheet and two lists across accounts (docs/43 §7) ----
+function SheetFact({ f }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <li>
+      <span>{f.statement}</span>{" "}
+      <span className="muted">{f.valid_from} · <span className="mono">{`${f.source.kind}:${f.source.id}`}</span> · {f.author}</span>{" "}
+      <FactStatus status={f.status} />
+      {f.touched_since && <span className="sheet-touched muted"> {f.touched_since}</span>}
+      {f.earlier.length > 0 && (
+        <button className="linklike" onClick={() => setOpen(!open)}>{`${f.earlier.length} earlier`}</button>
+      )}
+      {open && (
+        <ul className="sheet-earlier">
+          {f.earlier.map((e) => (
+            <li key={e.fact_id} className="muted"><span>{e.statement}</span> · {e.valid_from} <FactStatus status={e.status} /></li>
+          ))}
+        </ul>
+      )}
+    </li>
+  );
+}
+
+export function AccountSheet({ companyId }) {
+  const r = useAsync(() => api.accountSheet(companyId), [companyId]);
+  if (r.err) return <ErrorBox msg={r.err} />;
+  if (r.loading && !r.data) return <Loading />;
+  const s = r.data, c = s.customer, lt = s.latest_touch, u = s.unanswered;
+  return (
+    <div className="account-sheet">
+      <div className="sheet-status">
+        <b>{c.status}</b>
+        {c.sources.map((x) => <span key={x.id} className="mono"> {`${x.kind}:${x.id}`}</span>)}
+        <span className="muted"> ({c.qualifier})</span>
+      </div>
+      <div className="sheet-touches" data-testid="sheet-touches">
+        {lt ? `Latest touch ${lt.date} · ${lt.channel} · ${lt.direction || "direction not recorded"} · ${lt.outcome}`
+            : "No touches on record"}
+        {` — ${u.streak} unanswered in a row`}
+        {u.unknown_before && `; streak unknown before ${u.unknown_before}`}
+      </div>
+      {s.groups.length ? s.groups.map((g) => (
+        <section key={`${g.kind}/${g.slot}`} className="sheet-group">
+          <h4 className="mono">{factPredicate(g)}</h4>
+          <ul>{g.facts.map((f) => <SheetFact key={f.fact_id} f={f} />)}</ul>
+        </section>
+      )) : <div className="muted">No facts on record for this account.</div>}
+    </div>
+  );
+}
+
+export function OverdueCommitments() {
+  const r = useAsync(() => api.overdueCommitments(), []);
+  if (r.err) return <ErrorBox msg={r.err} />;
+  if (r.loading && !r.data) return <Loading />;
+  const rows = r.data.commitments;
+  return (
+    <div className="panel fact-list">
+      <h3>We owe it, and it's overdue <span className="muted">· as of {r.data.today} (Helsinki)</span></h3>
+      {!rows.length ? <div className="muted">Nothing we owe is overdue.</div> : (
+        <table className="fact-ledger-table">
+          <thead><tr><th>Account</th><th>Commitment</th><th>Due</th><th>Overdue</th><th>Source</th></tr></thead>
+          <tbody>
+            {rows.map((x) => (
+              <tr key={x.fact_id}>
+                <td>{x.company}</td><td>{x.statement}</td><td>{x.due}</td><td>{`${x.days_overdue} days`}</td>
+                <td className="mono">{`${x.source.kind}:${x.source.id}`}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
+export function StopChasing({ minStreak = 3 }) {
+  const r = useAsync(() => api.unansweredAccounts(minStreak), [minStreak]);
+  if (r.err) return <ErrorBox msg={r.err} />;
+  if (r.loading && !r.data) return <Loading />;
+  const rows = r.data.accounts;
+  return (
+    <div className="panel fact-list">
+      <h3>Stop chasing <span className="muted">· {minStreak}+ unanswered in a row</span></h3>
+      {!rows.length ? <div className="muted">No account has {minStreak} unanswered touches in a row.</div> : (
+        <table className="fact-ledger-table">
+          <thead><tr><th>Account</th><th>Unanswered</th><th>Last answer</th><th>Latest touch</th></tr></thead>
+          <tbody>
+            {rows.map((x) => (
+              <tr key={x.company_id}>
+                <td>{x.company_id}</td><td>{x.streak}</td>
+                <td>{x.ended_by ? `${x.ended_by.date} (${x.ended_by.outcome})`
+                     : x.unknown_before ? `unknown before ${x.unknown_before}` : "none on record"}</td>
+                <td>{x.latest_touch.date}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      {r.data.touches_without_account > 0 && (
+        <div className="muted">{r.data.touches_without_account} touches name no account and aren't counted.</div>
+      )}
+    </div>
+  );
+}
+
 // a harvested fact with the rows it came from (docs/41); a value the rows no
 // longer give (a live write since the load) is said, not hidden
 function Basis({ b }) {
@@ -2442,6 +2552,10 @@ export function GraphView() {
     <>
       <h2 className="gq-heading">Facts</h2>
       <FactLedger />
+      <div className="fact-lists">
+        <OverdueCommitments />
+        <StopChasing />
+      </div>
       <GraphExplorer />
       <h2 className="gq-heading">Questions the graph answers</h2>
       <div className="gq-intro">
