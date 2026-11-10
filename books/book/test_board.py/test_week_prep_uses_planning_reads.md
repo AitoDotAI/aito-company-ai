@@ -7,3 +7,4 @@ grounding samples (numbers Aito produced, the only ones allowed):
   open_deals = 40
   validated_learning_rate = 0.5
 week's todos present: True
+funnels: {sales: read, web: no data, website: read}

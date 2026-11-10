@@ -108,6 +108,13 @@ FUNNELS = {
 }
 
 
+class EmptyFunnel(AssertionError):
+    """The funnel's table has no rows on this instance: nothing is loaded
+    there, which is not the same as nobody converting (rule 3). A caller that
+    reads every funnel (week prep) records it and goes on; a caller asking for
+    this one funnel gets the error."""
+
+
 @dataclass
 class Result:
     calls: list[tuple[str, dict, dict]] = field(default_factory=list)
@@ -216,10 +223,11 @@ def funnel(client: AitoClient, funnel_key: str, slice_: dict[str, str] | None = 
     # a funnel table with no rows answers every stage with 0, which reads as
     # "nobody converted" rather than "nothing is loaded here" (rule 3)
     total = _count(client, result, spec.table, dict(spec.base))
-    assert total, (f"the {spec.key} funnel reads `{spec.table}`, which has no rows on this "
-                   f"instance; nothing is loaded there"
-                   + ("; aito.ai's real visits are funnel('web')"
-                      if spec.table == "sessions" else ""))
+    if not total:
+        raise EmptyFunnel(f"the {spec.key} funnel reads `{spec.table}`, which has no rows on this "
+                          f"instance; nothing is loaded there"
+                          + ("; aito.ai's real visits are funnel('web')"
+                             if spec.table == "sessions" else ""))
 
     # stage counts + step conversion, from Aito _query totals
     stages = []
