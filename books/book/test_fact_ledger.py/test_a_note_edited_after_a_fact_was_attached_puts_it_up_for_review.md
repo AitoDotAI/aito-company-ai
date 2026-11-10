@@ -16,4 +16,4 @@
       source doc:sdc009 (linked), status: review: source changed
   sfa001 role/decision_owner: 'Commercial lead owns the commercial track from the 26.10 split'
       source doc:sdc009 (linked), status: review: source changed
-  requests: ['facts', 'documents', 'changelog', 'deals']
+  requests: ['facts', 'documents', 'changelog', 'deals', 'deal_events']

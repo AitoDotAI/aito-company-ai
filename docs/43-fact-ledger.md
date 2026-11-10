@@ -419,6 +419,9 @@ the chase by another route.
   with none, it reads "No won deal on record". Every row carries "direct deals
   only; indirect relationships are not shown yet". Nothing is written: the rows
   are read from the deals on each call. A deal id finds the row that cites it.
+- **Dated by the earliest win**: the deal's move into `closed_won` in
+  `deal_events`, else the won deal's `created`. `valid_from_field` names which.
+  A later touch on the deal doesn't move it (CPO review).
 - **Asked by Antti** because the live Facts list is empty until a harvest runs.
 - **The account sheet** keeps its own status line and leaves the derived row out
   of its slots.

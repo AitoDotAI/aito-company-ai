@@ -6,6 +6,7 @@ lookups only, nothing ranked (rule 2); an unknown filter raises (rule 3).
 Requires a running Aito instance."""
 
 import re
+from datetime import datetime
 
 import booktest as bt
 
@@ -167,3 +168,23 @@ def test_customer_status_is_listed_as_a_derived_row(t: bt.TestCaseRun) -> None:
     assert {r["kind"] for r in every["facts"]} >= {"derived", "attribute"}, "listed beside written facts"
     assert facts.ledger(client, status="active")["facts"] and all(
         r["kind"] != "derived" for r in facts.ledger(client, status="active")["facts"])
+
+
+def test_a_touch_after_the_win_does_not_move_the_status_date(t: bt.TestCaseRun) -> None:
+    """The derived row is dated by when the account became a customer: its
+    earliest win from deal_events, else the won deal's `created`, and the row
+    names which. A later touch on the deal (which moves its last_touch_date)
+    must not move it (CPO review of #98)."""
+    client = _seeded()
+    row = facts.ledger(client, kind="derived")["facts"][0]
+    deal = row["sources"][0]["id"]
+    contact = client.query({"from": "contacts", "where": {"company_id": row["company_id"]},
+                            "limit": 1})["hits"][0]["contact_id"]
+    t.h1("a derived row, before and after a touch on its won deal")
+    t.tln(f"  before: valid_from {row['valid_from']} ({row['valid_from_field']})")
+    log.log_touch(client, contact, "email", None, "reply", deal_id=deal, direction="in",
+                  ts=datetime.fromisoformat("2026-11-10T10:00:00"))
+    after = next(r for r in facts.ledger(client, kind="derived")["facts"] if r["fact_id"] == row["fact_id"])
+    t.tln(f"  after:  valid_from {after['valid_from']} ({after['valid_from_field']})")
+    assert after["valid_from"] == row["valid_from"] != "2026-11-10"
+    assert row["valid_from_field"] in ("deal_events.date", "deals.created")

@@ -187,25 +187,40 @@ def _derived_status(query, cid: str | None, source_id: str | None) -> list[dict]
     each row says so. Lookups only (rule 2)."""
     where = {"stage": "closed_won", **({"company_id": cid} if cid else {})}
     response = query({"from": "deals", "where": where, "limit": READ_LIMIT,
-                      "select": ["deal_id", "company", "company_id", "last_touch_date", "created"]})
+                      "select": ["deal_id", "company", "company_id", "created"]})
     _whole(response, "deals", READ_LIMIT)
     won: dict[str, list[dict]] = {}
     for d in response["hits"]:
         won.setdefault(d["company_id"], []).append(d)
+    # when each deal was won: its move into closed_won (deal_events, docs/34)
+    won_on: dict[str, str] = {}
+    ids = sorted({d["deal_id"] for ds in won.values() for d in ds})
+    if ids:
+        events = query({"from": "deal_events", "limit": READ_LIMIT, "select": ["deal_id", "date"],
+                        "where": {"stage": "closed_won", "deal_id": {"$or": ids}}})
+        _whole(events, "deal_events", READ_LIMIT)
+        for e in events["hits"]:
+            won_on[e["deal_id"]] = min(won_on.get(e["deal_id"], e["date"]), e["date"])
     out = []
     for account, deals in won.items():
         deals.sort(key=lambda d: d["deal_id"])
         sources = [{"kind": "deal", "id": d["deal_id"], "status": "linked"} for d in deals]
         if source_id and source_id not in {s["id"] for s in sources}:
             continue
-        out.append(_derived_row(account, deals[0]["company"],
-                                f"Customer: {len(deals)} won deal{'s' if len(deals) > 1 else ''} "
-                                f"on record ({DIRECT_ONLY})",
-                                max(d.get("last_touch_date") or d["created"] for d in deals), sources))
+        # dated by when the account became a customer, its earliest win; never
+        # by a later touch (CPO review of #98). The row names the date used.
+        dated = [(won_on[d["deal_id"]], "deal_events.date") if d["deal_id"] in won_on
+                 else (d["created"], "deals.created") for d in deals]
+        when, field = min(dated)
+        out.append({**_derived_row(account, deals[0]["company"],
+                                   f"Customer: {len(deals)} won deal{'s' if len(deals) > 1 else ''} "
+                                   f"on record ({DIRECT_ONLY})", when, sources),
+                    "valid_from_field": field})
     if cid and not won and not source_id:
         name = query({"from": "companies", "where": {"company_id": cid}, "limit": 1,
                       "select": ["name"]})["hits"][0]["name"]
-        out.append(_derived_row(cid, name, f"No won deal on record ({DIRECT_ONLY})", "", []))
+        out.append({**_derived_row(cid, name, f"No won deal on record ({DIRECT_ONLY})", "", []),
+                    "valid_from_field": None})
     return out
 
 
