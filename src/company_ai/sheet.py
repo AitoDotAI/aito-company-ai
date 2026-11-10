@@ -183,7 +183,7 @@ def unanswered_accounts(client: AitoClient, min_streak: int = DEFAULT_STREAK) ->
     by_account: dict[str, list[dict]] = {}
     orphans = 0
     for x in touches:
-        cid = x.get("company_id") or company_of.get(x["contact_id"])
+        cid = x.get("company_id") or company_of.get(x.get("contact_id"))
         if cid:
             by_account.setdefault(cid, []).append(x)
         else:

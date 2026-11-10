@@ -172,3 +172,25 @@ def test_the_stop_chasing_list(t: bt.TestCaseRun) -> None:
     assert after["accounts"] == [], "the reply ends the streak on the list"
     assert after["touches_without_account"] == 0, "resolved through its contact, not an orphan"
     assert sheet.account_sheet(client, QUIET)["unanswered"]["streak"] == 0, "and on the sheet"
+
+
+class _Rows:
+    """A stand-in client serving fixed rows: a touch row with no contact_id
+    can't be stored (the column isn't nullable), but a read must still count
+    it as naming no account rather than fail on it."""
+    def __init__(self, tables):
+        self.tables = tables
+
+    def query(self, request):
+        hits = self.tables[request["from"]]
+        return {"hits": hits, "total": len(hits), "offset": 0}
+
+
+def test_a_touch_naming_nothing_is_counted(t: bt.TestCaseRun) -> None:
+    out = sheet.unanswered_accounts(_Rows({
+        "touches": [{"touch_id": "t1", "ts": "2026-11-01T10:00:00", "channel": "email",
+                     "direction": "out", "outcome": "no_reply"}],
+        "contacts": []}))
+    t.h1("unanswered_accounts over a touch row with no contact_id and no company_id")
+    t.tln(f"  accounts: {out['accounts']}, touches naming no account: {out['touches_without_account']}")
+    assert out["accounts"] == [] and out["touches_without_account"] == 1
