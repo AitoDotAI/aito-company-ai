@@ -411,6 +411,22 @@ the chase by another route.
 - **Tests.** `book/test_fact_ledger.py` (5 cases) and
   `frontend/src/factledger.test.jsx` (6).
 
+## Built: derived customer status (11.11.2026, td-20261111001541681626)
+
+- **`facts.ledger` lists customer status** as read-only rows (kind and status
+  `derived`, slot `customer_status`). There's one per account with a
+  `closed_won` deal, citing each won deal in `sources`. Filtered to an account
+  with none, it reads "No won deal on record". Every row carries "direct deals
+  only; indirect relationships are not shown yet". Nothing is written: the rows
+  are read from the deals on each call. A deal id finds the row that cites it.
+- **Dated by the earliest win**: the deal's move into `closed_won` in
+  `deal_events`, else the won deal's `created`. `valid_from_field` names which.
+  A later touch on the deal doesn't move it (CPO review).
+- **Asked by Antti** because the live Facts list is empty until a harvest runs.
+- **The account sheet** keeps its own status line and leaves the derived row out
+  of its slots.
+- **Tests.** `test_customer_status_is_listed_as_a_derived_row` and a frontend case.
+
 ## Built: slice 1b (10.11.2026, td-20261110230516558720)
 
 - **`sheet.account_sheet(company)`** (MCP `account_sheet`, `GET

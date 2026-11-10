@@ -101,6 +101,8 @@ def account_sheet(client: AitoClient, company: str) -> dict:
     cid = facts._company_id(client, company)
     led = facts.ledger(client, company=cid)
     requests.extend(led["requests"])
+    # the derived customer row is the sheet's own status line, not a slot
+    led["facts"] = [r for r in led["facts"] if r["kind"] != facts.DERIVED_KIND]
     touches = _account_touches(client, cid, query)
     latest = max(touches, key=lambda x: (x["ts"], x["touch_id"])) if touches else None
     touched = latest["ts"][:10] if latest else None

@@ -55,6 +55,24 @@ describe("the fact ledger", () => {
       { company: "", kind: "", status: "review: source changed", source_id: "" }));
   });
 
+  it("lists a derived customer status with every won deal it rests on", async () => {
+    api.factLedger.mockResolvedValue({ count: 1, requests: [], facts: [
+      ROW({ fact_id: "derived-customer-acme-o", company: "Acme OÜ", company_id: "acme-o", kind: "derived",
+            slot: "customer_status", author: "derived", status: "derived", valid_from: "2026-01-29",
+            statement: "Customer: 2 won deals on record (direct deals only; indirect relationships are not shown yet)",
+            source: { kind: "deal", id: "sec016", status: "linked" },
+            sources: [{ kind: "deal", id: "sec016", status: "linked" }, { kind: "deal", id: "sec054", status: "linked" }] }),
+    ] });
+    render(<FactLedger />);
+    const row = (await screen.findByText(/Customer: 2 won deals on record/)).closest("tr");
+    expect(within(row).getByText("derived/customer_status")).toBeInTheDocument();
+    expect(within(row).getByRole("button", { name: "deal:sec016" })).toBeInTheDocument();
+    expect(within(row).getByRole("button", { name: "deal:sec054" })).toBeInTheDocument();
+    expect(within(row).getByText("derived")).toBeInTheDocument();
+    expect(within(screen.getByLabelText("kind")).getByRole("option", { name: "derived" })).toBeInTheDocument();
+    expect(within(screen.getByLabelText("status")).getByRole("option", { name: "derived" })).toBeInTheDocument();
+  });
+
   it("shows the error when the read fails", async () => {
     api.factLedger.mockRejectedValue(new Error("unknown status 'stale'"));
     render(<FactLedger />);

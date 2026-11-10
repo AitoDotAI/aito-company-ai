@@ -28,4 +28,6 @@
       source call:call-seed-0910 (external), status: active
   sfa011 decision: 'Decision expected from the founder'
       source call:call-seed-1001 (external), status: superseded
-  requests: ['facts', 'documents', 'touches', 'changelog']
+  derived-customer-nakatomi-o derived/customer_status: 'No won deal on record (direct deals only; indirect relationships are not shown yet)'
+      source derived: (derived), status: derived
+  requests: ['facts', 'documents', 'touches', 'changelog', 'deals', 'companies']
