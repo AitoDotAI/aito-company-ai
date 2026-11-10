@@ -164,7 +164,9 @@ to read; it waits for direct mode.
 
 ## Build order (each slice fail-first)
 
-1. **Bugs, each with a failing test first.** The KPI tiles each switch
+1. **Bugs, each with a failing test first.** *Built 10.11.2026, apart from
+   `site`:* the visit tiles relate their own outcome, the website funnel
+   says when its table is empty, and the pricing KPI is matched by URL. The KPI tiles each switch
    the right side (a frontend test: choosing Sign-up click shows its own
    relations, not the onward ones). The website funnel returns real counts
    (a booktest on the seed that fails on today's zeros). The `site` value
@@ -179,6 +181,13 @@ to read; it waits for direct mode.
    an owner on the console side.
 
 ## Decisions for review
+
+*Settled by Antti, 10.11.2026:* decision 1 as recommended (site aito.ai by
+default, n ≥ 5, ranking by excess), and decision 2, pulling the
+consultative choices. Also from Antti that day: the pricing KPI counts
+aito.ai's own `/pricing/` page by its full URL, not the demo's pricing
+estimator; his own visits and obvious crawlers should be left out (the
+next slice); and more insights in a scrolling list.
 
 1. **The defaults**, which are Antti's: the `site` default (aito.ai); the
    n ≥ 5 floor; and ranking Highlights by excess (example: a page seen in

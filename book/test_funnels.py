@@ -89,3 +89,21 @@ def test_unknown_dimension_asserts(t: bt.TestCaseRun) -> None:
             raise RuntimeError(f"{label}: was accepted")
         except AssertionError as e:
             t.tln(f"{label}: {e}")
+
+
+def test_a_funnel_over_an_empty_table_says_so(t: bt.TestCaseRun) -> None:
+    """The website funnel reads the synthetic `sessions` table. On an instance
+    where it holds nothing (internal: the real visits are in web_sessions), the
+    funnel must say so rather than answer every stage with zero (rule 3)."""
+    from book._target import guarded_client
+    client = guarded_client()   # it deletes a table: refuse anything but a test env
+    client.delete_table("sessions")
+    loaders.create_schema(client)
+    t.h1("funnel('website') with `sessions` empty")
+    try:
+        funnels.funnel(client, "website", {})
+    except AssertionError as e:
+        t.tln(f"  raises: {e}")
+    else:
+        raise AssertionError("an empty funnel table must raise, not answer zeros")
+    _load(client, SEED_DIR)     # leave the seed as the other cases expect it

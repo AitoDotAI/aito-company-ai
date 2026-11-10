@@ -23,7 +23,7 @@ names are those seen in the export, 6.10–5.11.2026:
 
 | KPI | Events |
 |---|---|
-| `pricing_page` | `Page View: /pricing/`, `Page View: Demo - Pricing` |
+| `pricing_page` | aito.ai's `/pricing/` page, by host and path (`KPI_PAGES`). *Changed 10.11.2026 (Antti):* the pricing-estimator demo's `Page View: Demo - Pricing` and beta.aito.ai's `/pricing/` are not it |
 | `contact_page` | `Page View: /contact-us/` |
 | `login_page` | `Page View: Sign In` |
 | `signup` | `Page View: Sign Up`, `Page View: /sign-up/`, `signup_clicked`, `signup_completed` |

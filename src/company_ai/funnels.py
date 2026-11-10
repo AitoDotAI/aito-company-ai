@@ -184,6 +184,14 @@ def funnel(client: AitoClient, funnel_key: str, slice_: dict[str, str] | None = 
     where = _slice_where(slice_)
     result = Result()
 
+    # a funnel table with no rows answers every stage with 0, which reads as
+    # "nobody converted" rather than "nothing is loaded here" (rule 3)
+    total = _count(client, result, spec.table, {})
+    assert total, (f"the {spec.key} funnel reads `{spec.table}`, which has no rows on this "
+                   f"instance; nothing is loaded there"
+                   + ("; the aito.ai visits are in web_sessions (the Web view, web_kpis)"
+                      if spec.table == "sessions" else ""))
+
     # stage counts + step conversion, from Aito _query totals
     stages = []
     prev_count = None

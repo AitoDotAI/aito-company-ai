@@ -517,7 +517,8 @@ def create_app(config: Config | None = None) -> FastAPI:
     # ---- Companies (contacts rolled up by company, joined to deals) ----
     @app.get("/api/web")
     def web_route(since: str = "", until: str = "", source: str = "", campaign: str = "",
-                  path: str = "", device: str = "", limit: int = 25, offset: int = 0):
+                  path: str = "", device: str = "", limit: int = 25, offset: int = 0,
+                  outcome: str = "onward_click"):
         # the Web view (docs/35): one bundle per filter; the window defaults to
         # the 30 days ending today
         from datetime import date, timedelta
@@ -526,7 +527,8 @@ def create_app(config: Config | None = None) -> FastAPI:
         start = since or (date.fromisoformat(end) - timedelta(days=29)).isoformat()
         return _guarded(lambda: webanalytics.web_view(
             client(), start, end, source=source or None, campaign=campaign or None,
-            path=path or None, device=device or None, limit=limit, offset=offset))
+            path=path or None, device=device or None, limit=limit, offset=offset,
+            outcome=outcome))
 
     @app.get("/api/web/paths")
     def web_paths_route(kpi: str, since: str = "", until: str = "", platform: str = ""):

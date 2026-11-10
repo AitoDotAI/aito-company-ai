@@ -18,9 +18,12 @@ const VISIT_KPIS = [
   { key: "sessions", label: "Sessions", value: (t) => t.sessions, day: (d) => d.sessions,
     fmt: (v) => String(v) },
   { key: "onward", label: "Onward click", value: (t) => rate(t.onward_clicks, t.sessions),
-    day: (d) => rate(d.onward_clicks, d.sessions), fmt: pct },
-  { key: "cta", label: "Sign-up CTA", value: (t) => rate(t.signup_ctas, t.sessions),
-    day: (d) => rate(d.signup_ctas, d.sessions), fmt: pct },
+    day: (d) => rate(d.onward_clicks, d.sessions), fmt: pct,
+    outcome: "onward_click", relates: "an onward click" },
+  // a click on a sign-up CTA, not an account created (docs/44)
+  { key: "cta", label: "Sign-up click", value: (t) => rate(t.signup_ctas, t.sessions),
+    day: (d) => rate(d.signup_ctas, d.sessions), fmt: pct,
+    outcome: "signup_cta", relates: "a sign-up click" },
 ];
 // the preselected KPIs (docs/36), in funnel order
 const KPI_LABELS = [
@@ -180,7 +183,7 @@ function KpiInsights({ answer, hideJourneys, pathsQuery }) {
 export function WebView() {
   const [period, setPeriod] = useState("30");
   const [f, setF] = useState({ source: "", path: "", campaign: "", device: "" });
-  const [kpiKey, setKpiKey] = useState("sessions");
+  const [kpiKey, setKpiKey] = useState("onward");
   const [offset, setOffset] = useState(0);
   const [data, setData] = useState(null);
   const [answer, setAnswer] = useState(null);
@@ -189,13 +192,17 @@ export function WebView() {
   const latestKpi = useRef(0);
   const since = daysBack(Number(period)), until = todayIso();
   const isKpi = kpiKey.startsWith("kpi:");
+  // the visit tile's own outcome; an event KPI or Sessions keeps the last one
+  const visit = VISIT_KPIS.find((k) => k.key === kpiKey);
+  const [outcome, setOutcome] = useState("onward_click");
+  useEffect(() => { if (visit && visit.outcome) setOutcome(visit.outcome); }, [kpiKey]);
 
   useEffect(() => {
     const call = ++latest.current;                    // a slow older answer never wins
-    Promise.resolve(api.web({ since, until, ...f, limit: PAGE, offset }))
+    Promise.resolve(api.web({ since, until, ...f, limit: PAGE, offset, outcome }))
       .then((d) => { if (call === latest.current && d) { setData(d); setErr(null); } })
       .catch((e) => { if (call === latest.current) setErr(String(e.message || e)); });
-  }, [period, f.source, f.path, f.campaign, f.device, offset]);
+  }, [period, f.source, f.path, f.campaign, f.device, offset, outcome]);
 
   useEffect(() => {
     if (!isKpi) { setAnswer(null); return; }
@@ -261,11 +268,15 @@ export function WebView() {
                                      pathsQuery={{ kpi: kpiKey.slice(4), since, until }} />
                       : <Loading label="Relating…" />}
             </>
+          ) : !kpi.outcome ? (
+            <div className="muted">Pick a KPI to see what goes with it.</div>
           ) : (
             <>
-              <h3>What goes with an onward click <span className="muted">· Aito _relate</span></h3>
-              <Relations rels={(data.drivers && data.drivers.relations) || []} testid="web-drivers"
-                         empty="Not enough sessions with an onward click to relate." />
+              <h3>What goes with {kpi.relates} <span className="muted">· Aito _relate</span></h3>
+              {data.outcome === kpi.outcome
+                ? <Relations rels={(data.drivers && data.drivers.relations) || []} testid="web-drivers"
+                             empty={`Not enough sessions with ${kpi.relates} to relate.`} />
+                : <Loading label="Relating…" />}
               {data.thin_below != null && (
                 <div className="muted web-foot">
                   Thin = fewer than {data.thin_below} sessions carry the value: listed, but no lift is claimed.
