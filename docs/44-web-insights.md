@@ -84,8 +84,8 @@ only tens of sessions. At such counts most lifts are noise.
 - **Right: the trend.** The KPI over time, the chosen period against the
   one before it (dashed), with the consent break marked.
 - **Right: tabs.**
-  - **Highlights.** What goes with the KPI (`_relate`), ranked by count ×
-    lift, with n.
+  - **Highlights.** What goes with the KPI (`_relate`), ranked by excess,
+    n ≥ 5, with n.
   - **Before.** The pages and events seen before reaching it, and the top
     paths into it (docs/37's `$patterns`), side by side with the top paths
     into a high-intent exit.
