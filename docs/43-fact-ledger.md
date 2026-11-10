@@ -1,6 +1,6 @@
 # 43 — One fact ledger: structured, multi-source facts, listed (spec for review)
 
-Status: **spec, approved with fixes by the CPO (8.11.2026); slice 1 approved
+Status: **spec, approved with fixes by the CPO (8.11.2026); slice 1 built; slice 1b (§7, the CRO's account sheet) approved by Antti 10.11.2026
 to build.** Slices 2–4 wait for the decisions below. It extends docs/39 (the `facts` collection), docs/41
 (sources that resolve) and docs/42 (harvesting from notes).
 
@@ -194,6 +194,106 @@ exact matches, no ranking. Writes stay in the tools (§2, §3).
 - `confirm_fact(fact_id)`: a person's yes (remote: the operator's token only).
 - `add_fact` as today, plus `value` and `unit`, and the twin lookup (§2).
 
+## 7. What the CRO needs first: one account's sheet (10.11.2026)
+
+Antti asked the CRO session which view would serve it, from what it had
+actually done (9–10.11.2026), not from this spec. Its answer reorders the
+build more than it changes the design.
+
+**What it found.** Almost none of its account knowledge came from Company
+AI. Each account picture took 4–6 calls plus file greps over the repo's
+notes, a CSV and mail, and its confident mistakes came from that:
+
+- **Touches it couldn't see.** Calls and texts logged nowhere made it
+  miscount an account's unanswered streak twice. That count decides when
+  to stop chasing.
+- **State without a date or source.** It stated two things as current
+  that weren't.
+- **No line between "no record" and "not where I looked".** The ledger
+  already holds this rule ("no won deal on record", §1), but the CRO can
+  only use it if the sheet is the one place it looks.
+
+**The questions it needs answered, in its order:**
+
+1. the relationship: customer, prospect, implemented by a partner,
+   indirect through a channel, or held;
+2. the last touch, its channel, and how many in a row went unanswered;
+3. who has to act and who is only the champion; several roles can each
+   veto passively;
+4. what was promised, by whom, and whether it's done;
+5. which terms and prices have been said, and which must not be;
+6. agreement status: NDA, DPA, who has yet to sign;
+7. the next booked step and its date.
+
+It starts from an account, not from a record id, so lookup by id matters
+less to it.
+
+### 7a. The account sheet (built next, no schema change)
+
+The company pane gets a **Facts** section: one account's facts grouped
+by kind and slot, which is `facts.group` (the briefing's grouping, docs/39)
+read through the ledger, so every row carries its status (§4). It shows:
+
+- **Each fact** with its statement, `valid_from`, source by id, author and
+  status, newest first within its slot.
+- **Superseded facts collapsed, not hidden**: "2 earlier" opens them.
+- **"Touched since"**: a fact older than the account's latest touch is
+  marked with that touch's date. This is a pointer, not a review status:
+  most facts outlive many touches, so it never moves a fact to review.
+- **The touch line at the top**: the latest touch with its date, channel
+  and direction, and the unanswered streak (7c).
+- **Derived customer status** (§1): direct only in this slice ("customer"
+  from a won deal not since lost, citing the deal id; otherwise "no won
+  deal on record"). Indirect waits for `relationship/customer_via`.
+
+The same read is the MCP tool `account_sheet(company)`, so the CRO gets
+one call instead of 4–6. `briefing` stays as it is.
+
+### 7b. Two lists across accounts (built next, no schema change)
+
+- **We owe it, and it's overdue.** Active `commitment/ours` facts whose
+  `due` is before today, oldest first.
+- **Stop chasing.** Accounts whose unanswered streak (7c) is 3 or more,
+  longest first, for the Sunday board review.
+
+Both are exact reads and counts, no ranking (rule 2). They sit beside the
+Facts list in the Knowledge graph view and are MCP tools
+(`overdue_commitments`, `unanswered_accounts(min_streak=3)`).
+
+### 7c. The unanswered streak
+
+Over the account's touches, newest first, across all its contacts:
+count the `out` touches until the first touch that is either `in`, or
+has outcome `conversation`, `meeting_booked`, `reply`, `callback_requested`
+or `declined`. A decline is an answer: it ends the chase by another route.
+
+- **A touch with no recorded direction** (docs/34: null means not
+  recorded) stops the count, and the sheet says "streak unknown before
+  <date>". It isn't counted as out, and isn't skipped.
+- **Calls and texts count only once they're logged.** `log_touch`
+  already takes `call` and `sms` (`TOUCH_CHANNELS`). Logging them is the
+  operator's and the CRO's habit to fix, not code; the sheet shows the
+  channel so a gap is visible.
+
+### 7d. Later, and whose call
+
+- **Terms said and "never say".** A new kind `terms`, slots `said` and
+  `never_say`, and a kind `agreement` with slots `nda`, `dpa` and states
+  `pending_signature`, `signed`. These are vocabulary, not schema. Both are
+  sensitive, so they are **written only on Antti's word**, like holds
+  (`HOLD_SOURCE`), and the remote surface never shows `never_say` facts.
+  *Antti.*
+- **Harvest at write time.** When the session writes a `call;outcome` or
+  `call;prep` note, it proposes facts from that note in the same pass
+  (docs/42: in the session, not the app). One account at a time, before a
+  meeting, rather than a backlog.
+- **What may be batch-confirmed** (with decision 1): touch and next-step
+  facts taken from a primary source (sent mail, the calendar). The
+  relationship, terms and holds are never batch-confirmed, and an agent's
+  inference never confirms them.
+- **"Asserted by"** is §3's `confirmed_by` plus `author`: a person, a
+  primary source, or an agent's inference.
+
 ## Decisions for review
 
 1. **Agents write unconfirmed facts** (§3), against docs/42's
@@ -208,13 +308,20 @@ exact matches, no ranking. Writes stay in the tools (§2, §3).
    `contract_end`, the unit set, the `relationship/customer_via` kind and
    slot, and each slot's cardinality. *Settled by the CRO, 8.11.2026.*
 5. **The order of the build** (below). *Settled by the CPO, 8.11.2026:*
-   1 → 2 → 3 → 4, and slice 4 waits for decision 1.
+   1 → 2 → 3 → 4, and slice 4 waits for decision 1. *Amended 10.11.2026:*
+   slice 1b (§7) goes before 2.
+6. **The terms and agreement vocabulary** (§7d), written on Antti's word
+   only. *Antti.*
 
 ## Build order (each slice fail-first, on the synthetic seed)
 
 1. **The list views, no schema change.** The ledger read over today's
    columns, the Facts list in the Knowledge graph view, and "Facts from
    this note". Also the change-log `updated` row for document edits.
+   *Built, 8.11.2026.*
+   - **1b. The account sheet and the two lists (§7a–7c), no schema
+     change.** Antti approved 10.11.2026, after the CRO's answer. It goes
+     before slice 2.
 2. **Several sources.** `fact_sources`, `add_fact_source` and the twin
    lookup.
 3. **Structured values.** `value`, `unit` and the new slots.
@@ -243,6 +350,14 @@ exact matches, no ranking. Writes stay in the tools (§2, §3).
   document's "Facts from this note" list.
 - **Unconfirmed.** An agent-written fact shows "unconfirmed" until
   `confirm_fact`, and the briefing doesn't state it as settled.
+- **The account sheet.** On the seed, one account's sheet groups its
+  facts by slot with a superseded fact collapsed under its successor, the
+  derived status cites the won deal, and a fact older than the latest
+  touch carries "touched since <date>" while its status stays active.
+- **The streak.** Three `out` touches after an `in` one count 3; an `out`
+  with outcome `declined` ends the count; a touch with no direction stops
+  it and the sheet says so. A commitment due yesterday is on the overdue
+  list, and one due today is not.
 - **The two views.** Booktests print the ledger request, the response and
   the rendered list. The frontend tests cover both views.
 
