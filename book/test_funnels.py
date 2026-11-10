@@ -107,3 +107,35 @@ def test_a_funnel_over_an_empty_table_says_so(t: bt.TestCaseRun) -> None:
     else:
         raise AssertionError("an empty funnel table must raise, not answer zeros")
     _load(client, SEED_DIR)     # leave the seed as the other cases expect it
+
+
+def test_the_web_funnel_reads_real_visits_as_reach(t: bt.TestCaseRun) -> None:
+    """funnel("web") is aito.ai's real traffic (web_sessions, bots out); the
+    "website" funnel stays the demo's synthetic one. The web flags aren't
+    ordered (a visitor can click sign-up without seeing pricing), so each stage
+    is its reach among human sessions, with no step conversion and no leak,
+    plus one overlap row (CPO, 11.11.2026)."""
+    from book.test_web_analytics import DAY, _clean, _events, _seeded
+    from company_ai import webanalytics
+    client, _, _ = _seeded()
+    webanalytics.store_day(client, DAY, _events())
+    rows = [r for r in client.query({"from": "web_sessions", "limit": 1000})["hits"] if not r["likely_bot"]]
+    d = funnels.funnel(client, "web", {}).derived
+    t.h1("funnel('web') over the fixture day")
+    for s in d["stages"]:
+        t.tln(f"  {s['label']}: {s['count']} ({s['rate_of_top']:.2f} of sessions), "
+              f"conversion_from_prev {s['conversion_from_prev']}")
+    t.tln(f"  ordered: {d['ordered']}, leak: {d['leak']}")
+    t.tln(f"  overlap: {d['overlap']}")
+    t.tln(f"  outlook P({d['deepest_label']}) = {d['outlook']['p']:.4f}")
+    t.tln(f"  label: {d['label']}")
+    want = {"Sessions": len(rows), "Onward click": sum(r["onward_click"] for r in rows),
+            "Pricing page": sum(bool(r.get("kpi_pricing_page")) for r in rows),
+            "Sign-up click": sum(r["signup_cta"] for r in rows)}
+    assert {s["label"]: s["count"] for s in d["stages"]} == want, (d["stages"], want)
+    assert d["ordered"] is False and d["leak"] is None
+    assert all(s["conversion_from_prev"] is None for s in d["stages"]), "no step conversion"
+    both = sum(r["signup_cta"] and bool(r.get("kpi_pricing_page")) for r in rows)
+    assert (d["overlap"]["of"], d["overlap"]["also"]) == (want["Sign-up click"], both)
+    assert "real" in d["label"].lower() and "demo" in funnels.FUNNELS["website"].label.lower()
+    _clean(client)

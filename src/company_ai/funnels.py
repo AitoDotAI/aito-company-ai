@@ -39,6 +39,14 @@ class FunnelSpec:
     stages: list[Stage]
     cause_fields: list[str]     # pre-event predictors a leak may be attributed to
     lever: str | None           # field _recommend ranks, or None if none is controllable
+    # rows every stage counts over (the web funnel leaves bots out)
+    base: dict = field(default_factory=dict)
+    # False when the stage flags aren't ordered (a web visitor can click
+    # sign-up without seeing pricing): each stage is then its reach among the
+    # base rows, with no step conversion and no leak (CPO, 11.11.2026)
+    ordered: bool = True
+    # (flag, other flag, label): of the rows with the first, how many have the other
+    overlap: tuple[str, str, str] | None = None
 
     @property
     def deepest(self) -> str:
@@ -48,7 +56,7 @@ class FunnelSpec:
 FUNNELS = {
     "website": FunnelSpec(
         key="website",
-        label="Website / acquisition funnel",
+        label="Website / acquisition funnel (demo: synthetic sessions)",
         table="sessions",
         dimensions=["source", "campaign", "device", "country", "landing_page"],
         stages=[
@@ -59,6 +67,24 @@ FUNNELS = {
         ],
         cause_fields=["source", "campaign", "device", "country", "landing_page"],
         lever="source",
+    ),
+    # aito.ai's real visits, pulled daily from Amplitude (docs/35, docs/44)
+    "web": FunnelSpec(
+        key="web",
+        label="aito.ai visits (real traffic, bots out)",
+        table="web_sessions",
+        dimensions=["source", "utm_campaign", "device_class", "country", "landing_path"],
+        stages=[
+            Stage("sessions", "Sessions", None),
+            Stage("onward", "Onward click", "onward_click"),
+            Stage("pricing", "Pricing page", "kpi_pricing_page"),
+            Stage("signup", "Sign-up click", "signup_cta"),
+        ],
+        cause_fields=["source", "utm_campaign", "device_class", "country", "landing_path"],
+        lever="source",
+        base={"likely_bot": False},
+        ordered=False,
+        overlap=("signup_cta", "kpi_pricing_page", "of sign-up click sessions, also saw pricing"),
     ),
     "sales": FunnelSpec(
         key="sales",
@@ -165,7 +191,10 @@ def dimension_values(client: AitoClient, funnel_key: str) -> dict[str, list[str]
     """Distinct values per sliceable dimension, read from the data so the
     selectors reflect what is actually loaded (campaigns, countries, etc.)."""
     spec = FUNNELS[funnel_key]
-    rows = client.query({"from": spec.table, "limit": 10000})["hits"]
+    request = {"from": spec.table, "limit": 10000, "select": spec.dimensions}
+    if spec.base:
+        request["where"] = spec.base
+    rows = client.query(request)["hits"]
     values: dict[str, set] = {dim: set() for dim in spec.dimensions}
     for row in rows:
         for dim in spec.dimensions:
@@ -181,15 +210,15 @@ def funnel(client: AitoClient, funnel_key: str, slice_: dict[str, str] | None = 
     slice_ = {k: v for k, v in (slice_ or {}).items() if v}
     unknown = set(slice_) - set(spec.dimensions)
     assert not unknown, f"unknown dimensions {sorted(unknown)}; {spec.key} allows {spec.dimensions}"
-    where = _slice_where(slice_)
+    where = {**spec.base, **_slice_where(slice_)}
     result = Result()
 
     # a funnel table with no rows answers every stage with 0, which reads as
     # "nobody converted" rather than "nothing is loaded here" (rule 3)
-    total = _count(client, result, spec.table, {})
+    total = _count(client, result, spec.table, dict(spec.base))
     assert total, (f"the {spec.key} funnel reads `{spec.table}`, which has no rows on this "
                    f"instance; nothing is loaded there"
-                   + ("; the aito.ai visits are in web_sessions (the Web view, web_kpis)"
+                   + ("; aito.ai's real visits are funnel('web')"
                       if spec.table == "sessions" else ""))
 
     # stage counts + step conversion, from Aito _query totals
@@ -204,7 +233,7 @@ def funnel(client: AitoClient, funnel_key: str, slice_: dict[str, str] | None = 
             "key": stage.key, "label": stage.label, "count": count,
             "rate_of_top": None, "conversion_from_prev": None,
         })
-        if prev_count is not None:
+        if prev_count is not None and spec.ordered:
             stages[-1]["conversion_from_prev"] = (count / prev_count) if prev_count else None
         prev_count = count
     top = stages[0]["count"]
@@ -214,12 +243,20 @@ def funnel(client: AitoClient, funnel_key: str, slice_: dict[str, str] | None = 
     # worst step = the leak
     steps = [s for s in stages if s["conversion_from_prev"] is not None]
     leak = min(steps, key=lambda s: s["conversion_from_prev"]) if steps else None
+    overlap = None
+    if spec.overlap:
+        flag, other, label = spec.overlap
+        of = _count(client, result, spec.table, {**where, flag: True})
+        also = _count(client, result, spec.table, {**where, flag: True, other: True})
+        overlap = {"label": label, "of": of, "also": also, "share": (also / of) if of else None}
 
     seg_prop = _slice_proposition(where)
     result.derived = {
         "funnel": spec.key,
         "label": spec.label,
         "slice": slice_,
+        "ordered": spec.ordered,
+        "overlap": overlap,
         "stages": stages,
         "leak": None if leak is None else {
             "into": leak["label"], "conversion": leak["conversion_from_prev"]},
