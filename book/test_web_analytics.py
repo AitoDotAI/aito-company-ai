@@ -1361,3 +1361,59 @@ def test_the_weekly_digest_lists_signals_that_crossed_thin(t: bt.TestCaseRun) ->
     for line in body.splitlines():
         t.tln(f"  {line}")
     _clean(client)
+
+
+def test_the_web_view_cache_follows_the_data(t: bt.TestCaseRun) -> None:
+    """The dashboard keeps a Web view answer until the data under it changes
+    (the CPO's triage of td-20261111112214567190). The key is the filter plus
+    a fingerprint read from Aito on every request: the table's row count and
+    the pull runs inside the window. A pull lands with a fresh pull_run, and
+    forgetting a visitor deletes rows, so both make the next request fresh
+    even when the pull ran in another process. A TTL bounds anything the
+    fingerprint can't see (a re-pull of a day outside the window that keeps
+    its row count). A cached answer is the same answer, never a different one."""
+    client, _, _ = _seeded()
+    now = [0.0]
+    cache = webanalytics.WebViewCache(ttl_seconds=900, clock=lambda: now[0])
+    events = _events()
+    webanalytics.store_day(client, DAY, events)
+
+    def view(label, **kw):
+        v, hit = cache.view(client, DAY, DAY, **kw)
+        fresh = webanalytics.web_view(client, DAY, DAY, **kw)
+        assert v == fresh, f"{label}: the cached answer differs from a fresh read"
+        t.tln(f"  {label}: {'hit' if hit else 'miss'}, totals {v['totals']}")
+        return v, hit
+
+    t.h1("The same filter twice: the second is served from the cache")
+    first, hit = view("first request")
+    assert not hit
+    _, hit = view("same filter again")
+    assert hit
+    _, hit = view("another outcome", outcome="signup_cta")
+    assert not hit, "the outcome is part of the key"
+
+    t.h1("A pull lands (one browser's events dropped): the next request is fresh")
+    webanalytics.store_day(client, DAY, [e for e in events if e.get("device_id") != "dev-2a3b4c5d"])
+    after_pull, hit = view("after the pull")
+    assert not hit
+    assert after_pull["totals"] != first["totals"], "the pull changed the data; the view must show it"
+    _, hit = view("again")
+    assert hit
+
+    t.h1("A visitor is forgotten: the next request is fresh")
+    webanalytics.forget_web_visitor(client, device_id="dev-8c9d0e1f")
+    after_forget, hit = view("after forgetting the probe's browser")
+    assert not hit
+    assert after_forget["session_total"] < after_pull["session_total"]
+
+    t.h1("The TTL bounds what the fingerprint can't see")
+    now[0] += 901
+    _, hit = view("after 901 s")
+    assert not hit
+
+    t.h1("An empty window: no drivers, as before")
+    empty, hit = cache.view(client, "2026-10-01", "2026-10-01")
+    t.tln(f"  totals {empty['totals']}, drivers {empty['drivers']}")
+    assert empty["drivers"] is None and empty["totals"]["sessions"] == 0
+    _clean(client)
