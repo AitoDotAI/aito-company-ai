@@ -1393,6 +1393,14 @@ def test_the_web_view_cache_follows_the_data(t: bt.TestCaseRun) -> None:
     _, hit = view("another outcome", outcome="signup_cta")
     assert not hit, "the outcome is part of the key"
 
+    t.h1("A caller changing its answer doesn't change the cached one")
+    mine, _ = cache.view(client, DAY, DAY)
+    mine["totals"]["sessions"] = -1
+    mine["sessions"].clear()
+    again, hit = cache.view(client, DAY, DAY)
+    t.tln(f"  next hit: {hit}, totals {again['totals']}, {len(again['sessions'])} sessions on the page")
+    assert hit and again == webanalytics.web_view(client, DAY, DAY), "a caller's edit leaked into the cache"
+
     t.h1("A pull lands (one browser's events dropped): the next request is fresh")
     webanalytics.store_day(client, DAY, [e for e in events if e.get("device_id") != "dev-2a3b4c5d"])
     after_pull, hit = view("after the pull")
