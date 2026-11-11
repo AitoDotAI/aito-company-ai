@@ -4,6 +4,10 @@
   same filter again: hit, totals {'sessions': 4, 'onward_clicks': 3, 'signup_ctas': 2, 'bots': 1}
   another outcome: miss, totals {'sessions': 4, 'onward_clicks': 3, 'signup_ctas': 2, 'bots': 1}
 
+# A caller changing its answer doesn't change the cached one
+
+  next hit: True, totals {'sessions': 4, 'onward_clicks': 3, 'signup_ctas': 2, 'bots': 1}, 5 sessions on the page
+
 # A pull lands (one browser's events dropped): the next request is fresh
 
   after the pull: miss, totals {'sessions': 3, 'onward_clicks': 2, 'signup_ctas': 1, 'bots': 1}

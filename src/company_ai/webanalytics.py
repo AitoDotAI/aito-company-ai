@@ -14,6 +14,7 @@ OS, probe paths) is a fixed label lookup, not a score. Every prediction is an
 Aito query (rule 2): `predict_next_path`, and `onward_drivers` (_relate).
 """
 
+import copy
 import fcntl
 import gzip
 import hashlib
@@ -881,7 +882,8 @@ class WebViewCache:
     the pull ran in another process (the timer). The TTL bounds what the
     fingerprint can't see: a re-pull of a day outside the window that keeps
     its row count changes only the next-page prediction, which reads every
-    day. The answer served is the one web_view returned for the same key."""
+    day. The answer served is the one web_view returned for the same key,
+    as a copy: a caller that edits its answer can't change the next one."""
 
     def __init__(self, ttl_seconds: float = 900, max_entries: int = 64, clock=time.monotonic):
         self.ttl, self.max, self.clock = ttl_seconds, max_entries, clock
@@ -905,10 +907,10 @@ class WebViewCache:
             hit = self._entries.get(key)
             if hit and hit[0] == stamp and now - hit[1] < self.ttl:
                 self._entries.move_to_end(key)
-                return hit[2], True
+                return copy.deepcopy(hit[2]), True
         answer = web_view(client, since, until, **kw)
         with self._lock:
-            self._entries[key] = (stamp, now, answer)
+            self._entries[key] = (stamp, now, copy.deepcopy(answer))
             self._entries.move_to_end(key)
             while len(self._entries) > self.max:
                 self._entries.popitem(last=False)
