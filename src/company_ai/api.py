@@ -128,6 +128,10 @@ def create_app(config: Config | None = None) -> FastAPI:
     def client() -> AitoClient:
         return AitoClient(config.instance_url, config.api_key)
 
+    # the Web view's answers until the data changes (td-20261111112214567190)
+    from .webanalytics import WebViewCache
+    _web_cache = WebViewCache()
+
     # ---- Todos (the action surface): now / pipeline / calendar lenses ----
     @app.get("/api/todos")
     def todos_route(lens: str = "now", area: str = "", slip: int = 0):
@@ -525,10 +529,10 @@ def create_app(config: Config | None = None) -> FastAPI:
         from . import webanalytics
         end = until or date.today().isoformat()
         start = since or (date.fromisoformat(end) - timedelta(days=29)).isoformat()
-        return _guarded(lambda: webanalytics.web_view(
+        return _guarded(lambda: _web_cache.view(
             client(), start, end, source=source or None, campaign=campaign or None,
             path=path or None, device=device or None, limit=limit, offset=offset,
-            outcome=outcome))
+            outcome=outcome)[0])
 
     @app.get("/api/web/paths")
     def web_paths_route(kpi: str, since: str = "", until: str = "", platform: str = ""):

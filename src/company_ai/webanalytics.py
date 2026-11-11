@@ -23,9 +23,12 @@ import json
 import os
 import re
 import tempfile
+import threading
+import time
 import uuid
 import zipfile
-from collections import Counter
+from collections import Counter, OrderedDict
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from datetime import date, datetime, timedelta, timezone
 from urllib.parse import parse_qs, unquote, urlsplit
@@ -809,8 +812,30 @@ def web_view(client: AitoClient, since: str, until: str, source: str | None = No
     filt = {"source": source, "utm_campaign": campaign, "landing_path": path,
             "device_class": device}
     kpi_fields = [f"kpi_{k}" for k in KPI_EVENTS]
-    rows = _rows(client, since, until, WEB_VIEW_FIELDS + kpi_fields, filt)
-    human = [r for r in rows if not r["likely_bot"]]
+    where = {"likely_bot": False, "$and": [*_window(since, until), *(
+        {k: v} for k, v in filt.items() if v is not None)]}
+    # The Aito calls don't depend on each other, so they run at the same time
+    # (td-20261111112214567190): the view waits for the slowest, not the sum.
+    # The relate is sent before the row count is known; on an empty
+    # population its answer is dropped, as the serial version never asked.
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        rows_f = pool.submit(_rows, client, since, until, WEB_VIEW_FIELDS + kpi_fields, filt)
+        all_f = pool.submit(_rows, client, since, until,
+                            ["source", "utm_campaign", "landing_path", "device_class", "likely_bot"]
+                            ) if any(filt.values()) else None
+        drivers_f = pool.submit(relations.relate, client, "web_sessions", {outcome: True},
+                                where=where, top_n=10, thin=WEB_THIN)
+        next_f = pool.submit(predict_next_path, client, path, source=source,
+                             device_class=device) if path else None
+        rows = rows_f.result()
+        human = [r for r in rows if not r["likely_bot"]]
+        if human:
+            drivers = drivers_f.result()
+        else:
+            drivers = None
+            drivers_f.exception()   # waited for, and dropped with its answer
+        all_rows = all_f.result() if all_f else rows
+        next_resp = next_f.result() if next_f else None
     days: dict = {}
     for r in human:
         d = days.setdefault(r["day"], {"day": r["day"], "sessions": 0, "onward_clicks": 0,
@@ -823,8 +848,6 @@ def web_view(client: AitoClient, since: str, until: str, source: str | None = No
     n = len(human)
     totals = {"sessions": n, "onward_clicks": sum(r["onward_click"] for r in human),
               "signup_ctas": sum(r["signup_cta"] for r in human), "bots": len(rows) - n}
-    all_rows = rows if not any(filt.values()) else _rows(
-        client, since, until, ["source", "utm_campaign", "landing_path", "device_class", "likely_bot"])
     all_human = [r for r in all_rows if not r["likely_bot"]]
     facets = {
         "source": sorted({r["source"] for r in all_human}),
@@ -833,13 +856,9 @@ def web_view(client: AitoClient, since: str, until: str, source: str | None = No
                                                     if r.get("utm_campaign")), 30)],
         "landing_path": [v for v, _ in _top(Counter(r["landing_path"] for r in all_human), 30)],
     }
-    where = {"likely_bot": False, "$and": [*_window(since, until), *(
-        {k: v} for k, v in filt.items() if v is not None)]}
-    drivers = relations.relate(client, "web_sessions", {outcome: True},
-                               where=where, top_n=10, thin=WEB_THIN) if n else None
     next_paths = None
-    if path:
-        request, response = predict_next_path(client, path, source=source, device_class=device)
+    if next_resp:
+        request, response = next_resp
         next_paths = {"request": request,
                       "hits": [{"value": h["$value"], "p": h["$p"]} for h in response.get("hits", [])]}
     ordered = sorted(rows, key=lambda r: (r["day"], r["hour"]), reverse=True)
@@ -851,6 +870,49 @@ def web_view(client: AitoClient, since: str, until: str, source: str | None = No
             "kpis": {k: sum(bool(r.get(f"kpi_{k}")) for r in human) for k in KPI_EVENTS},
             "outcome": outcome, "drivers": drivers, "next_paths": next_paths,
             "session_total": len(rows), "sessions": ordered[offset:offset + limit]}
+
+
+class WebViewCache:
+    """The Web view's answers, kept until the data under them changes
+    (td-20261111112214567190). Each request reads a fingerprint from Aito,
+    two small queries: the table's row count, and the pull runs of the
+    window's rows. A pull stores a day under a fresh pull_run and forgetting
+    a visitor deletes rows, so either one changes the fingerprint, also when
+    the pull ran in another process (the timer). The TTL bounds what the
+    fingerprint can't see: a re-pull of a day outside the window that keeps
+    its row count changes only the next-page prediction, which reads every
+    day. The answer served is the one web_view returned for the same key."""
+
+    def __init__(self, ttl_seconds: float = 900, max_entries: int = 64, clock=time.monotonic):
+        self.ttl, self.max, self.clock = ttl_seconds, max_entries, clock
+        self._entries: OrderedDict = OrderedDict()
+        self._lock = threading.Lock()
+
+    @staticmethod
+    def fingerprint(client: AitoClient, since: str, until: str) -> tuple:
+        total = client.query({"from": "web_sessions", "limit": 0})["total"]
+        runs = {h.get("pull_run") for h in client.query(
+            {"from": "web_sessions", "where": {"$and": _window(since, until)},
+             "select": ["pull_run"], "limit": 1_000_000})["hits"]}
+        return total, tuple(sorted(r for r in runs if r))
+
+    def view(self, client: AitoClient, since: str, until: str, **kw) -> tuple[dict, bool]:
+        """web_view's answer for this filter, and whether it came from the cache."""
+        key = (since, until, tuple(sorted(kw.items())))
+        stamp = self.fingerprint(client, since, until)
+        now = self.clock()
+        with self._lock:
+            hit = self._entries.get(key)
+            if hit and hit[0] == stamp and now - hit[1] < self.ttl:
+                self._entries.move_to_end(key)
+                return hit[2], True
+        answer = web_view(client, since, until, **kw)
+        with self._lock:
+            self._entries[key] = (stamp, now, answer)
+            self._entries.move_to_end(key)
+            while len(self._entries) > self.max:
+                self._entries.popitem(last=False)
+        return answer, False
 
 
 # ---- MCP web_kpis: one KPI or any event, related in Aito (docs/36) ----
