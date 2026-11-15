@@ -1024,8 +1024,11 @@ select:focus { outline:none; border-color:var(--purple); }
 .tt-dot.open { border:2px solid var(--tt-open); }
 .tt-dot.decision { background:var(--tt-decision); border-radius:0; clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%); }
 .tt-dot.locked { border:2px dashed var(--tt-locked); }
-.tt-layout { display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:16px; align-items:start; }
-@media (max-width:900px) { .tt-layout { grid-template-columns:minmax(0,1fr); } }
+/* wraps by the room it has, not the viewport: the nav and the assistant
+   take width, so the panel drops below the map when the map would shrink */
+.tt-layout { display:flex; flex-wrap:wrap; gap:16px; align-items:flex-start; }
+.tt-layout > .tt-mapwrap { flex:1 1 560px; }
+.tt-layout > .tt-panel { flex:1 1 280px; max-width:420px; }
 .tt-mapwrap { overflow-x:auto; overflow-y:hidden; border:1px solid var(--line); border-radius:10px;
   background:var(--card); min-width:0; -webkit-overflow-scrolling:touch; }
 .tt-map { position:relative; }
