@@ -577,6 +577,8 @@ TECH_NODES = {
         "owner": {"type": "String", "nullable": True},
         "requires": {"type": "String", "nullable": True},
         "doc_id": {"type": "String", "nullable": True},         # the article, a documents row
+        "recommendation": {"type": "Text", "analyzer": "english", "nullable": True},  # what to do next
+        "reasons": {"type": "Text", "analyzer": "english", "nullable": True},         # why
         "updated_on": {"type": "String"},                       # YYYY-MM-DD
     },
 }

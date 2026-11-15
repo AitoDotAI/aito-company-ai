@@ -18,16 +18,37 @@ function ancestors(byId, id, acc = new Set()) {
 
 const pos = (n) => ({ x: LEFT + n.era * COLW, y: TOP + n.row * ROWH });
 
+// The article's summary: its first paragraph, skipping headings. Formatting
+// only; the text is the document's own.
+export function firstParagraph(body) {
+  for (const block of (body || "").split(/\n\s*\n/)) {
+    const text = block.trim();
+    if (text && !text.startsWith("#")) return text.split("\n").map((l) => l.trim()).join(" ");
+  }
+  return null;
+}
+
 export function TechTree() {
   const [tree, setTree] = useState(null);
   const [error, setError] = useState(null);
   const [sel, setSel] = useState(null);
   const [hover, setHover] = useState(null);
   const [hidden, setHidden] = useState(() => new Set());
+  const [context, setContext] = useState(null);        // {doc_id, text} or {doc_id, error}
 
   useEffect(() => {
     api.techTree().then(setTree).catch((e) => setError(e.message));
   }, []);
+
+  const docId = sel && tree ? tree.nodes.find((n) => n.node_id === sel)?.doc_id : null;
+  useEffect(() => {
+    if (!docId) return;
+    let live = true;
+    api.document(docId)
+      .then((d) => live && setContext({ doc_id: docId, title: d.title, text: firstParagraph(d.body) }))
+      .catch((e) => live && setContext({ doc_id: docId, error: e.message }));
+    return () => { live = false; };
+  }, [docId]);
 
   const byId = useMemo(() => Object.fromEntries((tree?.nodes || []).map((n) => [n.node_id, n])), [tree]);
   if (error) return <div className="tt-error">Could not read the tech tree: {error}</div>;
@@ -106,6 +127,13 @@ export function TechTree() {
             <span className="tt-chip"><span className={`tt-dot ${s.status}`} />{tree.statuses[s.status]}</span>
             <h2>{s.title}</h2>
             <div className="tt-where">{s.branch} · Era {ROMAN[s.era]}, {tree.eras[s.era]} · updated {s.updated_on}</div>
+            {(s.recommendation || s.reasons) && (
+              <div className="tt-rec" data-testid="tt-rec">
+                <div className="tt-reclab">Recommendation</div>
+                {s.recommendation && <p className="tt-recwhat">{s.recommendation}</p>}
+                {s.reasons && <p className="tt-why"><b>Why:</b> {s.reasons}</p>}
+              </div>
+            )}
             <dl>
               <dt>What</dt><dd>{s.what}</dd>
               <dt>State</dt><dd>{s.state}</dd>
@@ -117,8 +145,16 @@ export function TechTree() {
                 const un = nodes.filter((x) => x.requires.includes(s.node_id));
                 return un.length ? un.map((x) => <button key={x.node_id} type="button" onClick={() => go(x.node_id)}>{x.title}</button>) : "None";
               })()}</dd>
-              <dt>Article</dt><dd>{s.doc_id ? <a href={`#/documents/${s.doc_id}`}>Open the article →</a> : "None yet"}</dd>
             </dl>
+            {s.doc_id ? (
+              <div className="tt-context" data-testid="tt-context">
+                <div className="tt-reclab">Context{context?.doc_id === s.doc_id && context.title ? `: ${context.title}` : ""}</div>
+                {context?.doc_id !== s.doc_id ? <p className="tt-hint">Reading the article…</p>
+                  : context.error ? <p className="tt-error">Could not read the article: {context.error}</p>
+                  : <p>{context.text || "The article has no summary paragraph."}</p>}
+                <a href={`#/documents/${s.doc_id}`}>Open the article →</a>
+              </div>
+            ) : <p className="tt-hint tt-noarticle">No article linked yet.</p>}
           </>)}
         </aside>
       </div>
