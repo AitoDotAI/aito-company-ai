@@ -72,4 +72,12 @@ describe("Markdown renderer", () => {
     const root = md("```\nunclosed\nstill going\n");
     expect(root.querySelector("pre code")).toHaveTextContent("unclosed");
   });
+
+  it("opens an in-app '#/' link in the same tab, an outside link in a new one", () => {
+    const root = md("See [the plan](#/documents/dc1) and [Aito](https://aito.ai).\n");
+    const [inApp, outside] = root.querySelectorAll("a");
+    expect(inApp).toHaveAttribute("href", "#/documents/dc1");
+    expect(inApp).not.toHaveAttribute("target");
+    expect(outside).toHaveAttribute("target", "_blank");
+  });
 });
