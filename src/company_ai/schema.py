@@ -557,6 +557,30 @@ FACTS = {
     },
 }
 
+# tech_nodes — the tech tree (docs/45): product and research lines as nodes
+# with prerequisites. `requires` is the prerequisite ids, space-separated; ids
+# are [a-z0-9-] (techtree.ID) and a String is never tokenised, so an id can't
+# split or merge. A collection, so one node is updated by its id (_modify).
+TECH_NODES = {
+    "type": "collection",
+    "columns": {
+        "node_id": {"type": "String"},
+        "title": {"type": "String"},
+        "branch": {"type": "String"},                           # a band of rows
+        "era": {"type": "Int"},                                 # 0..len(techtree.ERAS)-1
+        "row": {"type": "Int"},
+        "status": {"type": "String"},                           # techtree.STATUSES
+        "metric": {"type": "String", "nullable": True},         # the short line on the card
+        "what": {"type": "Text", "analyzer": "english"},
+        "state": {"type": "Text", "analyzer": "english"},
+        "next": {"type": "Text", "analyzer": "english"},
+        "owner": {"type": "String", "nullable": True},
+        "requires": {"type": "String", "nullable": True},
+        "doc_id": {"type": "String", "nullable": True},         # the article, a documents row
+        "updated_on": {"type": "String"},                       # YYYY-MM-DD
+    },
+}
+
 # users — the people using the app (docs/27). From a one-person company to a
 # small team: the operator plus, e.g., an SDR. `assignee` on contacts/todos/
 # deals points here (a plain String, validated on write). Auth is NOT here — the
@@ -840,6 +864,7 @@ TABLES = {
     "posts": POSTS, "todos": TODOS, "deals": DEALS, "deal_events": DEAL_EVENTS,
     "experiments": EXPERIMENTS,
     "events": EVENTS, "routines": ROUTINES, "documents": DOCUMENTS, "facts": FACTS,
+    "tech_nodes": TECH_NODES,
     "chat_messages": CHAT_MESSAGES,
     "changelog": CHANGELOG,
     "search_contexts": SEARCH_CONTEXTS, "search_impressions": SEARCH_IMPRESSIONS,

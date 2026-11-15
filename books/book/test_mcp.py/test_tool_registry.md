@@ -128,6 +128,31 @@ required: ['company']
 One account's facts (company_id or exact name), newest valid_from
     first; active_only=False includes the superseded ones.
 
+## tech_tree
+
+params: []
+required: []
+The tech tree of product and research lines (docs/45): every node with
+    node_id, title, branch, era (0..4, index into `eras`), row, status
+    (done|active|open|decision|locked; `statuses` maps each to its label),
+    metric, what, state, next, owner, requires (a list of node ids), doc_id
+    (the article, a documents row) and updated_on. A stored tree with an
+    unknown prerequisite or a cycle raises rather than reading wrong.
+
+## upsert_tech_node
+
+params: ['fields', 'node_id']
+required: ['fields', 'node_id']
+Write one tech-tree node by its id, so a lane updates its own node as
+    results land. An existing node changes only the fields given (e.g.
+    {"status": "done", "state": "...", "next": "..."}); a new id needs title,
+    branch, era, row, status, what, state and next. requires is a list of
+    existing node ids; ids are [a-z0-9-]. Refused with nothing written on an
+    unknown field, id or prerequisite, a cycle, a status outside
+    done|active|open|decision|locked, an era outside 0..4, two nodes on one
+    era+row, or a doc_id that isn't a document. updated_on is stamped today.
+    Returns {action, node, request}.
+
 ## fact_ledger
 
 params: ['company', 'kind', 'slot', 'source_id', 'status']

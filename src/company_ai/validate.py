@@ -31,6 +31,7 @@ ID_COLUMNS = {
     "posts": "post_id", "deals": "deal_id", "todos": "todo_id",
     "decisions": "decision_id", "experiments": "experiment_id", "events": "event_id",
     "routines": "routine_id", "documents": "doc_id", "facts": "fact_id",
+    "tech_nodes": "node_id",
 }
 
 # "unknown <field> 'x'" -> the schema set it was checked against. Keyed by
@@ -163,6 +164,7 @@ def validate_dir(data_dir: Path) -> Report:
             "todos": loaders.parse_todo_row, "decisions": loaders.parse_decision_row,
             "experiments": loaders.parse_experiment_row, "events": loaders.parse_event_row,
             "routines": loaders.parse_routine_row, "documents": loaders.parse_document_row,
+            "tech_nodes": loaders.parse_tech_node_row,
         }[table](row)
 
     for table in loaders.LOAD_ORDER:        # materials/channels before posts

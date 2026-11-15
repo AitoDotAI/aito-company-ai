@@ -30,6 +30,7 @@ EVENTS_FILE = "events.csv"
 ROUTINES_FILE = "routines.csv"
 DOCUMENTS_FILE = "documents.csv"
 FACTS_FILE = "facts.csv"
+TECH_NODES_FILE = "tech_nodes.csv"
 USERS_FILE = "users.csv"
 
 # the file each table loads from / exports to (export writes a re-loadable CSV)
@@ -39,7 +40,7 @@ TABLE_FILES = {
     "todos": TODOS_FILE, "deals": DEALS_FILE,
     "decisions": DECISIONS_FILE, "experiments": EXPERIMENTS_FILE, "events": EVENTS_FILE,
     "routines": ROUTINES_FILE, "documents": DOCUMENTS_FILE, "facts": FACTS_FILE,
-    "users": USERS_FILE,
+    "users": USERS_FILE, "tech_nodes": TECH_NODES_FILE,
 }
 
 
@@ -989,6 +990,33 @@ def load_facts(client: AitoClient, data_dir: Path) -> int:
     return _reload(client, "facts", rows)
 
 
+def parse_tech_node_row(row: dict) -> dict:
+    """One tech_nodes.csv row (docs/45): era and row are integers, requires
+    the space-separated prerequisite ids; techtree.parse_node checks the rest."""
+    from . import techtree
+    expected = set(schema.TECH_NODES["columns"])
+    _require(set(row) == expected, f"unexpected columns {sorted(set(row) ^ expected)}", row)
+    for field in ("era", "row"):
+        _require(row[field].isdigit(), f"{field} {row[field]!r} is not a whole number", row)
+    return techtree.parse_node({**row, "era": int(row["era"]), "row": int(row["row"]),
+                                "updated_on": _parse_date(row["updated_on"], "updated_on", row)})
+
+
+def load_tech_nodes(client: AitoClient, data_dir: Path) -> int:
+    """The tech tree, whole: every node checked, then the tree (prerequisites
+    exist, no cycle, one node per spot), and a doc_id must name a document in
+    the same directory's documents.csv."""
+    from . import techtree
+    nodes = [parse_tech_node_row(r) for r in _read_csv(data_dir / TECH_NODES_FILE)]
+    techtree.check_tree(nodes)
+    docs_path = data_dir / DOCUMENTS_FILE
+    doc_ids = {r["doc_id"] for r in _read_csv(docs_path)} if docs_path.exists() else set()
+    for n in nodes:
+        _require(not n["doc_id"] or n["doc_id"] in doc_ids,
+                 f"doc_id {n['doc_id']!r} is not in {DOCUMENTS_FILE}", n)
+    return _reload(client, "tech_nodes", [techtree._stored(n) for n in nodes])
+
+
 def parse_user_row(row: dict) -> dict:
     expected = set(schema.USERS["columns"])
     _require(set(row) == expected, f"unexpected columns {sorted(set(row) ^ expected)}", row)
@@ -1110,11 +1138,11 @@ LOADERS = {
     "deals": load_deals, "todos": load_todos,
     "decisions": load_decisions, "experiments": load_experiments, "events": load_events,
     "routines": load_routines, "documents": load_documents, "facts": load_facts,
-    "users": load_users,
+    "users": load_users, "tech_nodes": load_tech_nodes,
 }
 LOAD_ORDER = ["users", "contacts", "touches", "sessions", "materials", "channels",
               "posts", "deals", "todos", "decisions", "experiments", "events",
-              "routines", "documents", "facts"]
+              "routines", "documents", "facts", "tech_nodes"]
 
 
 def diagnose(client: AitoClient) -> dict:

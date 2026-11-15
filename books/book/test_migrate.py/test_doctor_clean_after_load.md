@@ -21,6 +21,7 @@ schema_drift: False
   routines     present=True rows=7 missing_cols=[]
   documents    present=True rows=13 missing_cols=[]
   facts        present=True rows=15 missing_cols=[]
+  tech_nodes   present=True rows=15 missing_cols=[]
   chat_messages present=True rows=0 missing_cols=[]
   changelog    present=True rows=0 missing_cols=[]
   search_contexts present=True rows=0 missing_cols=[]

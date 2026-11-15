@@ -1,0 +1,16 @@
+node_id,title,branch,era,row,status,metric,what,state,next,owner,requires,doc_id,updated_on
+q1,Accuracy benchmark,Quality,0,0,done,94% top-1,Predictions against a tuned baseline on three public datasets.,Level with the baseline at a tenth of the latency.,None; quote it with the result file.,operator,,sdc001,2026-10-02
+q2,Calibration check,Quality,1,0,done,ECE 0.02,Does stated confidence match accuracy?,Calibrated out of the box from small data.,None.,operator,q1,,2026-10-12
+q3,One set of quotable numbers,Quality,2,0,open,2 conflicts,Reconcile numbers quoted in notes against the result files.,Two notes quote older runs.,Fix the notes to the result files.,operator,q2,,2026-11-10
+e1,Long-text matching,Engine,0,1,done,52% to 71%,Recalibrate long-text pair matching.,Merged and released.,None.,core-dev,,,2026-09-20
+e2,Deterministic ties,Engine,1,1,active,fix in review,Answers moved when queries were batched.,Cause found: equal scores keep hash order.,Compare the batched and single runs.,core-dev,e1,,2026-11-14
+e3,Faster text filters,Engine,2,1,locked,on a branch,Faster where clauses on long text.,Ready on a branch; rebases on the tie fix.,Unlocks when the tie fix merges.,core-dev,e2,,2026-11-14
+e4,Prior for similar values,Engine,1,2,decision,options a-c,How evidence carries across similar values.,Measured; three options.,Your choice of option.,operator,,,2026-11-12
+s1,Memory stays flat,Scale,0,3,done,-2 MB/h,Memory no longer grows over long runs.,The long rerun passed the bar.,None.,core-ops,,,2026-11-01
+s2,Ten million rows,Scale,1,3,active,rerun planned,Ten million rows with two hours of writes and predicts.,First run held; the second hour hit a script bug.,Rerun with the fixed script.,core-ops,s1,,2026-11-15
+s3,Next release,Scale,2,3,decision,changelog ready,Cut the next release and roll the shared host.,Changelog merged.,Your tag.,operator,s1,,2026-11-15
+s4,Writes during compaction,Scale,2,4,open,stalls seen,Writes stalled while a large compaction ran.,Cause not separated.,Measure per-write latency during compaction.,core-ops,s2,,2026-11-15
+a1,Demo shop,Apps,0,5,done,live,The shop demo on synthetic data.,Live.,None.,apps-dev,,,2026-08-01
+a2,Plugin core,Apps,1,5,done,merged,Shared shop core with its API and widgets.,Merged.,Theme blocks onto the widgets.,apps-dev,a1,,2026-11-05
+a3,Partner demo,Apps,3,5,active,rehearsed,The partner demo.,Rehearsed; all panels pass.,Check the demo host's data.,apps-dev,a2 s3,,2026-11-14
+a4,App store listing,Apps,4,5,locked,not started,List the app.,Waits on the demo and the licence.,After the demo.,operator,a3,,2026-11-14

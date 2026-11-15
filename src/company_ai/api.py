@@ -256,6 +256,12 @@ def create_app(config: Config | None = None) -> FastAPI:
         from . import facts
         return _guarded(lambda: facts.list_facts(client(), company, active_only=active_only))
 
+    @app.get("/api/tech-tree")
+    def tech_tree_route():
+        """The tech tree: every node with its prerequisites (docs/45)."""
+        from . import techtree
+        return _guarded(lambda: techtree.tech_tree(client()))
+
     @app.get("/api/facts/ledger")
     def facts_ledger(company: str = "", kind: str = "", slot: str = "", source_id: str = "",
                      status: str = ""):

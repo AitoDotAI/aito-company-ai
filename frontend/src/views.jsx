@@ -13,6 +13,7 @@ import { Markdown } from "./markdown.jsx";
 import { ChatThread } from "./assistant.jsx";
 import { conversations, useConversations } from "./conversations.js";
 import { WebView } from "./web.jsx";
+import { TechTree } from "./techtree.jsx";
 import { layout as graphLayout, degrees as graphDegrees } from "./graphlayout.js";
 
 function Placeholder({ needs }) {
@@ -3138,6 +3139,9 @@ export const VIEWS = {
   graph: { title: "Knowledge graph", desc: "What we know about each account — and the questions you can answer by walking the links between accounts, people and deals. Every card is one Aito query.",
            prims: ["graph-query"],
            render: () => <GraphView /> },
+  techtree: { title: "Tech tree", desc: "Aito's product and research lines: eras run from foundations to in market, branches run as bands, and a line unlocks when what it requires is done. Hover a node for its prerequisite chain; click it for its state, next step and article.",
+           prims: ["tech-tree"],
+           render: () => <TechTree /> },
   search: { title: "Search", desc: "Smart search across content — docs, contacts, and deals — ranked by Aito text-match relevance. The same index the assistant grounds on.",
            prims: ["document-tree"],
            render: (param) => <SearchView initial={param} /> },

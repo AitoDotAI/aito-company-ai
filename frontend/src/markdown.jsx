@@ -15,6 +15,9 @@ function inline(text, key) {
     if (m.index > 0) nodes.push(rest.slice(0, m.index));
     if (m[1] != null) nodes.push(<code key={`${key}-${i++}`}>{m[1]}</code>);
     else if (m[2] != null) nodes.push(<strong key={`${key}-${i++}`}>{m[2]}</strong>);
+    // an in-app route ("#/documents/…") stays in this tab, so notes can link
+    // to each other; anything else opens beside it
+    else if (m[4].startsWith("#/")) nodes.push(<a key={`${key}-${i++}`} href={m[4]}>{m[3]}</a>);
     else nodes.push(<a key={`${key}-${i++}`} href={m[4]} target="_blank" rel="noreferrer">{m[3]}</a>);
     rest = rest.slice(m.index + m[0].length);
   }

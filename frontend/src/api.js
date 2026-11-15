@@ -45,6 +45,7 @@ export const api = {
     get("/pwin", { stage, blocker, champion_present, segment }),
   pwinBatch: (profiles) => post("/pwin/batch", { profiles }),
   graph: () => get("/graph"),
+  techTree: () => get("/tech-tree"),
   graphNetwork: (params) => get("/graph/network", params),
   factLedger: (params) => get("/facts/ledger", params),
   accountSheet: (company) => get("/facts/sheet", { company }),

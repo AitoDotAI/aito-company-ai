@@ -1,6 +1,6 @@
 # the remote tool surface (read + safe writes)
 
-74 tools exposed over HTTP:
+76 tools exposed over HTTP:
   account_sheet
   add_channel
   add_contact
@@ -61,12 +61,14 @@
   segment_360
   set_post_link_path
   supersede_fact
+  tech_tree
   tick_routine
   todos_area
   todos_now
   unanswered_accounts
   update_document
   update_todo
+  upsert_tech_node
   web_digest
   web_kpis
   web_paths
