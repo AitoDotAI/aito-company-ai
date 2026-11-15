@@ -1,6 +1,6 @@
 # migrate: export every table, then reload from the dump
 
-exported 15 tables: ['users', 'contacts', 'touches', 'decisions', 'sessions', 'materials', 'channels', 'posts', 'todos', 'deals', 'experiments', 'events', 'routines', 'documents', 'facts']
+exported 16 tables: ['users', 'contacts', 'touches', 'decisions', 'sessions', 'materials', 'channels', 'posts', 'todos', 'deals', 'experiments', 'events', 'routines', 'documents', 'facts', 'tech_nodes']
   companies: 34 rows
   users: 2 rows
   contacts: 60 rows
@@ -17,4 +17,5 @@ exported 15 tables: ['users', 'contacts', 'touches', 'decisions', 'sessions', 'm
   routines: 7 rows
   documents: 13 rows
   facts: 15 rows
+  tech_nodes: 15 rows
 row counts preserved across the round trip: True

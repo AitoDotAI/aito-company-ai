@@ -1,0 +1,20 @@
+request: {"from": "tech_nodes", "limit": 10000}
+eras: ['Foundations', 'Proven', 'Hardening', 'Customer-ready', 'In market']
+statuses: {'done': 'Researched', 'active': 'In progress', 'open': 'Ready to start', 'decision': 'Your decision', 'locked': 'Locked'}
+branches (top to bottom): ['Quality', 'Engine', 'Scale', 'Apps']
+15 nodes:
+  q1   era 0 row  0 done     Accuracy benchmark <- []
+  q2   era 1 row  0 done     Calibration check <- ['q1']
+  q3   era 2 row  0 open     One set of quotable numbers <- ['q2']
+  e1   era 0 row  1 done     Long-text matching <- []
+  e2   era 1 row  1 active   Deterministic ties <- ['e1']
+  e3   era 2 row  1 locked   Faster text filters <- ['e2']
+  e4   era 1 row  2 decision Prior for similar values <- []
+  s1   era 0 row  3 done     Memory stays flat <- []
+  s2   era 1 row  3 active   Ten million rows <- ['s1']
+  s3   era 2 row  3 decision Next release <- ['s1']
+  s4   era 2 row  4 open     Writes during compaction <- ['s2']
+  a1   era 0 row  5 done     Demo shop <- []
+  a2   era 1 row  5 done     Plugin core <- ['a1']
+  a3   era 3 row  5 active   Partner demo <- ['a2', 's3']
+  a4   era 4 row  5 locked   App store listing <- ['a3']
