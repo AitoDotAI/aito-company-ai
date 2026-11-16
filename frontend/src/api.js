@@ -46,6 +46,7 @@ export const api = {
   pwinBatch: (profiles) => post("/pwin/batch", { profiles }),
   graph: () => get("/graph"),
   techTree: () => get("/tech-tree"),
+  document: (id) => get(`/documents/${encodeURIComponent(id)}`),
   graphNetwork: (params) => get("/graph/network", params),
   factLedger: (params) => get("/facts/ledger", params),
   accountSheet: (company) => get("/facts/sheet", { company }),

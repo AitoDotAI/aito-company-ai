@@ -1078,3 +1078,10 @@ svg.tt-edges path.hot { stroke:var(--ink); stroke-width:2.5; }
 .tt-reqs button { font:500 12px inherit; font-family:inherit; background:transparent; color:var(--ink);
   border:1px solid var(--line-bright); border-radius:6px; padding:2px 7px; cursor:pointer; }
 .tt-error { color:var(--danger); }
+.tt-rec, .tt-context { margin-top:12px; padding:10px 12px; border-radius:8px; background:var(--tint);
+  border:1px solid var(--line); font-size:13px; }
+.tt-reclab { font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-faint); }
+.tt-rec p, .tt-context p { margin-top:4px; }
+.tt-recwhat { font-weight:600; }
+.tt-context a { display:inline-block; margin-top:6px; color:var(--purple); }
+.tt-noarticle { margin-top:12px; }

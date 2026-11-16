@@ -120,3 +120,26 @@ def test_upsert_refuses_what_would_make_the_tree_wrong(t: bt.TestCaseRun) -> Non
     after = {n["node_id"]: n for n in techtree.tech_tree(client)["nodes"]}
     assert after == nodes, "a refused upsert changed the tree"
     t.tln("the tree is unchanged")
+
+
+def test_a_node_carries_a_recommendation_and_its_reasons(t: bt.TestCaseRun) -> None:
+    """recommendation and reasons are optional prose on a node (Antti via the
+    CPO, 15.11): the seed gives some nodes a pair and leaves others without,
+    an upsert sets them like any field, and tech_tree returns them as written."""
+    client = _seeded()
+    nodes = {n["node_id"]: n for n in techtree.tech_tree(client)["nodes"]}
+    with_rec = sorted(k for k, n in nodes.items() if n["recommendation"])
+    t.tln(f"seed nodes with a recommendation: {with_rec}")
+    t.tln(f"seed nodes without: {sorted(set(nodes) - set(with_rec))}")
+    assert with_rec and set(with_rec) != set(nodes)
+    assert all(bool(n["recommendation"]) == bool(n["reasons"]) for n in nodes.values())
+
+    target = sorted(set(nodes) - set(with_rec))[0]
+    out = techtree.upsert_tech_node(client, target, {
+        "recommendation": "Run it next week.", "reasons": "Nothing blocks it and it unlocks two lines."},
+        today="2026-11-15")
+    t.tln(f"set on {target}: {json.dumps(out['request'], sort_keys=True)}")
+    back = next(n for n in techtree.tech_tree(client)["nodes"] if n["node_id"] == target)
+    assert (back["recommendation"], back["reasons"]) == (
+        "Run it next week.", "Nothing blocks it and it unlocks two lines.")
+    loaders.load_tech_nodes(client, SEED_DIR)       # leave the seed as it was

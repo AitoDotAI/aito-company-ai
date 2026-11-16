@@ -22,6 +22,7 @@ One collection, `tech_nodes`, one row per node:
 | `owner` | the lane or person, free text |
 | `requires` | prerequisite node ids, stored space-separated in a String (never tokenised) and returned as a list |
 | `doc_id` | the article, a `documents` row |
+| `recommendation`, `reasons` | optional: what to do next, and why |
 | `updated_on` | stamped on every write |
 
 The tree holds to these, on read and on write (rule 3): every prerequisite
@@ -44,9 +45,12 @@ map. Nothing in it is predicted: it is a record, drawn as it is.
 
 Knowledge → Tech tree. Eras run left to right, branches as bands, each
 prerequisite a curve. Hovering a node lights its whole prerequisite chain;
-clicking opens the panel (what, state, next, owner, requires, unlocks, and the
-article when `doc_id` is set, linking `#/documents/<doc_id>`); the legend
-filters by status. The map scrolls sideways inside its own box, so it reads on
+clicking opens the panel: the title, then the recommendation and its reasons
+in a box (hidden when a node has neither), then what, state, next, owner,
+requires and unlocks, then the context. With `doc_id` set, the context is the
+article's first paragraph, read through the existing document read
+(`GET /api/documents/<doc_id>`), with a link to `#/documents/<doc_id>`. The
+legend filters by status. The map scrolls sideways inside its own box, so it reads on
 a phone. In-app `#/` links in a document open in the same tab, so articles can
 link to each other.
 

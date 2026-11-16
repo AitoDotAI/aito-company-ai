@@ -28,7 +28,7 @@ STATUSES = {"done": "Researched", "active": "In progress", "open": "Ready to sta
 ID = re.compile(r"[a-z0-9-]{1,40}")
 FIELDS = [c for c in schema.TECH_NODES["columns"] if c != "node_id"]
 REQUIRED = ("title", "branch", "era", "row", "status", "what", "state", "next")
-OPTIONAL = ("metric", "owner", "requires", "doc_id")
+OPTIONAL = ("metric", "owner", "requires", "doc_id", "recommendation", "reasons")
 READ_LIMIT = 10_000
 
 
@@ -59,7 +59,8 @@ def parse_node(row: dict) -> dict:
         v = row[f]
         assert isinstance(v, int) and not isinstance(v, bool) and v >= 0 and (top is None or v <= top), \
             f"tech node {node_id!r}: {f} {v!r} is not an integer in 0..{top if top is not None else ''}: {row}"
-    for f in ("title", "branch", "what", "state", "next", "metric", "owner", "doc_id"):
+    for f in ("title", "branch", "what", "state", "next", "metric", "owner", "doc_id",
+              "recommendation", "reasons"):
         v = row.get(f)
         assert v is None or isinstance(v, str), f"tech node {node_id!r}: {f} is not text: {row}"
     updated = row.get("updated_on")
