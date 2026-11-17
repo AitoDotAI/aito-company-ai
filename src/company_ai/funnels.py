@@ -71,7 +71,7 @@ FUNNELS = {
     # aito.ai's real visits, pulled daily from Amplitude (docs/35, docs/44)
     "web": FunnelSpec(
         key="web",
-        label="aito.ai visits (real traffic, bots out)",
+        label="aito.ai visits (real traffic, bots and internal out)",
         table="web_sessions",
         dimensions=["source", "utm_campaign", "device_class", "country", "landing_path"],
         stages=[
@@ -82,7 +82,8 @@ FUNNELS = {
         ],
         cause_fields=["source", "utm_campaign", "device_class", "country", "landing_path"],
         lever="source",
-        base={"likely_bot": False},
+        base={"likely_bot": False,       # likely_internal: false, or a row from before it
+              "$or": [{"likely_internal": False}, {"likely_internal": None}]},
         ordered=False,
         overlap=("signup_cta", "kpi_pricing_page", "of sign-up click sessions, also saw pricing"),
     ),

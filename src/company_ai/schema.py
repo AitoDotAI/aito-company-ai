@@ -759,6 +759,9 @@ WEB_SESSIONS = {
         "device_class": {"type": "String"},        # DEVICE_CLASSES
         "country": {"type": "String"},
         "likely_bot": {"type": "Boolean"},
+        # Antti's own visits (aito.ai's internal: true tag, from 18.11.2026);
+        # nullable: rows stored before the column have no value (docs/35)
+        "likely_internal": {"type": "Boolean", "nullable": True},
         "post_id": {"type": "String", "nullable": True, "link": "posts.post_id"},       # exact
         "candidate_post_id": {"type": "String", "nullable": True, "link": "posts.post_id"},  # referrer_day
         # referrer platform + the post's link_path + MATCH_DAYS (docs/35 tier 2)

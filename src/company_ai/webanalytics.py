@@ -327,6 +327,29 @@ def _sessions(events: list[dict]) -> dict:
     return by_session
 
 
+# Antti's own browsers carry the event property internal: true (aito-website
+# #410, live 18.11.2026). He chose "tagged, not dropped": the session is kept
+# with likely_internal and, like a bot, left out of every count, KPI, relate,
+# step and visitor. Rows stored before the column have no value and count as
+# visits. In Aito, "$not": true also drops the rows with no value (found by the
+# book), so reads match false or null.
+INTERNAL_VALUES = {None: False, False: False, "false": False, True: True, "true": True}
+HUMAN = {"likely_bot": False, "$or": [{"likely_internal": False}, {"likely_internal": None}]}
+
+
+def _internal(group: list[dict]) -> bool:
+    """Whether any event of the visit is tagged internal; an unknown value raises."""
+    for e in group:
+        value = (e.get("event_properties") or {}).get("internal")
+        assert value in INTERNAL_VALUES, f"unknown internal value {value!r} on {e}"
+    return any(INTERNAL_VALUES[(e.get("event_properties") or {}).get("internal")] for e in group)
+
+
+def _human(row: dict) -> bool:
+    """A visit by someone else than a bot or Antti (HUMAN, read in Python)."""
+    return not row["likely_bot"] and not row.get("likely_internal")
+
+
 def _build(events: list[dict], day: str) -> tuple[list[dict], dict]:
     """The rows for the sessions whose first event is on `day` (UTC), and
     the run's counts over those sessions' events."""
@@ -411,6 +434,7 @@ def _build(events: list[dict], day: str) -> tuple[list[dict], dict]:
             # a probe page anywhere in the visit, not only the landing: crawlers
             # fetch the sitemaps mid-visit (first real paths run, 6.11.2026)
             "likely_bot": any(p.startswith(PROBE_PREFIXES) for p in pages),
+            "likely_internal": _internal(group),
             "post_id": None, "candidate_post_id": None, "matched_post_id": None,
             "experiment_id": None,
             "link_basis": None,
@@ -451,7 +475,7 @@ def _link(client: AitoClient, rows: list[dict], day: str) -> dict:
     start = (date.fromisoformat(day) - timedelta(days=LOOKBACK_DAYS)).isoformat()
     before_post = ambiguous = 0
     for row in rows:
-        if row["likely_bot"]:
+        if not _human(row):
             continue
         campaign = row["utm_campaign"]
         if campaign and campaign in by_campaign:
@@ -546,7 +570,8 @@ def store_day(client: AitoClient, day: str, events: list[dict]) -> dict:
     return {"day": day, "pull_run": run, "events": len(events), "sessions": len(rows),
             "steps": len(steps),
             "empty": not rows, "kept_previous": kept,
-            "bots": sum(r["likely_bot"] for r in rows), "linked": dict(linked),
+            "bots": sum(r["likely_bot"] for r in rows),
+            "internal": sum(r["likely_internal"] and not r["likely_bot"] for r in rows), "linked": dict(linked),
             "mapped": dict(stats["mapped"]), "unmapped": dict(stats["unmapped"]),
             "unknown_os": dict(stats["unknown_os"]),
             "new_event_types": dict(stats["new_event_types"]),
@@ -700,10 +725,10 @@ def web_traffic(client: AitoClient, since: str, until: str, path: str | None = N
     apart), the top landing pages and sources, the posts the visits link to
     exactly, and the candidate posts apart."""
     rows = _rows(client, since, until, ["day", "views", "onward_click", "signup_cta", "likely_bot",
-                                         "landing_path", "source", "post_id", "candidate_post_id",
+                                         "likely_internal", "landing_path", "source", "post_id", "candidate_post_id",
                                          "matched_post_id"],
                  {"landing_path": path, "utm_campaign": campaign, "source": source})
-    human = [r for r in rows if not r["likely_bot"]]
+    human = [r for r in rows if _human(r)]
     days: dict = {}
     for r in human:
         d = days.setdefault(r["day"], {"day": r["day"], "sessions": 0, "views": 0,
@@ -713,7 +738,8 @@ def web_traffic(client: AitoClient, since: str, until: str, path: str | None = N
         d["onward_clicks"] += r["onward_click"]
         d["signup_ctas"] += r["signup_cta"]
     return {"since": since, "until": until, "days": [days[d] for d in sorted(days)],
-            "bots": len(rows) - len(human),
+            "bots": sum(r["likely_bot"] for r in rows),
+            "internal": sum(bool(r.get("likely_internal")) and not r["likely_bot"] for r in rows),
             "top_landing": _top(Counter(r["landing_path"] for r in human)),
             "top_sources": _top(Counter(r["source"] for r in human)),
             "posts": [{"post_id": p, "sessions": n} for p, n in
@@ -744,10 +770,11 @@ def web_paths(client: AitoClient, since: str, until: str, landing_path: str | No
     """Landing -> next path counts by source and device, per ISO week (bots
     excluded). A session that ended on its landing page has next_path null."""
     rows = _rows(client, since, until,
-                 ["week", "landing_path", "next_path", "source", "device_class", "likely_bot"],
+                 ["week", "landing_path", "next_path", "source", "device_class", "likely_bot",
+                  "likely_internal"],
                  {"landing_path": landing_path, "source": source, "device_class": device_class})
     counts = Counter((r["week"], r["landing_path"], r.get("next_path"), r["source"], r["device_class"])
-                     for r in rows if not r["likely_bot"])
+                     for r in rows if _human(r))
     return {"since": since, "until": until, "paths": [
         {"week": w, "landing_path": lp, "next_path": np, "source": s, "device_class": dc,
          "sessions": n} for (w, lp, np, s, dc), n in sorted(
@@ -758,7 +785,7 @@ def predict_next_path(client: AitoClient, landing_path: str, source: str | None 
                       device_class: str | None = None, limit: int = 5) -> tuple[dict, dict]:
     """Aito's P(next page | how the visitor arrived), with $why — the front
     page's recommendation source. Thin data shows as low $p."""
-    where = {"landing_path": landing_path, "likely_bot": False,
+    where = {"landing_path": landing_path, **HUMAN,
              **({"source": source} if source else {}),
              **({"device_class": device_class} if device_class else {})}
     request = {"from": "web_sessions", "where": where, "predict": "next_path",
@@ -772,7 +799,7 @@ def onward_drivers(client: AitoClient, since: str, until: str, path: str | None 
     page, device, country, weekday, hour) goes with an onward click: Aito's
     _relate over human sessions in the window. What happened during the
     visit (next path, views, CTAs) defines the click, so relations exclude it."""
-    where = {"likely_bot": False, "$and": _window(since, until)}
+    where = {**HUMAN, "$and": _window(since, until)}
     if path:
         where["landing_path"] = path
     return relations.relate(client, "web_sessions", {"onward_click": True},
@@ -791,7 +818,7 @@ VIEW_OUTCOMES = ("onward_click", "signup_cta")
 
 WEB_VIEW_FIELDS = ["day", "hour", "landing_path", "next_path", "source", "referrer_domain",
                    "utm_campaign", "post_id", "device_class", "country", "views",
-                   "engaged_seconds", "onward_click", "signup_cta", "likely_bot"]
+                   "engaged_seconds", "onward_click", "signup_cta", "likely_bot", "likely_internal"]
 
 
 def web_view(client: AitoClient, since: str, until: str, source: str | None = None,
@@ -813,7 +840,7 @@ def web_view(client: AitoClient, since: str, until: str, source: str | None = No
     filt = {"source": source, "utm_campaign": campaign, "landing_path": path,
             "device_class": device}
     kpi_fields = [f"kpi_{k}" for k in KPI_EVENTS]
-    where = {"likely_bot": False, "$and": [*_window(since, until), *(
+    where = {**HUMAN, "$and": [*_window(since, until), *(
         {k: v} for k, v in filt.items() if v is not None)]}
     # The Aito calls don't depend on each other, so they run at the same time
     # (td-20261111112214567190): the view waits for the slowest, not the sum.
@@ -822,14 +849,14 @@ def web_view(client: AitoClient, since: str, until: str, source: str | None = No
     with ThreadPoolExecutor(max_workers=4) as pool:
         rows_f = pool.submit(_rows, client, since, until, WEB_VIEW_FIELDS + kpi_fields, filt)
         all_f = pool.submit(_rows, client, since, until,
-                            ["source", "utm_campaign", "landing_path", "device_class", "likely_bot"]
-                            ) if any(filt.values()) else None
+                            ["source", "utm_campaign", "landing_path", "device_class", "likely_bot",
+                             "likely_internal"]) if any(filt.values()) else None
         drivers_f = pool.submit(relations.relate, client, "web_sessions", {outcome: True},
                                 where=where, top_n=10, thin=WEB_THIN)
         next_f = pool.submit(predict_next_path, client, path, source=source,
                              device_class=device) if path else None
         rows = rows_f.result()
-        human = [r for r in rows if not r["likely_bot"]]
+        human = [r for r in rows if _human(r)]
         if human:
             drivers = drivers_f.result()
         else:
@@ -848,8 +875,10 @@ def web_view(client: AitoClient, since: str, until: str, source: str | None = No
             d[f] += bool(r.get(f))
     n = len(human)
     totals = {"sessions": n, "onward_clicks": sum(r["onward_click"] for r in human),
-              "signup_ctas": sum(r["signup_cta"] for r in human), "bots": len(rows) - n}
-    all_human = [r for r in all_rows if not r["likely_bot"]]
+              "signup_ctas": sum(r["signup_cta"] for r in human),
+              "bots": sum(r["likely_bot"] for r in rows),
+              "internal": sum(bool(r.get("likely_internal")) and not r["likely_bot"] for r in rows)}
+    all_human = [r for r in all_rows if _human(r)]
     facets = {
         "source": sorted({r["source"] for r in all_human}),
         "device_class": sorted({r["device_class"] for r in all_human}),
@@ -963,7 +992,7 @@ def web_kpis(client: AitoClient, kpi: str | None = None, event: str | None = Non
     since = since or (date.fromisoformat(until) - timedelta(days=29)).isoformat()
     filt = {"source": source, "utm_campaign": campaign, "landing_path": path, "device_class": device}
     clauses = [*_window(since, until), *({k: v} for k, v in filt.items() if v is not None)]
-    where = {"likely_bot": False, "$and": clauses}
+    where = {**HUMAN, "$and": clauses}
     count = lambda w: client.query({"from": "web_sessions", "where": w, "limit": 0})["total"]
     sessions = count(where)
     with_target = count({**where, "$and": [*clauses, match]})
@@ -1021,7 +1050,7 @@ def _journeys(client: AitoClient, where: dict) -> list[dict]:
     latest = client.query({"from": "web_sessions", "where": where, "select": fields,
                            "orderBy": {"$desc": "day"}, "limit": JOURNEYS})["hits"]
     histories = client.batch([{"from": "web_sessions", "select": fields[1:],
-                               "where": {"visitor_key": s["visitor_key"], "likely_bot": False,
+                               "where": {"visitor_key": s["visitor_key"], **HUMAN,
                                          "day": {"$lte": s["day"]}},
                                "limit": 1000} for s in latest])
     out = []
@@ -1073,7 +1102,7 @@ def build_visitors(client: AitoClient) -> dict:
     """Rebuild web_visitors from the human web_sessions: upload the new run,
     check every row landed, then delete the earlier runs. A failure after the
     upload deletes the new run, so the table never doubles (as store_day)."""
-    hits = client.query({"from": "web_sessions", "where": {"likely_bot": False},
+    hits = client.query({"from": "web_sessions", "where": HUMAN,
                          "select": VISITOR_SOURCE_FIELDS, "limit": 1_000_000})["hits"]
     by_visitor: dict[str, list] = {}
     for h in hits:
@@ -1173,7 +1202,7 @@ def _steps(client: AitoClient, rows: list[dict], run: str) -> list[dict]:
     out = []
     for r in rows:
         raw = r.pop("_steps")
-        if r["likely_bot"]:
+        if not _human(r):
             continue
         key = r["session_key"]
         for n, (token, kpis) in enumerate(raw):

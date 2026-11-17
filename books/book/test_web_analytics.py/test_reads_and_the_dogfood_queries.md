@@ -25,6 +25,7 @@
    "views": 9
   }
  ],
+ "internal": 0,
  "matched_posts": [],
  "posts": [
   {
@@ -116,5 +117,5 @@
 
 # Dogfood: the next page, predicted from how the visitor arrived
 
-request:  {"from": "web_sessions", "limit": 5, "predict": "next_path", "select": ["$p", "$value", "$why"], "where": {"device_class": "mobile", "landing_path": "/blog/every-screen-a-decision/", "likely_bot": false, "source": "social"}}
+request:  {"from": "web_sessions", "limit": 5, "predict": "next_path", "select": ["$p", "$value", "$why"], "where": {"$or": [{"likely_internal": false}, {"likely_internal": null}], "device_class": "mobile", "landing_path": "/blog/every-screen-a-decision/", "likely_bot": false, "source": "social"}}
 response: {"hits": [{"$p": 0.44755786478761383, "$value": "/pricing/", "$why": {"factors": [{"proposition": {"next_path": {"$has": "/pricing/"}}, "type": "baseP", "value": 0.3333333333333333}, {"factors": [{"name": "exclusiveness", "type": "normalizer", "value": 1.122124213202473}, {"name": "trueFalseExclusiveness", "type": "normalizer", "value": 1.0}], "type": "product"}, {"proposition": {"source": "social"}, "type": "relatedPropositionLift", "value": 1.0}, {"proposition": {"landing_path": "/blog/every-screen-a-decision/"}, "type": "relatedPropositionLift", "value": 1.1856311014966876}, {"proposition":

@@ -38,7 +38,7 @@ LEAKS = {
 NOT_DRIVERS = {
     "posts": {"utm_campaign"},
     "web_sessions": {"session_key", "visitor_key", "day", "week", "pull_run", "link_basis",
-                     "likely_bot"},
+                     "likely_bot", "likely_internal"},
     "web_visitors": {"visitor_key", "first_day", "pull_run"},
     "web_suppressed": {"visitor_key", "at"},
     "web_steps": {"step_id", "prev", "visitor_key", "day", "pull_run", "post_id", "n"},

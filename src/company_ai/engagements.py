@@ -282,7 +282,8 @@ def weekly(client: AitoClient, as_of: dt.date, weeks: int = 8) -> dict:
     try:
         web = client.query({"from": "web_sessions", "where": {"$and": [
             {"day": {"$gte": start.isoformat()}}, {"day": {"$lte": as_of.isoformat()}},
-            {"likely_bot": False}]}, "select": ["week", "onward_click"], "limit": LIMIT})["hits"]
+            {"likely_bot": False}, {"$or": [{"likely_internal": False}, {"likely_internal": None}]}]},
+            "select": ["week", "onward_click"], "limit": LIMIT})["hits"]
     except AitoError as e:
         if "web_sessions not found" not in str(e):
             raise
