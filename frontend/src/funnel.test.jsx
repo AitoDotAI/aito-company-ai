@@ -8,10 +8,10 @@ import { api } from "./api.js";
 vi.mock("./api.js", async (orig) => ({ ...(await orig()), api: { funnel: vi.fn(), funnelCatalog: vi.fn() } }));
 afterEach(() => vi.clearAllMocks());
 
-const CATALOG = { funnels: [{ key: "web", label: "aito.ai visits (real traffic, bots out)",
+const CATALOG = { funnels: [{ key: "web", label: "aito.ai visits (real traffic, bots and internal out)",
                               dimensions: ["source"], values: { source: ["direct"] } }] };
 const WEB = {
-  funnel: "web", label: "aito.ai visits (real traffic, bots out)", slice: {}, ordered: false,
+  funnel: "web", label: "aito.ai visits (real traffic, bots and internal out)", slice: {}, ordered: false,
   stages: [
     { key: "sessions", label: "Sessions", count: 120, rate_of_top: 1, conversion_from_prev: null },
     { key: "onward", label: "Onward click", count: 18, rate_of_top: 0.15, conversion_from_prev: null },
