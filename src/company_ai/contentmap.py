@@ -63,12 +63,23 @@ def parse(data: dict) -> dict[str, dict]:
     return out
 
 
+class Unavailable(RuntimeError):
+    """The map couldn't be read (network, HTTP status, not JSON). The pull
+    stores the days unlabelled and fails the run; a malformed map is not
+    this: it raises from `parse`."""
+
+
 def fetch(url: str = URL) -> dict[str, dict]:
-    """The published map, parsed. Any failure raises: a pull without it would
-    write rows that look unlabelled for the wrong reason."""
-    response = requests.get(url, timeout=30, headers={"User-Agent": "aito-company-ai web pull"})
-    assert response.status_code == 200, f"content map {url}: HTTP {response.status_code}"
-    return parse(response.json())
+    """The published map, parsed. Unreachable raises Unavailable; malformed
+    raises from `parse`."""
+    try:
+        response = requests.get(url, timeout=30, headers={"User-Agent": "aito-company-ai web pull"})
+        if response.status_code != 200:
+            raise Unavailable(f"content map {url}: HTTP {response.status_code}")
+        data = response.json()
+    except (requests.RequestException, ValueError) as e:
+        raise Unavailable(f"content map {url}: {type(e).__name__}: {e}") from e
+    return parse(data)
 
 
 def labels(pages: list[str], cmap: dict[str, dict]) -> dict:

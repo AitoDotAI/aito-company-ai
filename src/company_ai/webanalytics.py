@@ -704,8 +704,10 @@ def pull(client: AitoClient, days: int = LOOKBACK_DAYS, day: str | None = None,
          today: date | None = None, fetch=fetch_day, fetch_map=contentmap.fetch) -> list[dict]:
     """Pull `day`, or the last `days` complete UTC days, into web_sessions.
     Each day is stored on its own: a day that fails is reported with its
-    error and the rest still run. aito.ai's content map is read once; if it
-    can't be, every day fails with that error and nothing is stored."""
+    error and the rest still run. aito.ai's content map is read once. If it
+    can't be reached, the days are stored unlabelled (unmapped_pages null)
+    and a `content_map` report fails the run, for apply-content-map to fill
+    in later; a malformed map raises before any day is stored."""
     if day:
         wanted = [day]
     else:
@@ -714,13 +716,12 @@ def pull(client: AitoClient, days: int = LOOKBACK_DAYS, day: str | None = None,
     reports = []
     with pull_lock(client):
         try:
-            cmap, map_error = fetch_map(), None
-        except Exception as e:  # noqa: BLE001 — reported on every day below
-            cmap, map_error = None, f"content map: {type(e).__name__}: {e}"
+            cmap = fetch_map()
+        except contentmap.Unavailable as e:
+            cmap = None
+            reports.append({"day": "content_map", "error": f"{e}; the days are stored unlabelled, "
+                                                           "run apply-content-map once it is back"})
         for d in wanted:
-            if map_error:
-                reports.append({"day": d, "error": map_error})
-                continue
             try:
                 reports.append(store_day(client, d, fetch(d), content_map=cmap))
             except Exception as e:  # noqa: BLE001 — reported per day; the caller exits non-zero
@@ -1167,7 +1168,7 @@ def build_visitors(client: AitoClient) -> dict:
 
 RETENTION_MONTHS = 13
 # pull() reports that summarise the run rather than one day
-RUN_REPORTS = {"retention", "web_visitors"}
+RUN_REPORTS = {"retention", "web_visitors", "content_map"}
 
 
 def retention_cutoff(today: date) -> str:

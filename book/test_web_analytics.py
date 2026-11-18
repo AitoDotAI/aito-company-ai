@@ -33,6 +33,13 @@ FIXTURE = Path(__file__).resolve().parent.parent / "data" / "fixtures" / "amplit
 BOOK_SALT = "book-only-salt-not-a-secret"
 os.environ["COMPANY_AI_WEB_SALT"] = BOOK_SALT
 DAY = "2026-10-05"
+MAP_FIXTURE = FIXTURE.parent / "content_map.json"
+
+
+def _fixture_map() -> dict:
+    """The invented content map: a pull in a book never reads aito.ai's."""
+    from company_ai import contentmap
+    return contentmap.parse(json.loads(MAP_FIXTURE.read_text()))
 
 
 def _client() -> AitoClient:
@@ -431,7 +438,7 @@ def test_pull_stores_days_independently_and_flags_empty_days(t: bt.TestCaseRun) 
         return events if day == DAY else []
 
     t.h1("Three days, the first fails, the third has no visits")
-    reports = webanalytics.pull(client, days=3, today=date(2026, 10, 7), fetch=fetch)
+    reports = webanalytics.pull(client, days=3, today=date(2026, 10, 7), fetch=fetch, fetch_map=_fixture_map)
     for r in reports:
         t.tln(json.dumps({k: r.get(k) for k in ("day", "sessions", "error", "empty")}, sort_keys=True))
     by_day = {r["day"]: r for r in reports}
@@ -555,12 +562,12 @@ def test_a_second_pull_at_once_is_refused(t: bt.TestCaseRun) -> None:
     t.h1("A pull while another holds the lock")
     with webanalytics.pull_lock(client):
         try:
-            webanalytics.pull(client, days=1, today=date(2026, 10, 6), fetch=lambda d: [])
+            webanalytics.pull(client, days=1, today=date(2026, 10, 6), fetch=lambda d: [], fetch_map=_fixture_map)
             raise RuntimeError("a second pull ran")
         except webanalytics.PullLocked as e:
             t.tln(f"refused: {str(e).split(' (lock')[0]}")
     t.h1("Once released, a pull runs")
-    reports = webanalytics.pull(client, days=1, today=date(2026, 10, 6), fetch=lambda d: [])
+    reports = webanalytics.pull(client, days=1, today=date(2026, 10, 6), fetch=lambda d: [], fetch_map=_fixture_map)
     t.tln(f"{len([r for r in reports if r['day'] not in webanalytics.RUN_REPORTS])} day(s) pulled")
     assert len([r for r in reports if r["day"] not in webanalytics.RUN_REPORTS]) == 1
     _clean(client)

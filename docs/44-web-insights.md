@@ -147,15 +147,20 @@ raises with the entry.
   each page step of `web_steps` (an event step has none), as whitespace Text.
   `web_sessions.unmapped_pages` counts the visit's pages the map doesn't name;
   null means the map wasn't applied, 0 means every page was named.
-- **The pull** reads the map once per run. If it can't, every day fails with
-  that error and nothing is stored. The run report's `unmapped_pages` lists
-  the human visits' unnamed pages by page, so a page missing from the map
-  shows up the next morning.
+- **The pull** reads the map once per run. If it can't be reached, the days
+  are still stored, unlabelled (`unmapped_pages` null), and a `content_map`
+  report fails the run (non-zero exit), for `apply-content-map` to fill in
+  later. A map that is there but malformed raises before any day is stored
+  (CPO review of #108). The run report's `unmapped_pages` lists the human
+  visits' unnamed pages by page, so a page missing from the map shows up the
+  next morning.
 - **Pooled counts are one `_relate`**: `relations.relate(client,
   "web_sessions", {"kpi_pricing_page": True}, keep=["verticals"])`. Text
   fields are left out of relations unless kept, so a reader names them.
   Like `pages`, a visit's items include the KPI's own page (`site:pricing` with
   the pricing KPI): that relation is true by construction.
+  The KPI queries that read these (C2, C7) start with a fail-first case
+  asserting the KPI's own page is left out of the related items.
 - **History** is relabelled once from the stored pages: `uv run company-ai
   apply-content-map` prints the plan; `--apply` rewrites each day under a
   fresh `pull_run`, as a pull replaces a day. Only the labels and `pull_run`
