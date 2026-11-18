@@ -175,8 +175,14 @@ def ledger(client: AitoClient, company: str | None = None, kind: str | None = No
             st = "unconfirmed"
         else:
             st = "active"
-        if status is None or st == status:
-            out.append({**f, "source": src, "status": st})
+        mark = unconfirmed(f)
+        # a row has one status and review outranks unconfirmed, so the filter
+        # reads the field: an unconfirmed fact under review is still found
+        # (CPO review of #107); a superseded one awaits nothing
+        wanted = (mark is not None and not f.get("superseded_by")) if status == "unconfirmed" \
+            else (status is None or st == status)
+        if wanted:
+            out.append({**f, "source": src, "status": st, "unconfirmed": mark})
     if kind in (None, DERIVED_KIND) and slot in (None, DERIVED_SLOT) and status in (None, "derived"):
         out += _derived_status(query, cid, source_id)
     out.sort(key=lambda r: (r["company_id"], r["valid_from"], r["fact_id"]), reverse=True)
@@ -234,7 +240,7 @@ def _derived_row(cid: str, name: str, statement: str, valid_from: str, sources: 
             "source_kind": "deal" if sources else "derived", "source_id": sources[0]["id"] if sources else "",
             "valid_from": valid_from, "superseded_by": None, "author": "derived", "created_at": None,
             "source": sources[0] if sources else {"kind": "derived", "id": "", "status": "derived"},
-            "sources": sources, "status": "derived"}
+            "sources": sources, "status": "derived", "unconfirmed": None}
 
 
 def _last_edits(query, rows: list[dict]) -> dict[tuple[str, str], str]:

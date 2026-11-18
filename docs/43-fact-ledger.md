@@ -467,8 +467,13 @@ fact.**
 - **Where it shows.** Every grouped fact row (`briefing`, `opener_context`,
   `company_detail`) carries `author` and `unconfirmed`: "unconfirmed
   (<author>)" or null. The ledger has the status `unconfirmed`, after
-  superseded and the review statuses, and filters on it. The unfold's fact
-  node carries `unconfirmed`.
+  superseded and the review statuses. Each ledger row also carries the field
+  `unconfirmed`, and the `unconfirmed` filter reads the field, so a fact both
+  unconfirmed and under review is still found. The unfold's fact node
+  carries `unconfirmed`.
+- **Trust.** Any session on the operator's machine reaches the local stdio
+  server, and so `confirm_fact`. The fence is the remote surface, not local
+  sessions; the tool's text says to call it only on Antti's yes.
 - **Holds unchanged** (§3): the hold status keeps its own rule (source
   antti) and doesn't wait on confirmation. A hold row still shows the mark.
 - **Seed:** every existing fact confirmed by the seed operator; one new
