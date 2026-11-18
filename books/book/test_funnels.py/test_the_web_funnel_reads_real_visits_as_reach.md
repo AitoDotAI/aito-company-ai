@@ -7,4 +7,4 @@
   ordered: False, leak: None
   overlap: {'label': 'of sign-up click sessions, also saw pricing', 'of': 2, 'also': 1, 'share': 0.5}
   outlook P(Sign-up click) = 0.4606
-  label: aito.ai visits (real traffic, bots out)
+  label: aito.ai visits (real traffic, bots and internal out)

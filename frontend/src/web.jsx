@@ -240,7 +240,7 @@ export function WebView() {
               </button>
             ))}
           </div>
-          <div className="muted web-bots">{t.bots} likely bot sessions left out</div>
+          <div className="muted web-bots">{t.bots} likely bot and {t.internal ?? 0} internal sessions left out</div>
           <div className="web-filters">
             <label>Period
               <select aria-label="Period" value={period}

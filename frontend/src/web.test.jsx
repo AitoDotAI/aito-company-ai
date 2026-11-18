@@ -89,6 +89,19 @@ const KPI_ANSWER = {
   journeys: [{ label: "visitor 1", sessions: [{ day: "2026-11-04", hour: 9, landing_path: "/blog/", source: "direct", events: "page:/blog/" }] }],
 };
 
+describe("web view, sessions left out", () => {
+  it("says how many bot and internal sessions it left out", async () => {
+    api.web.mockResolvedValue({ ...BUNDLE, totals: { ...BUNDLE.totals, internal: 7 } });
+    render(<WebView />);
+    expect(await screen.findByText("4 likely bot and 7 internal sessions left out")).toBeInTheDocument();
+  });
+  it("reads a bundle from before the internal count as none", async () => {
+    api.web.mockResolvedValue(BUNDLE);
+    render(<WebView />);
+    expect(await screen.findByText("4 likely bot and 0 internal sessions left out")).toBeInTheDocument();
+  });
+});
+
 describe("web view KPIs", () => {
   it("lists the KPIs and opens one with its insights", async () => {
     api.web.mockResolvedValue(BUNDLE);

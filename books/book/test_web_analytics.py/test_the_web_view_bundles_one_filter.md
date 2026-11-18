@@ -1,17 +1,17 @@
 # Everything on the day
 
-  totals: {'sessions': 4, 'onward_clicks': 3, 'signup_ctas': 2, 'bots': 1}
+  totals: {'sessions': 4, 'onward_clicks': 3, 'signup_ctas': 2, 'bots': 1, 'internal': 0}
   days: [{'day': '2026-10-05', 'sessions': 4, 'onward_clicks': 3, 'signup_ctas': 2, 'kpi_pricing_page': 1, 'kpi_contact_page': 0, 'kpi_login_page': 0, 'kpi_signup': 0, 'kpi_sandbox': 1, 'kpi_data_loaded': 0, 'kpi_first_query': 0, 'kpi_api_keys': 0}]
   facets: {'source': ['direct', 'organic', 'social'], 'device_class': ['desktop', 'mobile', 'unknown'], 'utm_campaign': ['ecom-screen'], 'landing_path': ['/', '/blog/every-screen-a-decision/', '/docs/']}
-  drivers request: {"from": "web_sessions", "limit": 300, "relate": {"$on": [{"onward_click": true}, {"$and": [{"likely_bot": false}, {"$and": [{"day": {"$gte": "2026-10-05"}}, {"day": {"$lte": "2026-10-05"}}]}]}]}}
+  drivers request: {"from": "web_sessions", "limit": 300, "relate": {"$on": [{"onward_click": true}, {"$and": [{"likely_bot": false}, {"$or": [{"likely_internal": false}, {"likely_internal": null}]}, {"$and": [{"day": {"$gte": "2026-10-05"}}, {"day": {"$lte": "2026-10-05"}}]}]}]}}
   sessions: 5 rows, page of 5
   thin below: 5 sessions
-  first row fields: ['country', 'day', 'device_class', 'engaged_seconds', 'hour', 'kpi_api_keys', 'kpi_contact_page', 'kpi_data_loaded', 'kpi_first_query', 'kpi_login_page', 'kpi_pricing_page', 'kpi_sandbox', 'kpi_signup', 'landing_path', 'likely_bot', 'next_path', 'onward_click', 'referrer_domain', 'signup_cta', 'source', 'views']
+  first row fields: ['country', 'day', 'device_class', 'engaged_seconds', 'hour', 'kpi_api_keys', 'kpi_contact_page', 'kpi_data_loaded', 'kpi_first_query', 'kpi_login_page', 'kpi_pricing_page', 'kpi_sandbox', 'kpi_signup', 'landing_path', 'likely_bot', 'likely_internal', 'next_path', 'onward_click', 'referrer_domain', 'signup_cta', 'source', 'views']
 
 # One source, one landing page
 
   filter source=direct landing=/
-  totals: {'sessions': 1, 'onward_clicks': 1, 'signup_ctas': 1, 'bots': 0}
+  totals: {'sessions': 1, 'onward_clicks': 1, 'signup_ctas': 1, 'bots': 0, 'internal': 0}
   facets still list every source: True
-  drivers where: {"$and": [{"day": {"$gte": "2026-10-05"}}, {"day": {"$lte": "2026-10-05"}}, {"source": "direct"}, {"landing_path": "/"}], "likely_bot": false}
-  next_paths: {'request': {'from': 'web_sessions', 'where': {'landing_path': '/', 'likely_bot': False, 'source': 'direct'}, 'predict': 'next_path', 'select': ['$p', '$value', '$why'], 'limit': 5}, 'hits': [{'value': 'ecommerce.aito.ai/cart', 'p': 0.4518814380842081}, {'value': '/docs/api/v2/quickstart/', 'p': 0.27405928095789595}, {'value': '/pricing/', 'p': 0.27405928095789595}]}
+  drivers where: {"$and": [{"day": {"$gte": "2026-10-05"}}, {"day": {"$lte": "2026-10-05"}}, {"source": "direct"}, {"landing_path": "/"}], "$or": [{"likely_internal": false}, {"likely_internal": null}], "likely_bot": false}
+  next_paths: {'request': {'from': 'web_sessions', 'where': {'landing_path': '/', 'likely_bot': False, '$or': [{'likely_internal': False}, {'likely_internal': None}], 'source': 'direct'}, 'predict': 'next_path', 'select': ['$p', '$value', '$why'], 'limit': 5}, 'hits': [{'value': 'ecommerce.aito.ai/cart', 'p': 0.4518814380842081}, {'value': '/docs/api/v2/quickstart/', 'p': 0.27405928095789595}, {'value': '/pricing/', 'p': 0.27405928095789595}]}

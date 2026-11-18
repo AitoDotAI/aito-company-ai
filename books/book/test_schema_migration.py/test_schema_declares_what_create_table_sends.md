@@ -24,7 +24,7 @@
   PUT /api/v2/schema/changelog                 type=collection 9fec5699835f51af
   PUT /api/v2/schema/search_contexts           type=collection 9fcdaf171d672489
   PUT /api/v2/schema/search_impressions        type=collection 0a592dde0a7f6c66
-  PUT /api/v2/schema/web_sessions              type=collection 7d48fb10b9d8f103
+  PUT /api/v2/schema/web_sessions              type=collection 806e3a082fe9f098
   PUT /api/v2/schema/web_visitors              type=collection fca72adfd992a8a5
   PUT /api/v2/schema/web_suppressed            type=collection df4fcc4f7052cf8c
   PUT /api/v2/schema/web_steps                 type=collection 5ca7301f7eda256a

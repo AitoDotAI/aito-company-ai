@@ -60,6 +60,10 @@ only tens of sessions. At such counts most lifts are noise.
 - **The consent break (7.11.2026).** Analytics consent began then, so
   counts before and after don't compare. Each trend marks the date, and
   week-over-week cards prefer ratios across it.
+- **Internal traffic (18.11.2026).** Antti's own visits are tagged
+  from then on and left out (`likely_internal`, docs/35). His visits before
+  that date are untagged and still count, so a small drop at 18.11 can be
+  his own traffic leaving the numbers, not a change in real visits.
 - **Beta traffic.** beta.aito.ai sends to the same Amplitude project.
   Its pages already land host-first (`beta.aito.ai/…`), but its sessions
   count in the totals. Each session gets a `site` value, read from the

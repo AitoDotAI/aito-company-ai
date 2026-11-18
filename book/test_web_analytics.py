@@ -1425,3 +1425,59 @@ def test_the_web_view_cache_follows_the_data(t: bt.TestCaseRun) -> None:
     t.tln(f"  totals {empty['totals']}, drivers {empty['drivers']}")
     assert empty["drivers"] is None and empty["totals"]["sessions"] == 0
     _clean(client)
+
+
+def test_antti_s_own_visits_are_flagged_internal_and_left_out(t: bt.TestCaseRun) -> None:
+    """td-20261117233642591246: since 18.11.2026 aito.ai tags Antti's own
+    browsers with the event property internal: true (aito-website #410).
+    Antti chose "tagged, not dropped": the session is stored with
+    likely_internal, and like a bot it is left out of every count, KPI,
+    relate, step and visitor. A row stored before the column existed has no
+    value and still counts as a visit. Any other value raises (rule 3)."""
+    human = [["/", "/pricing/"]] * 3
+    events = _visits(human) + [
+        {**e, "event_properties": {**e["event_properties"], "internal": True}}
+        for e in _visits([["/", "/pricing/"]] * 2, first=10)]
+    rows = webanalytics.sessions_from_events(events, DAY)
+    t.h1("Flags")
+    for r in rows:
+        t.tln(f"  {r['visitor_key'][:6]}…: likely_internal={r['likely_internal']}, likely_bot={r['likely_bot']}")
+    assert sorted(r["likely_internal"] for r in rows) == [False] * 3 + [True] * 2
+    client, _, _ = _seeded()
+    out = webanalytics.store_day(client, DAY, events)
+    t.h1("The pull counts them apart")
+    t.tln(f"  sessions {out['sessions']}, bots {out['bots']}, internal {out['internal']}")
+    assert (out["sessions"], out["internal"]) == (5, 2)
+    stored = client.query({"from": "web_sessions", "where": {"likely_internal": False}, "limit": 1})["hits"][0]
+    legacy = {k: v for k, v in stored.items() if k != "likely_internal"}
+    legacy["session_key"] = "legacy-before-the-column"
+    client.upload_batch("web_sessions", [legacy])
+    t.h1("A row from before the column counts; the internal ones don't")
+    traffic = webanalytics.web_traffic(client, DAY, DAY)
+    t.tln(f"  web_traffic: {traffic['days']}, bots {traffic['bots']}, internal {traffic['internal']}")
+    assert traffic["days"][0]["sessions"] == 4 and traffic["internal"] == 2
+    view = webanalytics.web_view(client, DAY, DAY)
+    t.tln(f"  web_view totals: {view['totals']}")
+    assert view["totals"]["sessions"] == 4 and view["totals"]["internal"] == 2
+    kpis = webanalytics.web_kpis(client, kpi="pricing_page", since=DAY, until=DAY)
+    t.tln(f"  web_kpis(pricing_page): {kpis['sessions']} sessions, {kpis['with_target']} with it")
+    assert (kpis["sessions"], kpis["with_target"]) == (4, 4)
+    paths = webanalytics.web_paths(client, DAY, DAY)
+    t.tln(f"  web_paths: {sum(p['sessions'] for p in paths['paths'])} sessions")
+    assert sum(p["sessions"] for p in paths["paths"]) == 4
+    steps = client.query({"from": "web_steps", "limit": 0})["total"]
+    t.tln(f"  web_steps: {steps} steps (2 per human visit stored by the pull)")
+    assert steps == 6
+    visitors = webanalytics.build_visitors(client)
+    t.tln(f"  web_visitors: {visitors['visitors']} visitors (the old row is a copy of one of them)")
+    assert visitors["visitors"] == 3
+    t.h1("Any other value raises, with the event")
+    odd = [{**e, "event_properties": {**e["event_properties"], "internal": "yes"}}
+           for e in _visits([["/"]], first=20)]
+    try:
+        webanalytics.sessions_from_events(odd, DAY)
+        raise AssertionError("an odd internal value passed")
+    except AssertionError as e:
+        t.tln(f"  {str(e)[:90]}")
+        assert "internal" in str(e) and "yes" in str(e)
+    _clean(client)
