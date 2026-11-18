@@ -174,7 +174,52 @@ request:  {"from": "touches", "limit": 1000, "where": {"contact_id": {"$not": "y
 response: total=3 (rows omitted)
 request:  {"from": "contacts", "limit": 1000, "select": ["contact_id", "name", "company", "segment", "tier", "ai_lifecycle"], "where": {"contact_id": {"$or": ["yc004", "yc005", "yc010"]}, "segment": "analytics"}}
 response: total=0 (rows omitted)
+request:  {"from": "contacts", "limit": 10000, "select": ["contact_id", "name"], "where": {"company_id": "genco-oy"}}
+response: total=2 (rows omitted)
+request:  {"from": "facts", "limit": 10000, "where": {"company_id": "genco-oy"}}
+response: total=0 (rows omitted)
 
 ## Derived
 
-[]
+{
+  "account": {
+    "company_id": "genco-oy",
+    "facts": {
+      "attributes": {
+        "billing_model": [],
+        "budget_cycle": [],
+        "data_model": [],
+        "deployment": [],
+        "headcount": [],
+        "infra": [],
+        "load": [],
+        "other": [],
+        "pain": [],
+        "procurement": [],
+        "stack": [],
+        "tooling": [],
+        "volume": []
+      },
+      "commitments": [],
+      "conflicts": [],
+      "contact_info": {
+        "current": [],
+        "not_current": []
+      },
+      "decisions": [],
+      "hold": {
+        "facts": [],
+        "status": null
+      },
+      "open_questions": [],
+      "roles": {
+        "champion": [],
+        "decision_owner": [],
+        "other": [],
+        "signer": [],
+        "sponsor": []
+      }
+    }
+  },
+  "evidence": []
+}

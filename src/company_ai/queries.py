@@ -175,8 +175,33 @@ def who_to_call(
 
 
 def opener_context(client: AitoClient, contact_id: str, top_n: int = 3) -> Result:
-    """Query 2: evidence touches from statistically similar contacts."""
+    """Query 2: evidence touches from statistically similar contacts, and the
+    contact's own account facts grouped as briefing groups them, hold first
+    (docs/39; td-20261118105636099520), so an opener never asks what the
+    account already told us. derived = {evidence, account}."""
     result = Result()
+    contact, evidence = _opener_evidence(client, contact_id, top_n, result)
+    from . import facts as _facts
+    cid = contact["company_id"]
+
+    def query(request):
+        response = client.query(request)
+        result.calls.append((request, response))
+        return response
+    people = query({"from": "contacts", "where": {"company_id": cid},
+                    "select": ["contact_id", "name"], "limit": 10000})
+    _facts._whole(people, "contacts", 10000)
+    names = {c["contact_id"]: c["name"] for c in people["hits"]}
+    result.derived = {"evidence": evidence,
+                      "account": {"company_id": cid,
+                                  "facts": _facts.for_account(client, cid, names, query=query)}}
+    return result
+
+
+def _opener_evidence(client: AitoClient, contact_id: str, top_n: int,
+                     result: Result) -> tuple[dict, list]:
+    """The contact's row, and the evidence touches: anyone else's good-outcome
+    touches, from contacts in the target's segment, most recent first."""
     request = {"from": "contacts", "where": {"contact_id": contact_id}, "limit": 1}
     response = client.query(request)
     result.calls.append((request, response))
@@ -200,8 +225,7 @@ def opener_context(client: AitoClient, contact_id: str, top_n: int = 3) -> Resul
         by_contact[touch["contact_id"]] = touch  # keeps each contact's latest
 
     if not by_contact:
-        result.derived = []
-        return result
+        return contact, []
 
     # v2 dropped the feature `_similarity` endpoint and has no feature-similarity
     # query ($nn/$knn are vector-only) — docs/24. Keep the retrieval Aito-side:
@@ -221,7 +245,7 @@ def opener_context(client: AitoClient, contact_id: str, top_n: int = 3) -> Resul
     # predictive ranking — rule 2)
     ordered = sorted(matched["hits"],
                      key=lambda c: by_contact[c["contact_id"]]["ts"], reverse=True)[:top_n]
-    result.derived = [
+    return contact, [
         {
             "similar_contact": c["name"],
             "company": c["company"],
@@ -235,7 +259,6 @@ def opener_context(client: AitoClient, contact_id: str, top_n: int = 3) -> Resul
         }
         for c in ordered
     ]
-    return result
 
 
 def what_changed(client: AitoClient, as_of: date | None = None) -> Result:

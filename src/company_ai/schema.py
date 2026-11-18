@@ -990,8 +990,11 @@ FACT_SLOTS = {
     "open_question": {"ours", "theirs"},     # whose move
     # a standing property of the account, harvested from notes (docs/42; the
     # vocabulary is the CRO's, 6.11.2026). Several per slot are not a conflict.
+    # volume..stack are the CRO's technical topics (18.11.2026); tooling and
+    # deployment stay, nothing is renamed
     "attribute": {"budget_cycle", "procurement", "billing_model", "tooling", "headcount",
-                  "deployment", "pain", "other"},
+                  "deployment", "pain", "volume", "data_model", "load", "infra", "stack",
+                  "other"},
 }
 FACT_STATES = {
     "commitment": {"sent", "drafted"},

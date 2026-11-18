@@ -63,7 +63,17 @@ The proposal is a kind **`attribute`**, with these slots:
 | `headcount` | (none in the seed notes; the ICP note speaks of employees generally) |
 | `deployment` | "Must run on-prem in a container for government work": it decides the offer and the licence (CRO) |
 | `pain` | "500,000 invoice rows a week that no team can process": the concrete pain and its deadline, the qualifier that predicted every deal that moved (CRO) |
+| `infra` | where it runs: cloud, subscription, on-prem (added 18.11.2026) |
+| `stack` | the languages, services and databases around it (added 18.11.2026) |
+| `data_model` | how their data is shaped: tables, rows, keys (added 18.11.2026) |
+| `volume` | how much data: rows, documents, a period (added 18.11.2026) |
+| `load` | when and how hard it runs: batch, peaks, latency (added 18.11.2026) |
 | `other` | anything else that is a property, not an event |
+
+The five technical slots (`infra` to `load`) were asked by the CRO on
+18.11.2026, after four questions were drafted to an ERP prospect whose answers
+were already in old notes (td-20261118105636099520). `tooling` and
+`deployment` stay as they were; nothing is renamed.
 
 - **"Who signs"** is a `role` with a new slot, **`signer`**. It is not a
   conflict slot, since an account can need two signatures; `decision_owner`
@@ -141,3 +151,18 @@ written. So the books test the plumbing and the vocabulary:
   so the earlier ids hold. The held account's hold moved from `sfa012` to
   `sfa015`. `test_facts` now finds that cross-account fact by its account,
   not its position, so it still tests the cross-account refusal.
+
+## Built: technical slots and facts in call prep (18.11.2026, td-20261118105636099520)
+
+- **Slots** `infra`, `stack`, `data_model`, `volume` and `load` on `attribute`,
+  in `briefing` after `deployment` (`facts.ATTRIBUTE_ORDER`). A vocabulary
+  value, not a column, so no migration.
+- **`opener_context(contact)`** returns `{evidence, account}`: the evidence
+  touches as before, and the contact's account with its facts grouped as
+  `briefing` groups them, hold first. The MCP tool returned a bare list
+  before; the morning brief reads `evidence`.
+- **`company_detail(company)`** gains `account_facts`, grouped the same way.
+  The node's harvested facts stay under `facts`.
+- **One read path:** `facts.for_account` serves all three, and raises past
+  10,000 facts on one account rather than answer from a truncated page.
+- **Tests.** `book/test_facts_in_call_prep.py` (3 cases).
