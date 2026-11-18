@@ -134,6 +134,33 @@ Plus:
 - **CTA variants.** `Signup CTA clicked.variant`, each arm against the
   others.
 
+### Built: what each page is about (plan C1, 19.11.2026)
+
+aito.ai publishes `/content-map.json` (version 1): each page key, written as
+the pull writes it (`/pricing/`, `erp.aito.ai/rules/`), mapped to a kind, an
+item (a demo: items), and for use cases and demos a category, subcategory,
+verticals and domains. `contentmap.py` reads and checks it; a malformed entry
+raises with the entry.
+
+- **Columns.** `items`, `categories`, `subcategories`, `verticals` and
+  `domains` on `web_sessions` (the visit's, once each, in visit order) and on
+  each page step of `web_steps` (an event step has none), as whitespace Text.
+  `web_sessions.unmapped_pages` counts the visit's pages the map doesn't name;
+  null means the map wasn't applied, 0 means every page was named.
+- **The pull** reads the map once per run. If it can't, every day fails with
+  that error and nothing is stored. The run report's `unmapped_pages` lists
+  the human visits' unnamed pages by page, so a page missing from the map
+  shows up the next morning.
+- **Pooled counts are one `_relate`**: `relations.relate(client,
+  "web_sessions", {"kpi_pricing_page": True}, keep=["verticals"])`. Text
+  fields are left out of relations unless kept, so a reader names them.
+  Like `pages`, a visit's items include the KPI's own page (`site:pricing` with
+  the pricing KPI): that relation is true by construction.
+- **History** is relabelled once from the stored pages: `uv run company-ai
+  apply-content-map` prints the plan; `--apply` rewrites each day under a
+  fresh `pull_run`, as a pull replaces a day. Only the labels and `pull_run`
+  change.
+
 ## The consultative layer (from the website session)
 
 Live only on beta.aito.ai since 8.11.2026, with little traffic yet. What

@@ -36,7 +36,7 @@ from urllib.parse import parse_qs, unquote, urlsplit
 
 import requests
 
-from . import relations, schema
+from . import contentmap, relations, schema
 from pathlib import Path
 
 from .aito import AitoClient
@@ -518,12 +518,38 @@ def _link(client: AitoClient, rows: list[dict], day: str) -> dict:
             "ambiguous_matches": ambiguous}
 
 
-def store_day(client: AitoClient, day: str, events: list[dict]) -> dict:
+def _label(rows: list[dict], cmap: dict | None) -> dict | None:
+    """Put the content map's labels on each session row (plan C1). Returns
+    the human visits' unmapped pages by page, or None without a map: the
+    rows' labels then stay unset, which reads as "not applied"."""
+    if cmap is None:
+        return None
+    unmapped: Counter = Counter()
+    for r in rows:
+        pages = r["pages"].split()
+        r.update(contentmap.labels(pages, cmap))
+        if _human(r):
+            unmapped.update(p for p in pages if p not in cmap)
+    return dict(sorted(unmapped.items()))
+
+
+def _step_labels(token: str, cmap: dict | None) -> dict:
+    """A page step's labels; an event step, or no map, has none."""
+    if cmap is None or not token.startswith("page:"):
+        return {}
+    out = contentmap.labels([token[len("page:"):]], cmap)
+    del out["unmapped_pages"]
+    return out
+
+
+def store_day(client: AitoClient, day: str, events: list[dict],
+              content_map: dict | None = None) -> dict:
     """Make `day`'s web_sessions rows the sessions in `events` that started
     on it. The new rows are uploaded under a fresh pull_run and checked
     before the old runs' rows are deleted, so a failed upload leaves the day
     as it was. A day with no sessions keeps any rows it had and is flagged
-    empty. Returns the run's report."""
+    empty. `content_map` (contentmap.parse) labels the sessions and steps;
+    `pull` always passes it. Returns the run's report."""
     date.fromisoformat(day)
     rows, stats = _build(events, day)
     # browsers deleted on request stay out (docs/36)
@@ -533,11 +559,12 @@ def store_day(client: AitoClient, day: str, events: list[dict]) -> dict:
     stats["suppressed"] = len(rows) - len(kept)
     rows = kept
     refused = _link(client, rows, day)
+    unmapped_pages = _label(rows, content_map)
     run = uuid.uuid4().hex[:12]
     for r in rows:
         assert r["source"] in schema.WEB_SESSION_SOURCES and r["device_class"] in schema.DEVICE_CLASSES, r
         r["pull_run"] = run
-    steps = _steps(client, rows, run)
+    steps = _steps(client, rows, run, content_map)
     old = {r.get("pull_run") for r in client.query(
         {"from": "web_sessions", "where": {"day": day}, "select": ["pull_run"], "limit": 100000})["hits"]}
     kept = 0
@@ -580,6 +607,7 @@ def store_day(client: AitoClient, day: str, events: list[dict]) -> dict:
             "events_on_day": stats["events_on_day"],
             "utm_present": stats["utm_present"], "referrer_present": stats["referrer_present"],
             "invalid_utm": stats["invalid_utm"],
+            "unmapped_pages": unmapped_pages,
             # a page on another host is written host-first, not starting with "/"
             "multi_host_sessions": sum(any(not p.startswith("/") for p in r["pages"].split())
                                        for r in rows),
@@ -673,10 +701,11 @@ def health(reports: list[dict], newest: str | None, today: date) -> tuple[list[s
 
 
 def pull(client: AitoClient, days: int = LOOKBACK_DAYS, day: str | None = None,
-         today: date | None = None, fetch=fetch_day) -> list[dict]:
+         today: date | None = None, fetch=fetch_day, fetch_map=contentmap.fetch) -> list[dict]:
     """Pull `day`, or the last `days` complete UTC days, into web_sessions.
     Each day is stored on its own: a day that fails is reported with its
-    error and the rest still run."""
+    error and the rest still run. aito.ai's content map is read once; if it
+    can't be, every day fails with that error and nothing is stored."""
     if day:
         wanted = [day]
     else:
@@ -684,9 +713,16 @@ def pull(client: AitoClient, days: int = LOOKBACK_DAYS, day: str | None = None,
         wanted = [(today - timedelta(days=n)).isoformat() for n in range(days, 0, -1)]
     reports = []
     with pull_lock(client):
+        try:
+            cmap, map_error = fetch_map(), None
+        except Exception as e:  # noqa: BLE001 — reported on every day below
+            cmap, map_error = None, f"content map: {type(e).__name__}: {e}"
         for d in wanted:
+            if map_error:
+                reports.append({"day": d, "error": map_error})
+                continue
             try:
-                reports.append(store_day(client, d, fetch(d)))
+                reports.append(store_day(client, d, fetch(d), content_map=cmap))
             except Exception as e:  # noqa: BLE001 — reported per day; the caller exits non-zero
                 reports.append({"day": d, "error": f"{type(e).__name__}: {e}"})
         # retention: days older than 13 months go (docs/36)
@@ -1188,9 +1224,61 @@ def forget_web_visitor(client: AitoClient, device_id: str | None = None,
             "suppressed": True}
 
 
+# ---- the content map on stored history (plan C1) ----
+
+def _stored(client: AitoClient, table: str, day: str) -> list[dict]:
+    """A day's rows as stored, without Aito's own `$` fields."""
+    hits = client.query({"from": table, "where": {"day": day}, "limit": 1_000_000})["hits"]
+    return [{k: v for k, v in h.items() if not k.startswith("$")} for h in hits]
+
+
+def apply_content_map(client: AitoClient, cmap: dict, apply: bool = False) -> dict:
+    """Relabel every stored day with the content map, from the pages already
+    stored: once, when the map first ships, or after it changes. Dry run
+    unless `apply`: then each day is rewritten under a fresh pull_run, checked,
+    and only then are its old runs deleted, as a pull replaces a day. Nothing
+    but the labels and pull_run changes. Holds the pull lock."""
+    with pull_lock(client):
+        days = sorted({h["day"] for h in client.query(
+            {"from": "web_sessions", "select": ["day"], "limit": 1_000_000})["hits"]})
+        plan, unmapped, runs = {}, Counter(), {}
+        for day in days:
+            rows, steps = _stored(client, "web_sessions", day), _stored(client, "web_steps", day)
+            unmapped.update(_label(rows, cmap))
+            for s in steps:
+                s.update(_step_labels(s["token"], cmap))
+            plan[day] = {"sessions": len(rows), "steps": len(steps)}
+            if not apply:
+                continue
+            run = uuid.uuid4().hex[:12]
+            for r in (*rows, *steps):
+                r["pull_run"] = run
+            try:
+                client.upload_batch("web_sessions", rows)
+                for i in range(0, len(steps), UPLOAD_CHUNK):
+                    client.upload_batch("web_steps", steps[i:i + UPLOAD_CHUNK])
+                for table, want in (("web_sessions", len(rows)), ("web_steps", len(steps))):
+                    landed = client.query({"from": table, "where": {"day": day, "pull_run": run},
+                                           "limit": 0})["total"]
+                    assert landed == want, f"{table} {day}: {landed} of {want} rows landed"
+            except Exception:
+                client.delete_entries("web_sessions", {"day": day, "pull_run": run})
+                client.delete_entries("web_steps", {"day": day, "pull_run": run})
+                raise
+            for table in ("web_sessions", "web_steps"):
+                old = {h.get("pull_run") for h in client.query(
+                    {"from": table, "where": {"day": day}, "select": ["pull_run"],
+                     "limit": 1_000_000})["hits"]} - {run}
+                for previous in sorted(p for p in old if p):
+                    client.delete_entries(table, {"day": day, "pull_run": previous})
+            runs[day] = run
+    return {"applied": apply, "days": plan, "unmapped_pages": dict(sorted(unmapped.items())),
+            "runs": runs}
+
+
 # ---- web_steps: visits as linked steps (docs/37) ----
 
-def _steps(client: AitoClient, rows: list[dict], run: str) -> list[dict]:
+def _steps(client: AitoClient, rows: list[dict], run: str, cmap: dict | None = None) -> list[dict]:
     """Pop each session row's `_steps` into web_steps rows: one per event,
     `prev` linking to the step before, the KPI the event's name belongs to,
     whether a later step of the same visit reaches each KPI, whether it is
@@ -1216,6 +1304,7 @@ def _steps(client: AitoClient, rows: list[dict], run: str) -> list[dict]:
                 "referrer_domain": r.get("referrer_domain"),
                 "post_platform": platform.get(r.get("post_id")), "post_id": r.get("post_id"),
                 "visitor_key": r["visitor_key"], "day": r["day"], "pull_run": run,
+                **_step_labels(token, cmap),
             })
     return out
 

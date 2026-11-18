@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "pages": {
+    "/": {"item": "site:home", "kind": "page"},
+    "/pricing/": {"item": "site:pricing", "kind": "page"},
+    "/docs/": {"item": "site:docs", "kind": "page"},
+    "/blog/every-screen-a-decision/": {"item": "post:every-screen-a-decision", "kind": "post"},
+    "ecommerce.aito.ai/cart": {"kind": "demo", "items": ["cart-recommendations", "bought-together"],
+                               "category": "mixed", "verticals": ["E-commerce"], "domains": ["ecommerce"]},
+    "/use-cases/invoice-coding/": {"item": "invoice-coding", "kind": "usecase", "category": "automate",
+                                   "subcategory": "categorization-routing", "verticals": ["ERP", "Accounting"],
+                                   "domains": ["erp", "accounting"]}
+  }
+}

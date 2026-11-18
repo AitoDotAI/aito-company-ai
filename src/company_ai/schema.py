@@ -752,6 +752,15 @@ WEB_SESSIONS = {
         "next_path": {"type": "String", "nullable": True},
         "pages": {"type": "Text", "analyzer": "whitespace"},  # visit order, repeats kept
         "views": {"type": "Int"},
+        # what the pages are about, from aito.ai's content map (plan C1, docs/44):
+        # whitespace Text, once each in visit order; null before the map was applied
+        "items": {"type": "Text", "analyzer": "whitespace", "nullable": True},
+        "categories": {"type": "Text", "analyzer": "whitespace", "nullable": True},
+        "subcategories": {"type": "Text", "analyzer": "whitespace", "nullable": True},
+        "verticals": {"type": "Text", "analyzer": "whitespace", "nullable": True},
+        "domains": {"type": "Text", "analyzer": "whitespace", "nullable": True},
+        # pages of the visit the map doesn't name (repeats counted); null = not applied
+        "unmapped_pages": {"type": "Int", "nullable": True},
         "engaged_seconds": {"type": "Int"},
         "onward_click": {"type": "Boolean"},
         "signup_cta": {"type": "Boolean"},
@@ -840,6 +849,13 @@ WEB_STEPS = {
         "step_id": {"type": "String"},           # <session_key>:<n>
         "prev": {"type": "String", "nullable": True, "link": "web_steps.step_id"},
         "token": {"type": "String"},             # page:<page> or an event name (docs/36)
+        # what the pages are about, from aito.ai's content map (plan C1, docs/44):
+        # whitespace Text, the step's page; null on an event step; null before the map was applied
+        "items": {"type": "Text", "analyzer": "whitespace", "nullable": True},
+        "categories": {"type": "Text", "analyzer": "whitespace", "nullable": True},
+        "subcategories": {"type": "Text", "analyzer": "whitespace", "nullable": True},
+        "verticals": {"type": "Text", "analyzer": "whitespace", "nullable": True},
+        "domains": {"type": "Text", "analyzer": "whitespace", "nullable": True},
         "n": {"type": "Int"},                    # position in the visit, 0 = landing
         "is_kpi": {"type": "Boolean"},
         "kpi": {"type": "String", "nullable": True},
