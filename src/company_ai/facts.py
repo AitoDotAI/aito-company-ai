@@ -14,8 +14,9 @@ from .loaders import company_slug
 # the list (CPO review of #75).
 CONFLICT_SLOTS = ("decision_owner",)
 ROLE_ORDER = ("champion", "decision_owner", "sponsor", "signer", "other")
-ATTRIBUTE_ORDER = ("pain", "budget_cycle", "procurement", "deployment", "billing_model",
-                   "tooling", "headcount", "other")
+ATTRIBUTE_ORDER = ("pain", "budget_cycle", "procurement", "deployment", "infra", "stack",
+                   "data_model", "volume", "load", "billing_model", "tooling", "headcount",
+                   "other")
 
 
 # where a fact's source can be stored (docs/41): kind -> (table, key, node kind).
@@ -326,6 +327,19 @@ def group(every: list[dict], names: dict[str, str]) -> dict:
         "contact_info": {"current": [r for r in contact if r["state"] == "current"],
                          "not_current": [r for r in contact if r["state"] != "current"]},
     }
+
+
+def for_account(client: AitoClient, company_id: str, names: dict[str, str], query=None) -> dict:
+    """One account's facts grouped exactly as briefing groups them, for the
+    reads where a call is prepared (opener_context, company_detail). `names`
+    maps the account's contact_ids to names. A lookup, nothing ranked."""
+    if query is None:
+        def query(request):
+            return client.query(request)
+    request = {"from": "facts", "where": {"company_id": company_id}, "limit": READ_LIMIT}
+    response = query(request)
+    _whole(response, "facts", READ_LIMIT)
+    return group(response["hits"], names)
 
 
 def harvest_queue(client: AitoClient, company: str) -> dict:

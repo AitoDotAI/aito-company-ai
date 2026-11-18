@@ -13,9 +13,11 @@ Today's call queue for a window (0800, 1215, 1600), ranked by Aito's
 
 params: ['contact_id']
 required: ['contact_id']
-Evidence for drafting an opener: recent good-outcome touches of the
-    contacts most similar to this one (Aito _similarity over segment, tier,
-    ai_lifecycle), with their notes. The caller writes the opener.
+Evidence for drafting an opener: `evidence`, recent good-outcome
+    touches of contacts in this one's segment, with their notes; and
+    `account`, the contact's account facts grouped as briefing groups them,
+    hold first. Read the facts before asking the account anything: an answer
+    may already be there. The caller writes the opener.
 
 ## company_list
 
@@ -80,8 +82,9 @@ One company node of the knowledge graph: its harvested facts (industry,
     relationship customer/prospect/lost/none, country, mrr_eur, open_deals,
     contact_count, technical_contact) and everything linked to it by
     company_id: contacts (name, role, tier), deals (stage, value, probability)
-    and notes (documents). company_id is the slug company_list and
-    graph_search return.
+    and notes (documents); and account_facts, the account's active facts
+    grouped as briefing groups them, hold first. company_id is the slug
+    company_list and graph_search return.
 
 ## add_fact
 
@@ -92,8 +95,9 @@ Record one short, sourced fact about ONE account (docs/39). kind:
     ours|theirs, state sent|drafted, optional due), decision, open_question
     (slot ours|theirs: whose move), contact_info (state current|bounced|
     invalid), hold (state on_hold|released; source_kind must be antti),
-    attribute (slot pain|budget_cycle|procurement|deployment|billing_model|
-    tooling|headcount|other: a standing property of the account, docs/42).
+    attribute (slot pain|budget_cycle|procurement|deployment|infra|stack|
+    data_model|volume|load|billing_model|tooling|headcount|other: a standing
+    property of the account, docs/42).
     source_kind mail|doc|call|touch|antti with the source's id; valid_from is
     the day it became true. Write the statement as the source says it; never
     infer one. A value outside the vocabulary raises. Retry-safe.

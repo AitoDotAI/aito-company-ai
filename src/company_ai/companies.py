@@ -136,6 +136,16 @@ def detail(client: AitoClient, company_id: str) -> Result:
               "select": ["doc_id", "title", "kind", "topics", "noted_on", "updated"], "limit": 10000})
     docs.sort(key=lambda d: (d.get("noted_on") or "", d.get("updated") or "", d["doc_id"]),
               reverse=True)
+    from . import facts as _facts
+
+    def qr(request):
+        response = client.query(request)
+        result.calls.append(("_query", request, response))
+        return response
+    # the account's own facts (docs/39), as briefing groups them, so call
+    # prep sees them by default (td-20261118105636099520)
+    account_facts = _facts.for_account(client, company_id,
+                                       {c["contact_id"]: c["name"] for c in contacts}, query=qr)
     result.derived = {
         "company_id": company_id, "name": name,
         # the node's harvested facts (docs/31); None when the company row is missing
@@ -146,6 +156,7 @@ def detail(client: AitoClient, company_id: str) -> Result:
                    "probability": d.get("probability")} for d in deals],
         "documents": [{"doc_id": d["doc_id"], "title": d["title"], "kind": d.get("kind"),
                        "topics": d.get("topics"), "noted_on": d.get("noted_on")} for d in docs],
+        "account_facts": account_facts,
     }
     return result
 
@@ -220,8 +231,11 @@ def briefing(client: AitoClient, company: str) -> Result:
     # every fact, superseded too: a decision says what it replaced, and the
     # hold fails closed on its history (docs/39)
     from . import facts as _facts
-    account_facts = _facts.group(q({"from": "facts", "where": {"company_id": cid}, "limit": 10000}),
-                                 names)
+    def qr(request):
+        response = client.query(request)
+        result.calls.append(("_query", request, response))
+        return response
+    account_facts = _facts.for_account(client, cid, names, query=qr)
 
     def todo_row(x):
         link = (f"{x['linked_type']}:{x['linked_id']}" if x.get("linked_type") else None) \

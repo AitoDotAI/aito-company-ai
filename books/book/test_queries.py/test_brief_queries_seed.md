@@ -302,50 +302,95 @@ request:  {"from": "touches", "limit": 1000, "where": {"contact_id": {"$not": "s
 response: total=16 (rows omitted)
 request:  {"from": "contacts", "limit": 1000, "select": ["contact_id", "name", "company", "segment", "tier", "ai_lifecycle"], "where": {"contact_id": {"$or": ["sc006", "sc013", "sc016", "sc020", "sc024", "sc032", "sc037", "sc040", "sc042", "sc043", "sc045", "sc049"]}, "segment": "erp"}}
 response: total=3 (rows omitted)
+request:  {"from": "contacts", "limit": 10000, "select": ["contact_id", "name"], "where": {"company_id": "tyrell-oy"}}
+response: total=1 (rows omitted)
+request:  {"from": "facts", "limit": 10000, "where": {"company_id": "tyrell-oy"}}
+response: total=0 (rows omitted)
 
 ## Derived
 
-[
-  {
-    "ai_lifecycle": "operating",
-    "company": "Duff O\u00dc",
-    "evidence": {
-      "channel": "call",
-      "notes": "agreed to a 30min walkthrough",
-      "outcome": "meeting_booked",
-      "ts": "2026-05-27T12:24:00",
-      "window": "1215"
-    },
-    "segment": "erp",
-    "similar_contact": "Mallory Reed",
-    "tier": "B"
+{
+  "account": {
+    "company_id": "tyrell-oy",
+    "facts": {
+      "attributes": {
+        "billing_model": [],
+        "budget_cycle": [],
+        "data_model": [],
+        "deployment": [],
+        "headcount": [],
+        "infra": [],
+        "load": [],
+        "other": [],
+        "pain": [],
+        "procurement": [],
+        "stack": [],
+        "tooling": [],
+        "volume": []
+      },
+      "commitments": [],
+      "conflicts": [],
+      "contact_info": {
+        "current": [],
+        "not_current": []
+      },
+      "decisions": [],
+      "hold": {
+        "facts": [],
+        "status": null
+      },
+      "open_questions": [],
+      "roles": {
+        "champion": [],
+        "decision_owner": [],
+        "other": [],
+        "signer": [],
+        "sponsor": []
+      }
+    }
   },
-  {
-    "ai_lifecycle": "none",
-    "company": "Nakatomi O\u00dc",
-    "evidence": {
-      "channel": "call",
-      "notes": "good chat, asked about pricing",
-      "outcome": "conversation",
-      "ts": "2026-05-15T17:02:00",
-      "window": "1600"
+  "evidence": [
+    {
+      "ai_lifecycle": "operating",
+      "company": "Duff O\u00dc",
+      "evidence": {
+        "channel": "call",
+        "notes": "agreed to a 30min walkthrough",
+        "outcome": "meeting_booked",
+        "ts": "2026-05-27T12:24:00",
+        "window": "1215"
+      },
+      "segment": "erp",
+      "similar_contact": "Mallory Reed",
+      "tier": "B"
     },
-    "segment": "erp",
-    "similar_contact": "Peggy Rivers",
-    "tier": "A"
-  },
-  {
-    "ai_lifecycle": "operating",
-    "company": "Nakatomi O\u00dc",
-    "evidence": {
-      "channel": "call",
-      "notes": "agreed to a 30min walkthrough",
-      "outcome": "meeting_booked",
-      "ts": "2026-04-27T16:50:00",
-      "window": "1600"
+    {
+      "ai_lifecycle": "none",
+      "company": "Nakatomi O\u00dc",
+      "evidence": {
+        "channel": "call",
+        "notes": "good chat, asked about pricing",
+        "outcome": "conversation",
+        "ts": "2026-05-15T17:02:00",
+        "window": "1600"
+      },
+      "segment": "erp",
+      "similar_contact": "Peggy Rivers",
+      "tier": "A"
     },
-    "segment": "erp",
-    "similar_contact": "Grace Lane",
-    "tier": "A"
-  }
-]
+    {
+      "ai_lifecycle": "operating",
+      "company": "Nakatomi O\u00dc",
+      "evidence": {
+        "channel": "call",
+        "notes": "agreed to a 30min walkthrough",
+        "outcome": "meeting_booked",
+        "ts": "2026-04-27T16:50:00",
+        "window": "1600"
+      },
+      "segment": "erp",
+      "similar_contact": "Grace Lane",
+      "tier": "A"
+    }
+  ]
+}

@@ -46,10 +46,12 @@ def who_to_call(window: str, top_n: int = 5) -> list:
 
 
 @mcp.tool()
-def opener_context(contact_id: str) -> list:
-    """Evidence for drafting an opener: recent good-outcome touches of the
-    contacts most similar to this one (Aito _similarity over segment, tier,
-    ai_lifecycle), with their notes. The caller writes the opener."""
+def opener_context(contact_id: str) -> dict:
+    """Evidence for drafting an opener: `evidence`, recent good-outcome
+    touches of contacts in this one's segment, with their notes; and
+    `account`, the contact's account facts grouped as briefing groups them,
+    hold first. Read the facts before asking the account anything: an answer
+    may already be there. The caller writes the opener."""
     return queries.opener_context(_client(), contact_id).derived
 
 
@@ -125,8 +127,9 @@ def company_detail(company_id: str) -> dict:
     relationship customer/prospect/lost/none, country, mrr_eur, open_deals,
     contact_count, technical_contact) and everything linked to it by
     company_id: contacts (name, role, tier), deals (stage, value, probability)
-    and notes (documents). company_id is the slug company_list and
-    graph_search return."""
+    and notes (documents); and account_facts, the account's active facts
+    grouped as briefing groups them, hold first. company_id is the slug
+    company_list and graph_search return."""
     from . import companies
     return companies.detail(_client(), company_id).derived
 
@@ -140,8 +143,9 @@ def add_fact(company: str, kind: str, statement: str, source_kind: str, source_i
     ours|theirs, state sent|drafted, optional due), decision, open_question
     (slot ours|theirs: whose move), contact_info (state current|bounced|
     invalid), hold (state on_hold|released; source_kind must be antti),
-    attribute (slot pain|budget_cycle|procurement|deployment|billing_model|
-    tooling|headcount|other: a standing property of the account, docs/42).
+    attribute (slot pain|budget_cycle|procurement|deployment|infra|stack|
+    data_model|volume|load|billing_model|tooling|headcount|other: a standing
+    property of the account, docs/42).
     source_kind mail|doc|call|touch|antti with the source's id; valid_from is
     the day it became true. Write the statement as the source says it; never
     infer one. A value outside the vocabulary raises. Retry-safe."""

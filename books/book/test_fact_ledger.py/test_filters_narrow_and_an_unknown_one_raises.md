@@ -15,4 +15,4 @@
   requests: ['facts', 'documents', 'touches', 'changelog']
   {'kind': 'rumour'} -> refused: unknown kind 'rumour'; known ['attribute', 'commitment', 'contact_info', 'decision', 'derived', 'hold', 'open_question', 'role']
   {'status': 'stale'} -> refused: unknown status 'stale'; known ['active', 'superseded', 'review: source missing', 'review: source changed', 'derived']
-  {'slot': 'favourite_colour'} -> refused: unknown slot 'favourite_colour'; known ['billing_model', 'budget_cycle', 'champion', 'customer_status', 'decision_owner', 'deployment', 'headcount', 'other', 'ours', 'pain', 'procurement', 'signer', 'sponsor', 'theirs', 'tooling']
+  {'slot': 'favourite_colour'} -> refused: unknown slot 'favourite_colour'; known ['billing_model', 'budget_cycle', 'champion', 'customer_status', 'data_model', 'decision_owner', 'deployment', 'headcount', 'infra', 'load', 'other', 'ours', 'pain', 'procurement', 'signer', 'sponsor', 'stack', 'theirs', 'tooling', 'volume']

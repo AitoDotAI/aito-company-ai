@@ -77,7 +77,7 @@ def render_brief(
             f"  {i}. {c['name']}, {c['company']}{phone}   $p={c['$p']:.2f}   "
             f"why: {why['segment']} {why['tier']} {why['ai_lifecycle']}, {recency}"
         )
-        evidence = queries.opener_context(client, c["contact_id"], top_n=1).derived
+        evidence = queries.opener_context(client, c["contact_id"], top_n=1).derived["evidence"]
         if evidence and evidence[0]["evidence"]["notes"]:
             e = evidence[0]["evidence"]
             lines.append(f"     opener evidence: {e['outcome']}: \"{e['notes']}\"")
