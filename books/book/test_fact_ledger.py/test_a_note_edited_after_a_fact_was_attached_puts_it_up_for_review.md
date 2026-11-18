@@ -5,7 +5,7 @@
 # ledger(source_id=<the edited note>)
 
   fa-new attribute/tooling: 'Runs the reporting in a spreadsheet'
-      source doc:sdc009 (linked), status: active
+      source doc:sdc009 (linked), status: unconfirmed
   sfa008 commitment/ours: 'Pricing proposal for the pilot'
       source doc:sdc009 (linked), status: review: source changed
   sfa014 attribute/billing_model: 'They bill on milestones, not seats'

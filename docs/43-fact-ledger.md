@@ -447,3 +447,38 @@ the chase by another route.
 - **Tests.** `book/test_account_sheet.py` (5 cases; the streak test goes
   red with `meeting_booked` taken out of the answers) and
   `frontend/src/accountsheet.test.jsx` (8).
+
+## Built: unconfirmed facts (18.11.2026, td-20261118105636099520 part 2)
+
+Decision 1 as the CPO shaped it on review: **a writer can't certify its own
+fact.**
+
+- **`confirmed_by` and `confirmed_at`** (String, nullable) on `facts`.
+  `add_fact` always writes them null and takes no argument for them, so no
+  caller (a remote session, a prompt-injected one, the dashboard's POST) can
+  pass "antti".
+- **`confirm_fact(fact_id)`** sets both, in place, with a change-log row
+  `confirmed`. The confirmer is the local operator
+  (`COMPANY_AI_OPERATOR_EMAIL`, `server.confirmer`), never a tool argument;
+  none configured raises. It is in `REMOTE_DENY`, so only the local stdio
+  server has it. A superseded, unknown or already confirmed fact raises.
+- **The docs/42 flow** becomes add_fact, then confirm_fact when Antti said
+  yes. One extra call.
+- **Where it shows.** Every grouped fact row (`briefing`, `opener_context`,
+  `company_detail`) carries `author` and `unconfirmed`: "unconfirmed
+  (<author>)" or null. The ledger has the status `unconfirmed`, after
+  superseded and the review statuses. Each ledger row also carries the field
+  `unconfirmed`, and the `unconfirmed` filter reads the field, so a fact both
+  unconfirmed and under review is still found. The unfold's fact node
+  carries `unconfirmed`.
+- **Trust.** Any session on the operator's machine reaches the local stdio
+  server, and so `confirm_fact`. The fence is the remote surface, not local
+  sessions; the tool's text says to call it only on Antti's yes.
+- **Holds unchanged** (§3): the hold status keeps its own rule (source
+  antti) and doesn't wait on confirmation. A hold row still shows the mark.
+- **Seed:** every existing fact confirmed by the seed operator; one new
+  unconfirmed fact, `sfa016` (attribute/infra), after the hold so the earlier
+  ids hold.
+- **Migration:** `create-schema` adds the two columns. On internal the facts
+  table is empty, so nothing to backfill. Then the deploy, both on Antti's yes.
+- **Tests.** `book/test_unconfirmed_facts.py` (4 cases).

@@ -104,7 +104,9 @@ read path that every fact consumer would have to filter on.
    added.**
 3. **Two attributes in one slot are not a conflict.** Newest first; superseding
    one is explicit.
-4. **No `proposed` state.** Only confirmed facts are written.
+4. **No `proposed` state.** Only confirmed facts are written. *Widened on
+   18.11.2026 by docs/43 §3: an agent may write a fact, which reads
+   "unconfirmed (<author>)" until `confirm_fact`.*
 
 ## Acceptance (fail-first, synthetic seed)
 

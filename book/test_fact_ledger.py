@@ -56,7 +56,8 @@ def test_one_account_lists_every_fact_with_its_status(t: bt.TestCaseRun) -> None
     by_id = {r["fact_id"]: r for r in ledger["facts"]}
     for f in SEED:
         if f["company"] == REPLICA:
-            want = "superseded" if f["superseded_by"] else "active"
+            want = ("superseded" if f["superseded_by"] else
+                    "active" if f["confirmed_by"] else "unconfirmed")
             assert by_id[f["fact_id"]]["status"] == want, (f, by_id[f["fact_id"]])
     assert all(r["source"]["status"] != "dangling" for r in ledger["facts"])
 
@@ -113,7 +114,8 @@ def test_a_note_edited_after_a_fact_was_attached_puts_it_up_for_review(t: bt.Tes
     _show(t, ledger)
     status = {r["fact_id"]: r["status"] for r in ledger["facts"]}
     assert {i for i in before if status[i] == "review: source changed"} == before
-    assert status[after["fact_id"]] == "active", "attached after the edit: not flagged"
+    # not flagged for review; unconfirmed, as every newly written fact is (docs/43 §3)
+    assert status[after["fact_id"]] == "unconfirmed", "attached after the edit: not flagged"
     flagged = facts.ledger(client, company=REPLICA, status="review: source changed")["facts"]
     assert {r["fact_id"] for r in flagged} == before
 

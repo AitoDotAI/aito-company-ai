@@ -55,6 +55,17 @@ describe("the fact ledger", () => {
       { company: "", kind: "", status: "review: source changed", source_id: "" }));
   });
 
+  it("filters on unconfirmed, and shows who wrote an unconfirmed fact", async () => {
+    api.factLedger.mockResolvedValue({ count: 1, requests: [], facts: [
+      ROW({ fact_id: "sfa016", slot: "infra", statement: "Runs on Azure", status: "unconfirmed" })] });
+    render(<FactLedger />);
+    const row = (await screen.findByText("Runs on Azure")).closest("tr");
+    expect(within(row).getByText("unconfirmed (cro)")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("status"), { target: { value: "unconfirmed" } });
+    await waitFor(() => expect(api.factLedger).toHaveBeenLastCalledWith(
+      { company: "", kind: "", status: "unconfirmed", source_id: "" }));
+  });
+
   it("lists a derived customer status with every won deal it rests on", async () => {
     api.factLedger.mockResolvedValue({ count: 1, requests: [], facts: [
       ROW({ fact_id: "derived-customer-acme-o", company: "Acme OÜ", company_id: "acme-o", kind: "derived",

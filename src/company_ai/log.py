@@ -1580,7 +1580,9 @@ def add_fact(client: AitoClient, company: str, kind: str, statement: str, source
            "kind": kind, "slot": slot or "", "state": state or "", "statement": statement,
            "due": due or "", "source_kind": source_kind, "source_id": source_id,
            "valid_from": valid_from, "superseded_by": "", "author": author,
-           "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+           "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+           # always unconfirmed: only confirm_fact sets these (docs/43 §3)
+           "confirmed_by": "", "confirmed_at": ""}
     row = parse_fact_row(raw)
     same = lambda f: _stamp_time(f["fact_id"]) if all(
         f.get(k) == row[k] for k in ("kind", "statement", "source_kind", "source_id", "valid_from")) else None
@@ -1600,6 +1602,30 @@ def add_fact(client: AitoClient, company: str, kind: str, statement: str, source
     _after_insert("fact", row["fact_id"], follow_up)
     return {**row, "supersede_candidates": supersede_candidates(client, row),
             "warnings": facts.source_warnings(client, row)}
+
+
+def confirm_fact(client: AitoClient, fact_id: str, by: str) -> dict:
+    """A person's yes to a written fact (docs/43 §3): sets confirmed_by and
+    confirmed_at, in place, with a change-log row. `by` is the local operator
+    (server.confirmer), never a caller's argument over the remote surface.
+    An unknown, superseded or already confirmed fact raises."""
+    if not by:
+        raise AssertionError(f"no confirmer for {fact_id}: confirm_fact needs the operator")
+    hits = client.query({"from": "facts", "where": {"fact_id": fact_id}, "limit": 2})["hits"]
+    if len(hits) != 1:
+        raise AssertionError(f"unknown fact_id {fact_id!r}")
+    fact = hits[0]
+    if fact.get("superseded_by"):
+        raise AssertionError(f"{fact_id} is superseded by {fact['superseded_by']}; confirm the newer one")
+    if fact.get("confirmed_by"):
+        raise AssertionError(f"{fact_id} is already confirmed by {fact['confirmed_by']} at {fact['confirmed_at']}")
+    at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+    def mutate(r):
+        r["confirmed_by"], r["confirmed_at"] = by, at
+    row = _write_row(client, "facts", "fact_id", fact_id, mutate)
+    changelog.record(client, "fact", fact_id, "confirmed", f"{fact['kind']} fact {fact_id} confirmed by {by}")
+    return row
 
 
 SUPERSEDE_CANDIDATES = 5

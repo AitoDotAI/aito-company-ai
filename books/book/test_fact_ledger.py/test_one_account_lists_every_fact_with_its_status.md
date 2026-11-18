@@ -1,5 +1,7 @@
 # ledger(company=<replica>)
 
+  sfa016 attribute/infra: 'Runs on Azure, in their own subscription'
+      source call:call-seed-0511 (external), status: unconfirmed
   sfa010 contact_info: 'Reach the partner through the office line'
       source call:call-seed-0304 (external), status: active
   sfa009 contact_info: "The partner's work address bounced"

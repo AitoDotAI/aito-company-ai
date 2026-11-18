@@ -50,6 +50,7 @@ REMOTE_DENY = {
     "forget_web_visitor",                       # deletes a visitor's data (docs/36)
     "create_backup",                            # infra — backup rotation deletes restore points
     "reindex_search",                           # infra — drops/rebuilds the index
+    "confirm_fact",                             # a person's yes; a remote agent can't certify (docs/43 §3)
 }
 
 

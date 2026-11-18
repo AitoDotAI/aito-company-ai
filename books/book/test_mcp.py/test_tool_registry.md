@@ -100,7 +100,19 @@ Record one short, sourced fact about ONE account (docs/39). kind:
     property of the account, docs/42).
     source_kind mail|doc|call|touch|antti with the source's id; valid_from is
     the day it became true. Write the statement as the source says it; never
-    infer one. A value outside the vocabulary raises. Retry-safe.
+    infer one. A value outside the vocabulary raises. Retry-safe. The fact is
+    written unconfirmed and reads "unconfirmed (<author>)" until a person
+    confirms it: when Antti said yes to it, call confirm_fact(fact_id) next.
+
+## confirm_fact
+
+params: ['fact_id']
+required: ['fact_id']
+A person's yes to one written fact (docs/43 §3): records the local
+    operator and the time, and the fact stops reading "unconfirmed". Call it
+    only when Antti confirmed this fact in the conversation, never on your own
+    reading. Local only: not on the remote surface. A superseded or already
+    confirmed fact raises.
 
 ## supersede_fact
 

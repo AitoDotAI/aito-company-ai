@@ -510,7 +510,8 @@ def _unfold(client: AitoClient, company_id: str, kinds: list[str] | None) -> dic
             src = facts_mod.source_of(f, sources)
             nodes[fid] = {"id": fid, "kind": "fact", "label": f["statement"], "fact_kind": f["kind"],
                           "slot": f.get("slot"), "state": f.get("state"), "due": f.get("due"),
-                          "valid_from": f["valid_from"], "source": src, "company_id": company_id}
+                          "valid_from": f["valid_from"], "source": src, "company_id": company_id,
+                          "unconfirmed": facts_mod.unconfirmed(f)}
             edges.append({"source": fid, "target": cnode, "kind": "fact_of"})
             if f.get("stakeholder_id"):
                 edges.append({"source": fid, "target": f"contact:{f['stakeholder_id']}", "kind": "concerns"})
