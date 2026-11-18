@@ -126,7 +126,12 @@ def test_without_a_map_the_labels_are_unset_not_empty(t: bt.TestCaseRun) -> None
     _clean(client)
 
 
-def test_pull_reads_the_map_once_and_a_failed_map_fails_the_days(t: bt.TestCaseRun) -> None:
+def test_pull_reads_the_map_once_and_an_unreachable_map_stores_unlabelled(t: bt.TestCaseRun) -> None:
+    """CPO review of #108: an unreachable map doesn't cost the day's visits.
+    They're stored unlabelled (unmapped_pages null), the run reports it as a
+    problem and exits non-zero, and apply-content-map fills them in later. A
+    map that is there but malformed still raises."""
+    from datetime import date
     from book.test_web_analytics import DAY, _clean, _events, _seeded
     client, _, _ = _seeded()
     calls = []
@@ -135,7 +140,8 @@ def test_pull_reads_the_map_once_and_a_failed_map_fails_the_days(t: bt.TestCaseR
         calls.append(1)
         return _map()
 
-    reports = webanalytics.pull(client, days=2, today=__import__("datetime").date(2026, 10, 7),
+    today = date(2026, 10, 7)
+    reports = webanalytics.pull(client, days=2, today=today,
                                 fetch=lambda d: _events() if d == DAY else [], fetch_map=fetch_map)
     t.h1("Two days, one map read")
     t.tln(f"  map reads: {len(calls)}; days: {[r['day'] for r in reports]}")
@@ -143,18 +149,38 @@ def test_pull_reads_the_map_once_and_a_failed_map_fails_the_days(t: bt.TestCaseR
     day = next(r for r in reports if r["day"] == DAY)
     assert day["unmapped_pages"] == {"/docs/api/v2/quickstart/": 1, "/signup/": 1}
 
-    t.h1("A map that can't be read fails every day, and nothing is stored")
+    t.h1("An unreachable map: the days are stored unlabelled, the run fails")
     _clean(client)
 
-    def broken():
-        raise AssertionError("content map https://aito.ai/content-map.json: HTTP 503")
+    def unreachable():
+        raise contentmap.Unavailable("content map https://aito.ai/content-map.json: HTTP 503")
 
-    reports = webanalytics.pull(client, days=2, today=__import__("datetime").date(2026, 10, 7),
-                                fetch=lambda d: _events() if d == DAY else [], fetch_map=broken)
-    days = [r for r in reports if r["day"] not in webanalytics.RUN_REPORTS]
-    for r in days:
-        t.tln(f"  {r['day']}: {r.get('error')}")
-    assert all("content map" in r.get("error", "") for r in days)
+    reports = webanalytics.pull(client, days=2, today=today,
+                                fetch=lambda d: _events() if d == DAY else [], fetch_map=unreachable)
+    for r in reports:
+        if r["day"] not in {"retention", "web_visitors"}:
+            t.tln(f"  {r['day']}: {r.get('error') or ('sessions ' + str(r.get('sessions')))}")
+    assert next(r for r in reports if r["day"] == DAY)["sessions"] == 5
+    rows = _by_country(client)
+    assert len(rows) == 5 and all(r.get("unmapped_pages") is None for r in rows.values())
+    problems, _ = webanalytics.health(reports, DAY, today)
+    t.tln(f"  problems: {problems}")
+    assert any(p.startswith("content_map: ") and "apply-content-map" in p for p in problems)
+
+    t.h1("A malformed map raises, before any day is stored")
+    _clean(client)
+
+    def malformed():
+        return contentmap.parse({"version": 2, "pages": {}})
+
+    try:
+        webanalytics.pull(client, days=2, today=today,
+                          fetch=lambda d: _events() if d == DAY else [], fetch_map=malformed)
+        raise AssertionError("a malformed map must be refused")
+    except AssertionError as e:
+        if "must be refused" in str(e):
+            raise
+        t.tln(f"  {e}")
     assert client.query({"from": "web_sessions", "limit": 0})["total"] == 0
     _clean(client)
 
