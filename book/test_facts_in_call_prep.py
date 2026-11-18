@@ -59,8 +59,9 @@ def test_technical_attribute_slots_are_accepted(t: bt.TestCaseRun) -> None:
     b = companies.briefing(client, ACCOUNT).derived["facts"]
     t.tln(f"  slot order: {list(b['attributes'])}")
     for slot, fact_id in written.items():
-        # newest first in its slot; the seed has an infra fact of its own
-        assert [r["source"]["id"] for r in b["attributes"][slot]][0] == fact_id, slot
+        # newest first in its slot, after it the seed's own facts there
+        seeded = [f["fact_id"] for f in SEED if f["kind"] == "attribute" and f["slot"] == slot]
+        assert [r["source"]["id"] for r in b["attributes"][slot]] == [fact_id, *seeded], slot
     t.h1("Nothing was renamed")
     old = {"budget_cycle", "procurement", "billing_model", "tooling", "headcount", "deployment",
            "pain", "other"}

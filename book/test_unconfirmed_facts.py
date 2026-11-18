@@ -97,6 +97,32 @@ def test_a_written_fact_reads_unconfirmed_everywhere(t: bt.TestCaseRun) -> None:
     assert node["unconfirmed"] == "unconfirmed (cro)"
 
 
+def test_an_unconfirmed_fact_under_review_is_still_listed_as_unconfirmed(t: bt.TestCaseRun) -> None:
+    """A row has one status, and review outranks unconfirmed; the field
+    `unconfirmed` says it apart, and the unconfirmed filter reads the field
+    (CPO review of #107)."""
+    client = _seeded()
+    note = sorted(h["doc_id"] for h in client.query(
+        {"from": "documents", "where": {"company_id": AID}, "select": ["doc_id"], "limit": 100})["hits"])[0]
+    row = log.add_fact(client, company=ACCOUNT, kind="attribute", slot="stack",
+                       statement="Python services over Postgres", source_kind="doc", source_id=note,
+                       valid_from="2026-11-18", author="cro")
+    import time
+    time.sleep(1.1)   # created_at and the change log are to the second
+    log.update_document(client, note, {"title": "Account plan (edited)"})
+    led = {r["fact_id"]: r for r in facts.ledger(client, company=ACCOUNT)["facts"]}
+    mine = led[row["fact_id"]]
+    t.h1("A fact both unconfirmed and under review")
+    t.tln(f"  status: {mine['status']}; unconfirmed: {mine['unconfirmed']}")
+    assert mine["status"] == "review: source changed" and mine["unconfirmed"] == "unconfirmed (cro)"
+    t.h1("The unconfirmed filter still finds it")
+    only = {r["fact_id"] for r in facts.ledger(client, company=ACCOUNT, status="unconfirmed")["facts"]}
+    t.tln(f"  found: {row['fact_id'] in only}; with the seed's sfa016: {SEED[-1]['fact_id'] in only}")
+    assert only == {row["fact_id"], SEED[-1]["fact_id"]}
+    assert all(r["unconfirmed"] is None for r in led.values()
+               if r["kind"] != "derived" and r["fact_id"] not in only and not r.get("superseded_by"))
+
+
 def test_only_confirm_fact_confirms(t: bt.TestCaseRun) -> None:
     client = _seeded()
     t.h1("add_fact takes no confirmed_by: a caller can't certify its own fact")
