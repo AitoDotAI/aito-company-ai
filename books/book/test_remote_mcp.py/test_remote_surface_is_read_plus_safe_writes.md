@@ -80,6 +80,7 @@
 
 # destructive tools are NOT on the remote surface (stay on local stdio)
 
+  confirm_fact: exposed=False
   create_backup: exposed=False
   forget_web_visitor: exposed=False
   reindex_search: exposed=False

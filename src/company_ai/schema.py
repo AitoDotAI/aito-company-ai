@@ -554,6 +554,10 @@ FACTS = {
         "superseded_by": {"type": "String", "nullable": True},  # null while active
         "author": {"type": "String"},
         "created_at": {"type": "String"},
+        # null until a person confirms it with confirm_fact (docs/43 §3);
+        # add_fact never sets them, so a writer can't certify its own fact
+        "confirmed_by": {"type": "String", "nullable": True},
+        "confirmed_at": {"type": "String", "nullable": True},
     },
 }
 

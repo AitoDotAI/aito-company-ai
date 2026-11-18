@@ -117,8 +117,8 @@ def list_facts(client: AitoClient, company: str, active_only: bool = True) -> li
 
 # a ledger row's status (docs/43 §4), computed at read, never stored. The
 # conflict and unconfirmed statuses arrive with slices 3 and 4.
-LEDGER_STATUSES = ("active", "superseded", "review: source missing", "review: source changed",
-                   "derived")
+LEDGER_STATUSES = ("active", "unconfirmed", "superseded", "review: source missing",
+                   "review: source changed", "derived")
 # Customer status is derived from the deals, never written (docs/43 §1, CPO
 # 8.11.2026): the ledger lists it as a read-only row of this kind and slot.
 DERIVED_KIND, DERIVED_SLOT = "derived", "customer_status"
@@ -171,6 +171,8 @@ def ledger(client: AitoClient, company: str | None = None, kind: str | None = No
             st = "review: source missing"
         elif edited.get((f["source_kind"], f["source_id"]), "") > f["created_at"]:
             st = "review: source changed"
+        elif not f.get("confirmed_by"):
+            st = "unconfirmed"
         else:
             st = "active"
         if status is None or st == status:
@@ -253,10 +255,18 @@ def _last_edits(query, rows: list[dict]) -> dict[tuple[str, str], str]:
     return last
 
 
+def unconfirmed(fact: dict) -> str | None:
+    """"unconfirmed (<author>)" until a person confirms the fact (docs/43 §3),
+    else None. Every read that shows a fact shows this with it."""
+    return None if fact.get("confirmed_by") else f"unconfirmed ({fact['author']})"
+
+
 def _hold(every: list[dict], active: list[dict]) -> dict:
     """The account's hold status, failing closed (docs/39, CRO 6.11.2026): one
     active on_hold from antti is HOLD; any anomaly is HOLD (unclear: reason);
-    `released` only when a release from antti superseded the hold."""
+    `released` only when a release from antti superseded the hold. Holds keep
+    their own rule (source antti) and don't wait on confirm_fact (docs/43 §3:
+    "unchanged"); their rows still carry the unconfirmed mark."""
     holds = [f for f in active if f["kind"] == "hold"]
     replaced_by = {f["superseded_by"] for f in every if f["kind"] == "hold"
                    and f.get("state") == "on_hold" and f.get("superseded_by")}
@@ -298,6 +308,7 @@ def group(every: list[dict], names: dict[str, str]) -> dict:
                "stakeholder_id": f.get("stakeholder_id"),
                "stakeholder": names.get(f.get("stakeholder_id")) if f.get("stakeholder_id") else None,
                "source_kind": f["source_kind"], "source_id": f["source_id"],
+               "author": f["author"], "unconfirmed": unconfirmed(f),
                "source": {"kind": "fact", "id": f["fact_id"], "date": f["valid_from"]}}
         if f["kind"] == "decision":
             out["replaces"] = sorted(replaced.get(f["fact_id"], []))

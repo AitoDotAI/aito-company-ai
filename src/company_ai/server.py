@@ -148,11 +148,32 @@ def add_fact(company: str, kind: str, statement: str, source_kind: str, source_i
     property of the account, docs/42).
     source_kind mail|doc|call|touch|antti with the source's id; valid_from is
     the day it became true. Write the statement as the source says it; never
-    infer one. A value outside the vocabulary raises. Retry-safe."""
+    infer one. A value outside the vocabulary raises. Retry-safe. The fact is
+    written unconfirmed and reads "unconfirmed (<author>)" until a person
+    confirms it: when Antti said yes to it, call confirm_fact(fact_id) next."""
     return logbook.add_fact(_client(), company=company, kind=kind, statement=statement,
                         source_kind=source_kind, source_id=source_id, valid_from=valid_from,
                         author=author, slot=slot, state=state, due=due,
                         stakeholder_id=stakeholder_id)
+
+
+def confirmer(config: Config) -> str:
+    """Who confirms on this server: the configured operator
+    (COMPANY_AI_OPERATOR_EMAIL), never a tool argument. None configured raises."""
+    if not config.operator_email:
+        raise AssertionError("no operator configured (COMPANY_AI_OPERATOR_EMAIL); "
+                             "a fact is confirmed only by the local operator")
+    return config.operator_email
+
+
+@mcp.tool()
+def confirm_fact(fact_id: str) -> dict:
+    """A person's yes to one written fact (docs/43 §3): records the local
+    operator and the time, and the fact stops reading "unconfirmed". Call it
+    only when Antti confirmed this fact in the conversation, never on your own
+    reading. Local only: not on the remote surface. A superseded or already
+    confirmed fact raises."""
+    return logbook.confirm_fact(_client(), fact_id, by=confirmer(Config.from_env()))
 
 
 @mcp.tool()

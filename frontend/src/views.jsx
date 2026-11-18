@@ -2283,13 +2283,15 @@ function GraphExplorer() {
 // ---- The fact ledger (docs/43): every fact as a row, listed, not drawn ----
 // `derived` is customer status read from the deals, never written (docs/43 §1)
 const FACT_KINDS = ["attribute", "commitment", "contact_info", "decision", "derived", "hold", "open_question", "role"];
-const LEDGER_STATUSES = ["active", "superseded", "review: source missing", "review: source changed", "derived"];
+const LEDGER_STATUSES = ["active", "unconfirmed", "superseded", "review: source missing", "review: source changed", "derived"];
 
 function factPredicate(f) { return f.slot ? `${f.kind}/${f.slot}` : f.kind; }
 
-function FactStatus({ status }) {
+// an unconfirmed fact names who wrote it, until a person confirms it (docs/43 §3)
+function FactStatus({ status, author }) {
   const tone = status === "active" || status === "derived" ? "ok" : status === "superseded" ? "muted" : "warn";
-  return <span className={`fact-status fact-status-${tone}`}>{status}</span>;
+  const text = status === "unconfirmed" && author ? `unconfirmed (${author})` : status;
+  return <span className={`fact-status fact-status-${tone}`}>{text}</span>;
 }
 
 // A text filter that applies on Enter or when it loses focus, so typing an
@@ -2352,7 +2354,7 @@ export function FactLedger() {
                   ))}
                   {f.source.status !== "linked" && <span className="muted"> ({f.source.status})</span>}
                 </td>
-                <td><FactStatus status={f.status} /></td>
+                <td><FactStatus status={f.status} author={f.author} /></td>
                 <td className="muted">{f.author}, {f.valid_from}</td>
               </tr>
             ))}
@@ -2376,7 +2378,7 @@ export function NoteFacts({ docId }) {
             {r.data.facts.map((f) => (
               <li key={f.fact_id}>
                 <span className="mono">{factPredicate(f)}</span> {f.statement}{" "}
-                <FactStatus status={f.status} />
+                <FactStatus status={f.status} author={f.author} />
               </li>
             ))}
           </ul>
@@ -2392,7 +2394,7 @@ function SheetFact({ f }) {
     <li>
       <span>{f.statement}</span>{" "}
       <span className="muted">{f.valid_from} · <span className="mono">{`${f.source.kind}:${f.source.id}`}</span> · {f.author}</span>{" "}
-      <FactStatus status={f.status} />
+      <FactStatus status={f.status} author={f.author} />
       {f.touched_since && <span className="sheet-touched muted"> {f.touched_since}</span>}
       {f.earlier.length > 0 && (
         <button className="linklike" onClick={() => setOpen(!open)}>{`${f.earlier.length} earlier`}</button>
@@ -2400,7 +2402,7 @@ function SheetFact({ f }) {
       {open && (
         <ul className="sheet-earlier">
           {f.earlier.map((e) => (
-            <li key={e.fact_id} className="muted"><span>{e.statement}</span> · {e.valid_from} <FactStatus status={e.status} /></li>
+            <li key={e.fact_id} className="muted"><span>{e.statement}</span> · {e.valid_from} <FactStatus status={e.status} author={e.author} /></li>
           ))}
         </ul>
       )}

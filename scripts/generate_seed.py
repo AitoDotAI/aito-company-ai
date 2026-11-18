@@ -1109,6 +1109,12 @@ REPLICA_FACTS = [
     (None, "attribute", "procurement", "", "Procurement starts once the evaluation convinces them", "", "doc", "doc-seed-plan", "2026-10-26", ""),
     (None, "attribute", "billing_model", "", "They bill on milestones, not seats", "", "doc", "doc-seed-plan", "2026-10-26", ""),
 ]
+# who confirmed the seed's facts (docs/43 §3): the seed's operator user
+SEED_CONFIRMER = "alex@example.com"
+# one fact an agent wrote and nobody has confirmed yet; listed after the hold
+# so every earlier fact id holds
+UNCONFIRMED_FACT = ("attribute", "infra", "Runs on Azure, in their own subscription", "call",
+                    "call-seed-0511", "2026-11-05")
 
 
 def make_facts(accounts, contacts, deals, prefix, documents=(), touches=()):
@@ -1148,7 +1154,7 @@ def make_facts(accounts, contacts, deals, prefix, documents=(), touches=()):
                      "kind": kind, "slot": slot, "state": state, "statement": statement,
                      "due": due, "source_kind": sk, "source_id": sid, "valid_from": valid,
                      "superseded_by": ids[sup] if sup != "" else "", "author": "cro",
-                     "created_at": valid})
+                     "created_at": valid, "confirmed_by": SEED_CONFIRMER, "confirmed_at": valid})
     with_deals = {d["company"] for d in deals}
     held = next((co for co in sorted(by_company) if co not in with_deals and co != replica), None)
     if held:
@@ -1156,7 +1162,14 @@ def make_facts(accounts, contacts, deals, prefix, documents=(), touches=()):
                      "slot": "", "state": "on_hold", "statement": "On partner hold", "due": "",
                      "source_kind": "antti", "source_id": "antti-seed-1015",
                      "valid_from": "2026-10-15", "superseded_by": "", "author": "antti",
-                     "created_at": "2026-10-15"})
+                     "created_at": "2026-10-15", "confirmed_by": SEED_CONFIRMER,
+                     "confirmed_at": "2026-10-15"})
+    kind, slot, statement, sk, sid, valid = UNCONFIRMED_FACT
+    rows.append({"fact_id": f"{prefix}{len(REPLICA_FACTS) + 2:03d}", "company": replica,
+                 "stakeholder_id": "", "kind": kind, "slot": slot, "state": "",
+                 "statement": statement, "due": "", "source_kind": sk, "source_id": sid,
+                 "valid_from": valid, "superseded_by": "", "author": "cro", "created_at": valid,
+                 "confirmed_by": "", "confirmed_at": ""})
     return rows
 
 

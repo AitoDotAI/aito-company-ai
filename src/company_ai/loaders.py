@@ -969,13 +969,18 @@ def parse_fact_row(row: dict, contact_ids: set | None = None) -> dict:
         _parse_date(row["due"], "due", row)
     _parse_date(row["valid_from"], "valid_from", row)
     _require(_is_iso(row["created_at"]), f"created_at is not ISO: {row['created_at']!r}", row)
+    _require(bool(row["confirmed_by"]) == bool(row["confirmed_at"]),
+             "confirmed_by and confirmed_at come together", row)
+    if row["confirmed_at"]:
+        _require(_is_iso(row["confirmed_at"]), f"confirmed_at is not ISO: {row['confirmed_at']!r}", row)
     if row["stakeholder_id"] and contact_ids is not None:
         _require(row["stakeholder_id"] in contact_ids,
                  f"unknown stakeholder_id {row['stakeholder_id']!r}", row)
     return {
         **row,
         "company_id": company_slug(row["company"]),
-        **{k: row[k] or None for k in ("stakeholder_id", "slot", "state", "due", "superseded_by")},
+        **{k: row[k] or None for k in ("stakeholder_id", "slot", "state", "due", "superseded_by",
+                                       "confirmed_by", "confirmed_at")},
     }
 
 

@@ -12,7 +12,7 @@ experiments.csv      90 rows  ok
 events.csv           14 rows  ok
 routines.csv          7 rows  ok
 documents.csv        13 rows  ok
-facts.csv            15 rows  ok
+facts.csv            16 rows  ok
 tech_nodes.csv       15 rows  ok
 
 OK — nothing to fix

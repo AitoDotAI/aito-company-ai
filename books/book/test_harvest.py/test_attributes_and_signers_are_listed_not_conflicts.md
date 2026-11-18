@@ -4,7 +4,7 @@
   budget_cycle: ['Budget now set in a February review', 'Budget cycle resets in Q1']
   procurement: ['Procurement starts once the evaluation convinces them']
   deployment: []
-  infra: []
+  infra: ['Runs on Azure, in their own subscription']
   stack: []
   data_model: []
   volume: []

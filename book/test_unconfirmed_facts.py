@@ -8,6 +8,7 @@ running Aito instance."""
 
 import dataclasses
 import inspect
+import re
 
 import booktest as bt
 
@@ -42,6 +43,11 @@ def _rows(groups: dict) -> list[dict]:
 
 def _marks(groups: dict) -> dict[str, str | None]:
     return {r["source"]["id"]: r["unconfirmed"] for r in _rows(groups)}
+
+
+def _masked(text: str) -> str:
+    """Generated fact ids and timestamps made stable for the snapshot."""
+    return re.sub(r"\d{4}-\d\d-\d\dT[\d:]+\+00:00", "<at>", re.sub(r"fa-\d{20}", "fa-new", text))
 
 
 def _write(client: AitoClient) -> dict:
@@ -79,7 +85,7 @@ def test_a_written_fact_reads_unconfirmed_everywhere(t: bt.TestCaseRun) -> None:
 
     t.h1("the ledger lists it as unconfirmed, and filters on it")
     led = {r["fact_id"]: r["status"] for r in facts.ledger(client, company=ACCOUNT)["facts"]}
-    t.tln(f"  {fid}: {led[fid]}")
+    t.tln(f"  fa-new: {led[fid]}")
     assert led[fid] == "unconfirmed"
     only = facts.ledger(client, company=ACCOUNT, status="unconfirmed")["facts"]
     assert {r["fact_id"] for r in only} == {fid} | ({SEED[-1]["fact_id"]} & set(led))
@@ -87,7 +93,7 @@ def test_a_written_fact_reads_unconfirmed_everywhere(t: bt.TestCaseRun) -> None:
     t.h1("the unfold marks its node")
     node = graph.network(client, focus=AID)["nodes"]
     node = next(n for n in node if n["id"] == f"fact:{fid}")
-    t.tln(f"  fact:{fid}: unconfirmed={node['unconfirmed']}")
+    t.tln(f"  fact:fa-new: unconfirmed={node['unconfirmed']}")
     assert node["unconfirmed"] == "unconfirmed (cro)"
 
 
@@ -122,7 +128,7 @@ def test_only_confirm_fact_confirms(t: bt.TestCaseRun) -> None:
         except AssertionError as e:
             if "must be refused" in str(e):
                 raise
-            t.tln(f"  {label}: {e}")
+            t.tln(f"  {label}: {_masked(str(e))}")
 
 
 def test_confirm_fact_is_local_only_and_names_the_operator(t: bt.TestCaseRun) -> None:

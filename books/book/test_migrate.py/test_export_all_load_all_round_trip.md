@@ -16,6 +16,6 @@ exported 16 tables: ['users', 'contacts', 'touches', 'decisions', 'sessions', 'm
   events: 14 rows
   routines: 7 rows
   documents: 13 rows
-  facts: 15 rows
+  facts: 16 rows
   tech_nodes: 15 rows
 row counts preserved across the round trip: True

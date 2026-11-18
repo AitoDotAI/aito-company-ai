@@ -7,6 +7,8 @@
     sfa014 'They bill on milestones, not seats' 2026-10-26 [active] touched since 2026-11-02
   attribute/budget_cycle:
     sfa012 'Budget cycle resets in Q1' 2026-10-26 [active] touched since 2026-11-02
+  attribute/infra:
+    sfa016 'Runs on Azure, in their own subscription' 2026-11-05 [unconfirmed] 
   attribute/procurement:
     sfa013 'Procurement starts once the evaluation convinces them' 2026-10-26 [active] touched since 2026-11-02
   commitment/ours:
