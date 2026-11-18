@@ -83,7 +83,7 @@ def test_a_pull_labels_sessions_and_steps_from_the_map(t: bt.TestCaseRun) -> Non
     de = rows["Germany"]       # / then the cart demo on another host
     assert de["items"] == "site:home cart-recommendations bought-together"
     assert (de["categories"], de["verticals"], de["domains"]) == ("mixed", "E-commerce", "ecommerce")
-    assert de["subcategories"] is None and de["unmapped_pages"] == 0
+    assert de.get("subcategories") is None and de["unmapped_pages"] == 0
     se = rows["Sweden"]        # /docs/ twice, a quickstart the map doesn't name
     assert se["items"] == "site:docs", "once each, in visit order"
     assert se["unmapped_pages"] == 1
@@ -179,8 +179,9 @@ def test_history_is_relabelled_once_from_the_stored_pages(t: bt.TestCaseRun) -> 
     _show(t, after)
     assert after["Germany"]["items"] == "site:home cart-recommendations bought-together"
     assert after["Sweden"]["unmapped_pages"] == 1
-    same = {k for k in before["Germany"] if not k.startswith("$") and k != "pull_run"}
-    assert all(after[c][k] == before[c][k] for c in before for k in same), "nothing else changes"
+    labels = {*FIELDS, "unmapped_pages", "pull_run"}
+    same = {k for r in (*before.values(), *after.values()) for k in r if not k.startswith("$")} - labels
+    assert all(after[c].get(k) == before[c].get(k) for c in before for k in same), "nothing else changes"
     steps = client.query({"from": "web_steps", "where": {"day": DAY}, "limit": 1000})["hits"]
     t.tln(f"  steps: {len(steps)}, runs {len({s['pull_run'] for s in steps})}, "
           f"labelled {sum(bool(s.get('items')) for s in steps)}")
