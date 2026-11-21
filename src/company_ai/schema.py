@@ -720,6 +720,14 @@ SEARCH_VECTORS = {
 
 # Creation order matters: touches links to contacts; posts denormalize from
 # materials + channels (load those first).
+# The front page's profile questions (aito.ai consultative/profile.mjs; plan
+# C2, docs/44 decision 2). Fixed sets: a value outside them raises.
+CONSULTATIVE_INTERESTS = ("ai", "tech", "usecases")
+CONSULTATIVE_DOMAINS = ("accounting", "erp", "ecommerce", "service", "agents", "other")
+CONSULTATIVE_STAGES = ("exploring", "building", "need", "partner")
+# in the order a visitor gets through them; `intro_reached` is the furthest
+INTRO_STEPS = ("shown", "interest", "domain", "skip", "submit")
+
 # web_sessions — one row per aito.ai visit, pulled daily from Amplitude
 # (docs/35-web-analytics.md). Aggregated to the session: no user ids, device
 # ids, IPs or query strings. session_key is per session, pseudonymous.
@@ -761,6 +769,13 @@ WEB_SESSIONS = {
         "domains": {"type": "Text", "analyzer": "whitespace", "nullable": True},
         # pages of the visit the map doesn't name (repeats counted); null = not applied
         "unmapped_pages": {"type": "Int", "nullable": True},
+        # the visit's answers to the front page's questions (plan C2): its last
+        # interests and domain, its last stage, the furthest intro step; null
+        # when it never saw them. Never the visitor's own sentence.
+        "interests": {"type": "Text", "analyzer": "whitespace", "nullable": True},
+        "domain": {"type": "String", "nullable": True},
+        "stage": {"type": "String", "nullable": True},
+        "intro_reached": {"type": "String", "nullable": True},
         "engaged_seconds": {"type": "Int"},
         "onward_click": {"type": "Boolean"},
         "signup_cta": {"type": "Boolean"},
