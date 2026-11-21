@@ -64,6 +64,11 @@ only tens of sessions. At such counts most lifts are noise.
   from then on and left out (`likely_internal`, docs/35). His visits before
   that date are untagged and still count, so a small drop at 18.11 can be
   his own traffic leaving the numbers, not a change in real visits.
+- **The intro's counts (21.11.2026 ~09:00Z, aito.ai #414).** The front
+  page's questions stopped waiting for the backend's health check, so
+  "Consultative: intro shown" counts every page load with the layer on from
+  then. Compare rates across the date, not counts. A new event
+  "Consultative: health" {ok, ms, budget_ms, timed_out} starts the same day.
 - **Beta traffic.** beta.aito.ai sends to the same Amplitude project.
   Its pages already land host-first (`beta.aito.ai/…`), but its sessions
   count in the totals. Each session gets a `site` value, read from the
@@ -182,6 +187,16 @@ user properties set with consent only, all fixed categories: `interests`
 (accounting, erp, ecommerce, service, agents or other) and `stage`.
 Amplitude is set not to store IP addresses (verify on one beta event
 after it deploys).
+
+**Built (plan C2, 21.11.2026):** each web_sessions row carries the visit's
+`interests` (whitespace Text), `domain`, `stage` and `intro_reached` (the
+furthest of shown, interest, domain, skip, submit), read only from the
+allow-listed properties of the visit's consultative events. Interests and
+domain are as the last intro event left them; stage is the last one picked (a
+dismissed card picks none). The steps also stay in `events` as names. A
+segment is one `_relate` (`keep=["interests"]` for the Text field). Not read:
+the user properties, which carry a returning visitor's earlier answers; a
+visit that didn't answer reads null. Book: `book/test_consultative.py`.
 
 **Pulled:** `stage`, `domain` and `interests` as session attributes, so
 they become segments and content items. A value outside its fixed set
