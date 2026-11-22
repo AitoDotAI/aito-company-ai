@@ -152,6 +152,10 @@ def main() -> None:
     pw.add_argument("--day", help="one UTC day (YYYY-MM-DD); default the last --days days")
     pw.add_argument("--days", type=int, default=3,
                     help="pull the last N complete UTC days (default 3: a missed run backfills)")
+    acm = sub.add_parser("apply-content-map",
+                         help="relabel stored web_sessions and web_steps from aito.ai's content map "
+                              "(plan C1); dry run unless --apply")
+    acm.add_argument("--apply", action="store_true", help="write; default prints the plan only")
     fw = sub.add_parser("forget-web-visitor",
                         help="delete one aito.ai visitor on request and keep it out of later "
                              "pulls (docs/36)")
@@ -210,7 +214,8 @@ def main() -> None:
                   "load-all", "clear", "export", "export-all", "board-run",
                   "reindex-search",
                   "routines-run", "log", "complete", "archive", "backup", "restore",
-                  "import-engagements", "compact", "pull-web", "forget-web-visitor"}
+                  "import-engagements", "compact", "pull-web", "forget-web-visitor",
+                  "apply-content-map"}
     if args.command in WRITE_CMDS:
         _echo_target(config)
     # refuse synthetic seed into a remote instance unless forced
@@ -487,6 +492,14 @@ def main() -> None:
         from . import webanalytics
         print(json.dumps(webanalytics.forget_web_visitor(
             client, device_id=args.device_id, visitor_key=args.visitor_key), sort_keys=True))
+    elif args.command == "apply-content-map":
+        import json
+        from . import contentmap, webanalytics
+        try:
+            report = webanalytics.apply_content_map(client, contentmap.fetch(), apply=args.apply)
+        except webanalytics.PullLocked as e:
+            raise SystemExit(f"✗ {e}")
+        print(json.dumps(report, sort_keys=True, indent=1))
     elif args.command == "pull-web":
         import json
         from . import webanalytics
