@@ -95,6 +95,12 @@ KNOWN_EVENT_TYPES = {
     # aito.ai's pricing page (KPI_PAGES)
     "Page View: Demo - Pricing",
     "Instance delete", "Instance delete now",
+    # aito.ai's consultative layer (plan C2): the intro's steps, the stage
+    # card, the backend health check (from aito.ai #414, 21.11.2026) and the
+    # recommendations' own events. Their answers are read by _profile.
+    *(f"Consultative: intro {s}" for s in schema.INTRO_STEPS),
+    "Consultative: stage", "Consultative: health", "Consultative: impression",
+    "Consultative: open", "Consultative: cta_click", "Consultative: search_click",
 }
 _KPI_EVENT_NAMES = set().union(*KPI_EVENTS.values())
 
@@ -350,6 +356,60 @@ def _human(row: dict) -> bool:
     return not row["likely_bot"] and not row.get("likely_internal")
 
 
+# _profile's columns that a relation over pre-visit context must leave out
+IN_VISIT_ANSWERS = ("interests", "domain", "stage", "intro_reached", "intro_skipped")
+
+
+def _refuse_unless(ok: bool, message: str) -> None:
+    """A raise that holds under python -O, unlike assert."""
+    if not ok:
+        raise ValueError(message)
+
+
+def _profile(group: list[dict]) -> dict:
+    """The visit's answers to the front page's questions (plan C2), from the
+    allow-listed properties of its consultative events only, as given during
+    this visit: interests and domain from the last interest, domain or submit
+    event (`shown` carries a returning visitor's earlier answers, and a skip
+    clears them), the last stage picked (a dismissed card picks none), the
+    furthest intro step, and whether the intro was skipped. Nothing else of
+    those events is read, so the visitor's sentence never lands. A value
+    outside its fixed set raises with the event."""
+    out = {"interests": None, "domain": None, "stage": None, "intro_reached": None, "intro_skipped": None}
+    reached = -1
+    for e in group:
+        name, props = e["event_type"], e.get("event_properties") or {}
+        if name.startswith("Consultative: intro "):
+            step = props.get("step")
+            _refuse_unless(step in schema.INTRO_STEPS and name == f"Consultative: intro {step}",
+                           f"consultative intro step {step!r} not in {schema.INTRO_STEPS}: {e}")
+            interests = (props.get("interests") or "").split()
+            _refuse_unless(set(interests) <= set(schema.CONSULTATIVE_INTERESTS),
+                           f"consultative interests {props.get('interests')!r} not in "
+                           f"{schema.CONSULTATIVE_INTERESTS}: {e}")
+            domain = props.get("domain")
+            _refuse_unless(domain is None or domain in schema.CONSULTATIVE_DOMAINS,
+                           f"consultative domain {domain!r} not in {schema.CONSULTATIVE_DOMAINS}: {e}")
+            if out["intro_skipped"] is None:
+                out["intro_skipped"] = False
+            if step == "skip":
+                out["interests"], out["domain"], out["intro_skipped"] = None, None, True
+                continue
+            if step != "shown":
+                out["interests"], out["domain"] = " ".join(sorted(interests)) or None, domain
+            reached = max(reached, schema.INTRO_PROGRESS.index(step))
+        elif name == "Consultative: stage":
+            stage = props.get("stage")
+            if props.get("dismissed"):
+                continue
+            _refuse_unless(stage in schema.CONSULTATIVE_STAGES,
+                           f"consultative stage {stage!r} not in {schema.CONSULTATIVE_STAGES}: {e}")
+            out["stage"] = stage
+    if reached >= 0:
+        out["intro_reached"] = schema.INTRO_PROGRESS[reached]
+    return out
+
+
 def _build(events: list[dict], day: str) -> tuple[list[dict], dict]:
     """The rows for the sessions whose first event is on `day` (UTC), and
     the run's counts over those sessions' events."""
@@ -435,6 +495,7 @@ def _build(events: list[dict], day: str) -> tuple[list[dict], dict]:
             # fetch the sitemaps mid-visit (first real paths run, 6.11.2026)
             "likely_bot": any(p.startswith(PROBE_PREFIXES) for p in pages),
             "likely_internal": _internal(group),
+            **_profile(group),
             "post_id": None, "candidate_post_id": None, "matched_post_id": None,
             "experiment_id": None,
             "link_basis": None,
@@ -839,8 +900,9 @@ def onward_drivers(client: AitoClient, since: str, until: str, path: str | None 
     where = {**HUMAN, "$and": _window(since, until)}
     if path:
         where["landing_path"] = path
+    # the front page's answers are given during the visit, not before it
     return relations.relate(client, "web_sessions", {"onward_click": True},
-                            where=where, top_n=top_n)
+                            where=where, top_n=top_n, exclude=list(IN_VISIT_ANSWERS))
 
 
 # ---- the dashboard's Web view: one bundle per filter ----
