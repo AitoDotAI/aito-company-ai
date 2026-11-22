@@ -195,8 +195,9 @@ from the allow-listed properties of the visit's consultative events. They
 mean "answered during this visit": interests and domain come from the last
 interest, domain or submit event, since `shown` carries a returning
 visitor's earlier answers and a skip clears the picks. Stage is the last one
-picked (a dismissed card picks none). The steps also stay in `events` as
-names. A segment is one `_relate` (`keep=["interests"]` for the Text field).
+picked (a dismissed card picks none). `intro_skipped` is true if the visitor
+skipped at any point in the visit, even if they answered afterwards. The steps
+also stay in `events` as names. A segment is one `_relate` (`keep=["interests"]` for the Text field).
 Not read: the user properties, which carry earlier answers; a visit that
 didn't answer reads null. Earlier answers can be a later, separate column for
 returning-visitor segments. Book: `book/test_consultative.py`.
@@ -204,6 +205,8 @@ returning-visitor segments. Book: `book/test_consultative.py`.
 A value outside the fixed sets fails the day's pull (rule 3). aito.ai already
 sends null for a value it doesn't know, so this fires only when the site
 extends a set: a new interest, domain or stage on aito.ai ships the company-ai set first.
+If a day fails on such a value, add it to the set in `schema.py`, ship that, and
+re-pull the day (`pull-web --day`).
 
 **Pulled:** `stage`, `domain` and `interests` as session attributes, so
 they become segments and content items. A value outside its fixed set
