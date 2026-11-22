@@ -189,14 +189,21 @@ Amplitude is set not to store IP addresses (verify on one beta event
 after it deploys).
 
 **Built (plan C2, 21.11.2026):** each web_sessions row carries the visit's
-`interests` (whitespace Text), `domain`, `stage` and `intro_reached` (the
-furthest of shown, interest, domain, skip, submit), read only from the
-allow-listed properties of the visit's consultative events. Interests and
-domain are as the last intro event left them; stage is the last one picked (a
-dismissed card picks none). The steps also stay in `events` as names. A
-segment is one `_relate` (`keep=["interests"]` for the Text field). Not read:
-the user properties, which carry a returning visitor's earlier answers; a
-visit that didn't answer reads null. Book: `book/test_consultative.py`.
+`interests` (whitespace Text), `domain`, `stage`, `intro_reached` (the
+furthest of shown, interest, domain, submit) and `intro_skipped`, read only
+from the allow-listed properties of the visit's consultative events. They
+mean "answered during this visit": interests and domain come from the last
+interest, domain or submit event, since `shown` carries a returning
+visitor's earlier answers and a skip clears the picks. Stage is the last one
+picked (a dismissed card picks none). The steps also stay in `events` as
+names. A segment is one `_relate` (`keep=["interests"]` for the Text field).
+Not read: the user properties, which carry earlier answers; a visit that
+didn't answer reads null. Earlier answers can be a later, separate column for
+returning-visitor segments. Book: `book/test_consultative.py`.
+
+A value outside the fixed sets fails the day's pull (rule 3). aito.ai already
+sends null for a value it doesn't know, so this fires only when the site
+extends a set: a new interest, domain or stage on aito.ai ships the company-ai set first.
 
 **Pulled:** `stage`, `domain` and `interests` as session attributes, so
 they become segments and content items. A value outside its fixed set

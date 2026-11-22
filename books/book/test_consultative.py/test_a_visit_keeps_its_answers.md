@@ -4,9 +4,10 @@
 
 # Sessions
 
-  Finland: interests=ai tech, domain=erp, stage=building, intro_reached=submit
-  Germany: interests=None, domain=None, stage=None, intro_reached=None
-  Sweden: interests=None, domain=ecommerce, stage=None, intro_reached=skip
+  Finland: interests=ai tech, domain=erp, stage=building, intro_reached=submit, intro_skipped=False
+  Germany: interests=None, domain=None, stage=None, intro_reached=None, intro_skipped=None
+  Norway: interests=None, domain=None, stage=None, intro_reached=shown, intro_skipped=False
+  Sweden: interests=None, domain=None, stage=None, intro_reached=domain, intro_skipped=True
 
 # The steps stay in `events`, as names
 
@@ -23,5 +24,7 @@
   interests=tech: 1 visits, rate 1.0, thin True
   intro_reached=submit: 1 visits, rate 1.0, thin True
   stage=building: 1 visits, rate 1.0, thin True
-  domain=ecommerce: 1 visits, rate 0.0, thin True
-  intro_reached=skip: 1 visits, rate 0.0, thin True
+  intro_skipped=False: 2 visits, rate 0.5, thin True
+  intro_reached=domain: 1 visits, rate 0.0, thin True
+  intro_reached=shown: 1 visits, rate 0.0, thin True
+  intro_skipped=True: 1 visits, rate 0.0, thin True

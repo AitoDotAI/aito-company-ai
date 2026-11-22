@@ -357,41 +357,56 @@ def _human(row: dict) -> bool:
 
 
 # _profile's columns that a relation over pre-visit context must leave out
-IN_VISIT_ANSWERS = ("interests", "domain", "stage", "intro_reached")
+IN_VISIT_ANSWERS = ("interests", "domain", "stage", "intro_reached", "intro_skipped")
+
+
+def _refuse_unless(ok: bool, message: str) -> None:
+    """A raise that holds under python -O, unlike assert."""
+    if not ok:
+        raise ValueError(message)
 
 
 def _profile(group: list[dict]) -> dict:
     """The visit's answers to the front page's questions (plan C2), from the
-    allow-listed properties of its consultative events only: interests and
-    domain as the last intro event left them, the last stage picked (a
-    dismissed card picks none), and the furthest intro step. Nothing else
-    of those events is read, so the visitor's sentence never lands. A value
+    allow-listed properties of its consultative events only, as given during
+    this visit: interests and domain from the last interest, domain or submit
+    event (`shown` carries a returning visitor's earlier answers, and a skip
+    clears them), the last stage picked (a dismissed card picks none), the
+    furthest intro step, and whether the intro was skipped. Nothing else of
+    those events is read, so the visitor's sentence never lands. A value
     outside its fixed set raises with the event."""
-    out = {"interests": None, "domain": None, "stage": None, "intro_reached": None}
+    out = {"interests": None, "domain": None, "stage": None, "intro_reached": None, "intro_skipped": None}
     reached = -1
     for e in group:
         name, props = e["event_type"], e.get("event_properties") or {}
         if name.startswith("Consultative: intro "):
             step = props.get("step")
-            assert step in schema.INTRO_STEPS and name == f"Consultative: intro {step}", \
-                f"consultative intro step {step!r} not in {schema.INTRO_STEPS}: {e}"
+            _refuse_unless(step in schema.INTRO_STEPS and name == f"Consultative: intro {step}",
+                           f"consultative intro step {step!r} not in {schema.INTRO_STEPS}: {e}")
             interests = (props.get("interests") or "").split()
-            assert set(interests) <= set(schema.CONSULTATIVE_INTERESTS), \
-                f"consultative interests {props.get('interests')!r} not in {schema.CONSULTATIVE_INTERESTS}: {e}"
+            _refuse_unless(set(interests) <= set(schema.CONSULTATIVE_INTERESTS),
+                           f"consultative interests {props.get('interests')!r} not in "
+                           f"{schema.CONSULTATIVE_INTERESTS}: {e}")
             domain = props.get("domain")
-            assert domain is None or domain in schema.CONSULTATIVE_DOMAINS, \
-                f"consultative domain {domain!r} not in {schema.CONSULTATIVE_DOMAINS}: {e}"
-            out["interests"], out["domain"] = " ".join(sorted(interests)) or None, domain
-            reached = max(reached, schema.INTRO_STEPS.index(step))
+            _refuse_unless(domain is None or domain in schema.CONSULTATIVE_DOMAINS,
+                           f"consultative domain {domain!r} not in {schema.CONSULTATIVE_DOMAINS}: {e}")
+            if out["intro_skipped"] is None:
+                out["intro_skipped"] = False
+            if step == "skip":
+                out["interests"], out["domain"], out["intro_skipped"] = None, None, True
+                continue
+            if step != "shown":
+                out["interests"], out["domain"] = " ".join(sorted(interests)) or None, domain
+            reached = max(reached, schema.INTRO_PROGRESS.index(step))
         elif name == "Consultative: stage":
             stage = props.get("stage")
             if props.get("dismissed"):
                 continue
-            assert stage in schema.CONSULTATIVE_STAGES, \
-                f"consultative stage {stage!r} not in {schema.CONSULTATIVE_STAGES}: {e}"
+            _refuse_unless(stage in schema.CONSULTATIVE_STAGES,
+                           f"consultative stage {stage!r} not in {schema.CONSULTATIVE_STAGES}: {e}")
             out["stage"] = stage
     if reached >= 0:
-        out["intro_reached"] = schema.INTRO_STEPS[reached]
+        out["intro_reached"] = schema.INTRO_PROGRESS[reached]
     return out
 
 

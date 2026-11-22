@@ -725,8 +725,10 @@ SEARCH_VECTORS = {
 CONSULTATIVE_INTERESTS = ("ai", "tech", "usecases")
 CONSULTATIVE_DOMAINS = ("accounting", "erp", "ecommerce", "service", "agents", "other")
 CONSULTATIVE_STAGES = ("exploring", "building", "need", "partner")
-# in the order a visitor gets through them; `intro_reached` is the furthest
+# the intro's events; `skip` is an outcome, not a step further along
 INTRO_STEPS = ("shown", "interest", "domain", "skip", "submit")
+# in the order a visitor gets through them; `intro_reached` is the furthest
+INTRO_PROGRESS = ("shown", "interest", "domain", "submit")
 
 # web_sessions — one row per aito.ai visit, pulled daily from Amplitude
 # (docs/35-web-analytics.md). Aggregated to the session: no user ids, device
@@ -776,6 +778,7 @@ WEB_SESSIONS = {
         "domain": {"type": "String", "nullable": True},
         "stage": {"type": "String", "nullable": True},
         "intro_reached": {"type": "String", "nullable": True},
+        "intro_skipped": {"type": "Boolean", "nullable": True},
         "engaged_seconds": {"type": "Int"},
         "onward_click": {"type": "Boolean"},
         "signup_cta": {"type": "Boolean"},
