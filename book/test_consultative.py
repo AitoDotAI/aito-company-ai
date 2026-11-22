@@ -5,9 +5,15 @@ aito.ai's consultative layer asks a visitor what they're after (interests:
 tech, usecases, ai), their domain and their stage, and sends one Amplitude
 event per step ("Consultative: intro shown/interest/domain/submit/skip",
 "Consultative: stage", "Consultative: health"). The pull keeps the visit's
-answers on its web_sessions row: interests, domain, stage, and the furthest
-intro step reached. Every value is from a fixed set; anything else raises
-with the event (rule 3).
+answers on its web_sessions row: interests, domain, stage, the furthest
+intro step reached and whether the intro was skipped. Every value is from a
+fixed set; anything else raises with the event (rule 3).
+
+The columns mean "answered during this visit" (CPO review of #109): the
+`shown` event carries the profile stored in the browser, a returning
+visitor's earlier answers, and `skip` carries the picks it then clears, so
+interests and domain are read only from interest, domain and submit, and a
+skip clears them.
 
 The visitor's own sentence (`words`, `sentence` on the submit event) never
 lands: the pull reads only the allow-listed properties, and the book proves
@@ -26,7 +32,7 @@ from company_ai import relations, schema, webanalytics
 
 FIXTURE = Path(__file__).resolve().parent.parent / "data" / "fixtures" / "amplitude_consultative_2026-11-20.jsonl"
 DAY = "2026-11-20"
-FIELDS = ("interests", "domain", "stage", "intro_reached")
+FIELDS = ("interests", "domain", "stage", "intro_reached", "intro_skipped")
 SENTENCE = "We run our own ERP and code 40k invoices a month"
 
 
@@ -53,11 +59,11 @@ def test_a_visit_keeps_its_answers(t: bt.TestCaseRun) -> None:
         r = rows[country]
         t.tln(f"  {country}: " + ", ".join(f"{f}={r.get(f)}" for f in FIELDS))
     fi = rows["Finland"]
-    assert (fi["interests"], fi["domain"], fi["stage"], fi["intro_reached"]) == \
-        ("ai tech", "erp", "building", "submit")
-    se = rows["Sweden"]          # picked a domain, then skipped; dismissed the stage card
-    assert (se.get("interests"), se["domain"], se.get("stage"), se["intro_reached"]) == \
-        (None, "ecommerce", None, "skip")
+    assert tuple(fi.get(f) for f in FIELDS) == ("ai tech", "erp", "building", "submit", False)
+    se = rows["Sweden"]          # picked a domain, then skipped (which clears it); dismissed the stage card
+    assert tuple(se.get(f) for f in FIELDS) == (None, None, None, "domain", True)
+    no = rows["Norway"]          # returning: `shown` carries earlier answers, none given this visit
+    assert tuple(no.get(f) for f in FIELDS) == (None, None, None, "shown", False)
     de = rows["Germany"]         # never saw the questions
     assert all(de.get(f) is None for f in FIELDS)
 
@@ -101,9 +107,7 @@ def test_a_value_outside_its_set_raises_with_the_event(t: bt.TestCaseRun) -> Non
         try:
             webanalytics.sessions_from_events(events, DAY)
             raise AssertionError(f"{label} must be refused")
-        except AssertionError as e:
-            if "must be refused" in str(e):
-                raise
+        except ValueError as e:      # not an assert: it must hold under python -O
             msg = str(e)
             t.tln(f"  {label}: {msg[:160]}")
             assert target["$insert_id"] in msg, "the message names the event"
@@ -115,5 +119,15 @@ def test_the_metric_break_on_21_11_is_marked(t: bt.TestCaseRun) -> None:
     text = (Path(__file__).resolve().parent.parent / "docs" / "44-web-insights.md").read_text()
     t.h1("docs/44 marks it")
     line = next((ln for ln in text.splitlines() if "21.11.2026" in ln), None)
+    t.tln(f"  {line}")
+    assert line is not None
+
+
+def test_a_new_value_ships_here_first(t: bt.TestCaseRun) -> None:
+    """CPO review of #109: an out-of-set value fails the day, so a new domain
+    or stage on aito.ai ships the company-ai set first. docs/44 says so."""
+    text = (Path(__file__).resolve().parent.parent / "docs" / "44-web-insights.md").read_text()
+    t.h1("docs/44 states the order")
+    line = next((ln for ln in text.splitlines() if "ships the company-ai set first" in ln), None)
     t.tln(f"  {line}")
     assert line is not None
